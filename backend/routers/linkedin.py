@@ -94,12 +94,17 @@ async def oauth_start(session_id: str | None = None):
         raise HTTPException(status_code=503, detail=str(exc))
 
 
-@router.post("/oauth/callback", response_model=LinkedInOAuthCallbackResponse)
-async def oauth_callback(request: LinkedInOAuthCallbackRequest):
-    """Exchange authorization code and store linked session token."""
+@router.get("/oauth/callback")
+async def oauth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):
+    """Handle LinkedIn OAuth redirect — exchange code for token and redirect to editor."""
+    if error:
+        raise HTTPException(status_code=400, detail=error_description or error)
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Missing code or state parameter")
     try:
-        result = handle_oauth_callback(request.code, request.state)
-        return LinkedInOAuthCallbackResponse(**result)
+        result = handle_oauth_callback(code, state)
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=f"/?linkedin_connected=1&session_id={result['session_id']}")
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

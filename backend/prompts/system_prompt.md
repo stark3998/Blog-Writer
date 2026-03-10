@@ -129,7 +129,7 @@ Include a section `## References` at the very end with:
 - **Length**: Target 800-1200 words. Enough depth to be valuable, short enough to respect readers' time.
 - **No fluff**: Every sentence should add value. Cut filler phrases like "In today's fast-paced world" or "As we all know."
 - **Technical accuracy**: Only mention technologies and patterns that are present in or directly related to the source material.
-- **Embed source visuals inline**: If the source analysis includes a "Source Images & Diagrams" section, you MUST embed those visuals inline at the most contextually relevant point in the article using `![descriptive alt text](url)`. Place architecture diagrams near the Architecture Overview section. Place screenshots and other images near the section they illustrate. Every provided source image should appear inline in the article body.
+- **Embed ALL source visuals inline**: If the source analysis includes a "Source Images & Diagrams" section, you MUST embed EVERY image from that section inline in the article using `![descriptive alt text](url)`. Spread images across different sections of the article — do NOT cluster them all in one place. Place each image at the most contextually relevant point: architecture diagrams near the Architecture Overview, screenshots near the feature they illustrate, workflow images near the How It Works section. If there are more images than sections, distribute extras evenly throughout the article to create a visually rich reading experience.
 - **No invented media URLs**: Never fabricate image or diagram URLs. Use ONLY URLs provided in the source analysis.
 - **Attribution**: When embedding a source visual, include a brief caption or nearby text attributing it to the original source.
 

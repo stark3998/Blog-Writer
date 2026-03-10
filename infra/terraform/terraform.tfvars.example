@@ -1,0 +1,48 @@
+project_name                   = "blog-writer"
+environment                    = "dev"
+location                       = "eastus"
+location_short                 = "eus"
+resource_group_name            = "rg-blog-writer-dev"
+container_app_name             = "ca-blog-writer-dev"
+container_app_environment_name = "cae-blog-writer-dev"
+log_analytics_workspace_name   = "law-blog-writer-dev"
+
+# Build and push this image to ACR, then update this value before apply
+container_image = "replace-me.azurecr.io/blog-writer-webapp:v1"
+
+container_app_env_vars = {
+  PORT                      = "8080"
+  PROJECT_ENDPOINT          = "https://<your-resource>.services.ai.azure.com/api/projects/<your-project>"
+  MODEL_DEPLOYMENT_NAME     = "gpt-5.3-chat"
+  API_VERSION               = "2024-05-01-preview"
+  COSMOS_ENDPOINT           = "https://your-cosmos.documents.azure.com:443/"
+  COSMOS_DATABASE           = "blog-writer"
+  GITHUB_REPO               = "owner/repo"
+  LOG_LEVEL                 = "INFO"
+  LINKEDIN_CLIENT_ID        = "your-linkedin-client-id"
+  LINKEDIN_REDIRECT_URI     = "https://<your-app-fqdn>/api/linkedin/oauth/callback"
+  LINKEDIN_SCOPES           = "r_liteprofile w_member_social"
+  LINKEDIN_COSMOS_SESSION_CONTAINER = "linkedin-sessions"
+  LINKEDIN_COSMOS_STATE_CONTAINER   = "linkedin-oauth-states"
+  LINKEDIN_OAUTH_STATE_TTL_SECONDS  = "900"
+}
+
+container_app_secrets = {
+  PROJECT_API_KEY        = "your-project-api-key"
+  COSMOS_KEY             = "your-cosmos-key"
+  GITHUB_TOKEN           = "your-github-token"
+  LINKEDIN_CLIENT_SECRET = "your-linkedin-client-secret"
+}
+
+container_app_secret_env_vars = {
+  PROJECT_API_KEY        = "PROJECT_API_KEY"
+  COSMOS_KEY             = "COSMOS_KEY"
+  GITHUB_TOKEN           = "GITHUB_TOKEN"
+  LINKEDIN_CLIENT_SECRET = "LINKEDIN_CLIENT_SECRET"
+}
+
+tags = {
+  app         = "blog-writer"
+  environment = "dev"
+  managed_by  = "terraform"
+}

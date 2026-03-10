@@ -1,0 +1,23 @@
+name: blog-writer-agent
+description: >
+  AI agent that generates rich technical blog posts from GitHub repository URLs
+  or webpage URLs. Analyzes source content, generates MDX posts with architecture
+  diagrams (Mermaid), technical observations, and tips — then publishes as a PR.
+
+template:
+  kind: hosted
+  protocols:
+    - name: responses
+      version: "1"
+
+  environment_variables:
+    - name: PROJECT_ENDPOINT
+      description: Azure AI Foundry project endpoint URL
+    - name: MODEL_DEPLOYMENT_NAME
+      description: The model deployment name to use (e.g., gpt-4o)
+      default: gpt-4o
+    - name: GITHUB_TOKEN
+      description: GitHub Personal Access Token with repo scope for PR creation
+    - name: GITHUB_REPO
+      description: Target GitHub repo in owner/repo format (e.g., jatmadan/portfolio)
+      default: jatmadan/portfolio

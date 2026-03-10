@@ -1,0 +1,7 @@
+azure-ai-agentserver-agentframework
+azure-ai-projects
+azure-identity
+openai
+requests
+beautifulsoup4
+python-dotenv

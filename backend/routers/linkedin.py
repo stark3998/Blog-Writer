@@ -96,15 +96,27 @@ async def oauth_start(session_id: str | None = None):
 
 @router.get("/oauth/callback")
 async def oauth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):
-    """Handle LinkedIn OAuth redirect — exchange code for token and redirect to editor."""
+    """Handle LinkedIn OAuth redirect — exchange code, notify opener popup, and close."""
+    from fastapi.responses import HTMLResponse
+
     if error:
-        raise HTTPException(status_code=400, detail=error_description or error)
+        return HTMLResponse(
+            f"<html><body><script>"
+            f"window.opener && window.opener.postMessage({{type:'linkedin-oauth-error',error:{repr(error_description or error)}}}, '*');"
+            f"window.close();"
+            f"</script><p>LinkedIn auth failed: {error_description or error}. You can close this window.</p></body></html>"
+        )
     if not code or not state:
         raise HTTPException(status_code=400, detail="Missing code or state parameter")
     try:
         result = handle_oauth_callback(code, state)
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=f"/?linkedin_connected=1&session_id={result['session_id']}")
+        session_id = result["session_id"]
+        return HTMLResponse(
+            f"<html><body><script>"
+            f"window.opener && window.opener.postMessage({{type:'linkedin-oauth-callback',session_id:'{session_id}'}}, '*');"
+            f"window.close();"
+            f"</script><p>LinkedIn connected! This window should close automatically.</p></body></html>"
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

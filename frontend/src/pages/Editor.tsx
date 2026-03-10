@@ -17,6 +17,7 @@ import {
   Upload,
   Loader2,
   Check,
+  ExternalLink,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -100,8 +101,10 @@ export default function Editor() {
         slug: slugMatch?.[1] ?? `blog-${Date.now()}`,
         title: titleMatch?.[1] ?? "Untitled",
         excerpt: excerptMatch?.[1] ?? "",
+        source_url: draft?.sourceUrl ?? "",
+        source_type: draft?.sourceType ?? "",
       });
-      setPublishResult(result.pr_url);
+      setPublishResult(result.blog_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Publish failed");
     } finally {
@@ -125,6 +128,18 @@ export default function Editor() {
           <span className="text-sm text-slate-400 truncate max-w-xs font-medium">
             {draft?.title ?? "Untitled Draft"}
           </span>
+          {draft?.sourceUrl && (
+            <a
+              href={draft.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 border border-white/[0.06] transition-all duration-200"
+              title={draft.sourceUrl}
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span className="truncate max-w-[180px]">Source</span>
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -171,6 +186,7 @@ export default function Editor() {
             content={content}
             title={draft?.title}
             excerpt={draft?.excerpt}
+            blogUrl={publishResult ?? undefined}
           />
 
           <div className="w-px h-5 bg-white/[0.06] mx-1" />
@@ -222,7 +238,7 @@ export default function Editor() {
           <span className="flex-1">
             Published!{" "}
             <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-medium hover:text-emerald-200 transition-colors">
-              View PR
+              View Blog
             </a>
           </span>
           <button onClick={() => setPublishResult(null)} className="text-emerald-400 hover:text-emerald-300 text-xs font-medium ml-4 underline underline-offset-2 transition-colors">

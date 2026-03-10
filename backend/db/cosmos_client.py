@@ -21,6 +21,7 @@ _client: CosmosClient | None = None
 _container = None
 _linkedin_session_container = None
 _linkedin_state_container = None
+_published_blogs_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -359,7 +360,7 @@ def delete_draft(draft_id: str) -> bool:
     """
     container = _get_container()
     start_time = time.time()
-    
+
     logger.debug(f"Deleting draft: {draft_id}")
     try:
         container.delete_item(item=draft_id, partition_key=draft_id)
@@ -370,3 +371,81 @@ def delete_draft(draft_id: str) -> bool:
         elapsed = time.time() - start_time
         logger.warning(f"Draft not found for deletion in {elapsed:.3f}s: {draft_id}")
         return False
+
+
+# ---------- Published Blogs ----------
+
+
+def _get_published_blogs_container():
+    """Get or create the published blogs container."""
+    global _published_blogs_container
+
+    if _published_blogs_container is not None:
+        return _published_blogs_container
+
+    _published_blogs_container = _create_container_if_not_exists("published-blogs")
+    return _published_blogs_container
+
+
+def publish_blog(
+    slug: str,
+    title: str,
+    excerpt: str,
+    html_content: str,
+    mdx_content: str,
+    source_url: str,
+    source_type: str = "",
+    tags: list[str] | None = None,
+    date: str = "",
+) -> dict[str, Any]:
+    """Publish a blog post to Cosmos DB.
+
+    Uses slug as the document ID so re-publishing overwrites the previous version.
+    """
+    container = _get_published_blogs_container()
+    now = datetime.now(timezone.utc).isoformat()
+
+    item = {
+        "id": slug,
+        "slug": slug,
+        "title": title,
+        "excerpt": excerpt,
+        "htmlContent": html_content,
+        "mdxContent": mdx_content,
+        "sourceUrl": source_url,
+        "sourceType": source_type,
+        "tags": tags or [],
+        "date": date,
+        "publishedAt": now,
+        "updatedAt": now,
+    }
+
+    container.upsert_item(body=item)
+    logger.info(f"Blog published: {slug} ({len(html_content)} chars HTML)")
+    return item
+
+
+def get_published_blog(slug: str) -> dict[str, Any] | None:
+    """Get a published blog by slug."""
+    container = _get_published_blogs_container()
+    try:
+        return dict(container.read_item(item=slug, partition_key=slug))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def list_published_blogs(limit: int = 50) -> list[dict[str, Any]]:
+    """List published blogs (metadata only), most recent first."""
+    container = _get_published_blogs_container()
+    query = (
+        "SELECT c.id, c.slug, c.title, c.excerpt, c.sourceUrl, "
+        "c.publishedAt, c.updatedAt "
+        "FROM c ORDER BY c.publishedAt DESC OFFSET 0 LIMIT @limit"
+    )
+    return list(
+        container.query_items(
+            query=query,
+            parameters=[{"name": "@limit", "value": limit}],
+            enable_cross_partition_query=True,
+        )
+    )

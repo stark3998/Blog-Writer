@@ -12,6 +12,7 @@ interface Props {
   content: string;
   title?: string;
   excerpt?: string;
+  blogUrl?: string;
 }
 
 interface PreviewData {
@@ -34,7 +35,7 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export default function LinkedInButton({ content, title, excerpt }: Props) {
+export default function LinkedInButton({ content, title, excerpt, blogUrl }: Props) {
   const [busy, setBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [status, setStatus] = useState("");
@@ -112,6 +113,7 @@ export default function LinkedInButton({ content, title, excerpt }: Props) {
         title,
         excerpt,
         post_format: "feed_post",
+        additional_context: blogUrl ? `Published blog URL: ${blogUrl}` : undefined,
       });
 
       // Step 4: Show preview modal instead of auto-publishing

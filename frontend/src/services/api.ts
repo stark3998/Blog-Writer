@@ -187,8 +187,24 @@ export async function publishBlog(data: {
   slug: string;
   title: string;
   excerpt: string;
-}): Promise<{ pr_url: string; branch: string; file_path: string }> {
+  source_url?: string;
+  source_type?: string;
+}): Promise<{ blog_url: string; slug: string; title: string }> {
   return json("/publish", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function getPublishedBlog(slug: string): Promise<{
+  slug: string;
+  title: string;
+  excerpt: string;
+  html_content: string;
+  source_url: string;
+  source_type: string;
+  tags: string[];
+  date: string;
+  published_at: string;
+}> {
+  return json(`/blog/${encodeURIComponent(slug)}`);
 }
 
 // ---------- LinkedIn ----------

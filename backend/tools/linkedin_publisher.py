@@ -19,7 +19,7 @@ from backend.db.cosmos_client import (
 
 LINKEDIN_AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization"
 LINKEDIN_TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
-LINKEDIN_ME_URL = "https://api.linkedin.com/v2/me"
+LINKEDIN_USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 LINKEDIN_POST_URL = "https://api.linkedin.com/v2/ugcPosts"
 
 def _require_env(name: str) -> str:
@@ -30,7 +30,7 @@ def _require_env(name: str) -> str:
 
 
 def _scopes() -> str:
-    return os.environ.get("LINKEDIN_SCOPES", "r_liteprofile w_member_social")
+    return os.environ.get("LINKEDIN_SCOPES", "openid profile w_member_social")
 
 
 def _token_for_session(session_id: str) -> dict[str, Any]:
@@ -127,7 +127,7 @@ def handle_oauth_callback(code: str, state: str) -> dict[str, Any]:
         raise RuntimeError("LinkedIn did not return access_token")
 
     me_response = requests.get(
-        LINKEDIN_ME_URL,
+        LINKEDIN_USERINFO_URL,
         headers=_linkedin_headers(access_token),
         timeout=30,
     )
@@ -135,7 +135,7 @@ def handle_oauth_callback(code: str, state: str) -> dict[str, Any]:
         raise RuntimeError(f"LinkedIn profile fetch failed: {me_response.text}")
 
     me = me_response.json()
-    member_id = me.get("id", "")
+    member_id = me.get("sub", "")
     if not member_id:
         raise RuntimeError("LinkedIn profile does not include member id")
 

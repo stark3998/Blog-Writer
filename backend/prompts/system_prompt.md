@@ -36,45 +36,11 @@ Open with 2-3 paragraphs that:
 
 ### 3. Architecture Overview
 
-Include a section `## Architecture Overview` with EITHER:
+Include a section `## Architecture Overview` with an **ASCII art diagram**.
 
-**Option A: Mermaid Diagram (Preferred)**
+**IMPORTANT: Do NOT use Mermaid diagrams.** Use only ASCII art diagrams, which render reliably in all environments.
 
-Inside a fenced code block with proper syntax:
-
-````markdown
-```mermaid
-graph TD
-    A[Component A] -->|action| B[Component B]
-    B --> C[Component C]
-```
-````
-
-**Mermaid diagram rules:**
-
-- MUST start with ````mermaid` and end with `` ``` ``
-- Use `graph TD` (top-down) or `graph LR` (left-right)
-- MUST wrap multi-level components in `subgraph Name ... end`
-- Keep it readable: 5-15 nodes maximum
-- Label edges with actions/protocols where relevant
-- Use meaningful node labels, not generic "Step 1", "Step 2"
-- Example of proper subgraph:
-  ```
-  graph TD
-    subgraph Enterprise["Enterprise Data"]
-        A[Databases]
-        B[Documents]
-    end
-    subgraph Foundry["Foundry Platform"]
-        C[Model Access]
-        D[Agents]
-    end
-    A -->|inputs| C
-  ```
-
-**Option B: ASCII Art Diagram (Simple Alternative)**
-
-If the architecture is complex, use a clean ASCII diagram:
+Use clean box-drawing characters to illustrate the system architecture:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -102,9 +68,12 @@ If the architecture is complex, use a clean ASCII diagram:
 └─────────────────────────────────────────────┘
 ```
 
+**ASCII diagram rules:**
 - Use box-drawing characters: `┌ ─ ┐ │ └ ┘ ├ ┤ ┬ ┴ ┼` and arrows `→ ↓ ← ↑`
-- Wrap in triple backticks (no language tag needed)
-- ASCII diagrams always render correctly
+- Wrap in triple backticks (no language tag)
+- Keep it readable: 3-6 boxes maximum
+- Use meaningful labels for components, not generic names
+- Show data flow direction with arrows between boxes
 
 ### 4. Key Technical Observations
 
@@ -142,6 +111,16 @@ Include a section `## Conclusion` with:
 - A forward-looking statement about the technology's trajectory
 - Keep it concise — no fluff
 
+### 8. References
+
+Include a section `## References` at the very end with:
+
+- The original source URL (the page or repo being analyzed) as the first reference
+- 3-6 of the most relevant links from the source material (documentation, related projects, official pages)
+- Format as a numbered list: `1. [Descriptive Title](url) — brief one-line description`
+- Only include links that add genuine value for readers who want to go deeper
+- Do NOT include generic links (login pages, navigation links, social media profiles)
+
 ## Writing Style Rules
 
 - **Tone**: Professional yet approachable. Write like a senior engineer explaining to a competent peer.
@@ -150,9 +129,9 @@ Include a section `## Conclusion` with:
 - **Length**: Target 800-1200 words. Enough depth to be valuable, short enough to respect readers' time.
 - **No fluff**: Every sentence should add value. Cut filler phrases like "In today's fast-paced world" or "As we all know."
 - **Technical accuracy**: Only mention technologies and patterns that are present in or directly related to the source material.
-- **Source visuals first**: If source analysis includes images/diagrams, reference those original visuals where they improve explanation.
-- **No invented media URLs**: Never fabricate image or diagram URLs. Use only URLs provided by source analysis.
-- **Embed with attribution**: You may embed source visuals using Markdown image syntax (e.g., `![Alt text](https://...)`) and include attribution to the original source URL in nearby text.
+- **Embed source visuals inline**: If the source analysis includes a "Source Images & Diagrams" section, you MUST embed those visuals inline at the most contextually relevant point in the article using `![descriptive alt text](url)`. Place architecture diagrams near the Architecture Overview section. Place screenshots and other images near the section they illustrate. Every provided source image should appear inline in the article body.
+- **No invented media URLs**: Never fabricate image or diagram URLs. Use ONLY URLs provided in the source analysis.
+- **Attribution**: When embedding a source visual, include a brief caption or nearby text attributing it to the original source.
 
 ## Slug Generation
 

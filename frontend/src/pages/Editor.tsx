@@ -4,6 +4,7 @@ import MonacoEditorWrapper from "../components/MonacoEditor";
 import MarkdownPreview from "../components/MarkdownPreview";
 import AIEditPanel from "../components/AIEditPanel";
 import ExportDropdown from "../components/ExportDropdown";
+import LinkedInButton from "../components/LinkedInButton";
 import { useBlogStore } from "../store/blogStore";
 import { getDraft, updateDraft, createDraft, publishBlog } from "../services/api";
 import {
@@ -111,7 +112,7 @@ export default function Editor() {
   return (
     <div className="h-screen flex flex-col bg-[#0b0f1a] text-white">
       {/* Toolbar */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] bg-[#0b0f1a]/90 backdrop-blur-md shrink-0 animate-fade-in-down">
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] bg-[#0b0f1a]/90 backdrop-blur-md shrink-0 animate-fade-in-down overflow-visible z-50 relative">
         <div className="flex items-center gap-3">
           <Link
             to="/"
@@ -164,6 +165,13 @@ export default function Editor() {
 
           {/* Export */}
           <ExportDropdown content={content} />
+
+          {/* LinkedIn */}
+          <LinkedInButton
+            content={content}
+            title={draft?.title}
+            excerpt={draft?.excerpt}
+          />
 
           <div className="w-px h-5 bg-white/[0.06] mx-1" />
 

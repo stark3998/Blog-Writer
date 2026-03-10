@@ -29,17 +29,28 @@ Return ONLY a valid JSON object with this shape:
 - Add a balanced personal perspective in `my_2_cents` (claim + evidence + caveat).
 - Avoid hype, fluff, and buzzword stuffing.
 
+## Source Article Reference
+- The post MUST reference the original article/source URL. This is the author sharing their perspective on the article.
+- Include the source link naturally in the post body — e.g., "I came across this article on [topic]: [URL]" or "Great read on [topic] — [URL]"
+- Place the link early in the post (within the first few lines) so it's visible above the "see more" fold.
+- Frame the post as "my 2 cents" or personal takeaways from reading the source article.
+
 ## Length
 - For `feed_post`: target 180-280 words.
 - For `long_form`: target 350-700 words.
 
 ## Hashtags
-- Provide 3-5 hashtags.
-- Mix broad + niche technical tags.
-- No duplicate hashtags.
+- Provide 3-5 hashtags optimized for LinkedIn reach.
+- Use hashtags that people actually follow on LinkedIn. Prefer established tags with large followings:
+  - Broad reach: #SoftwareEngineering, #AI, #CloudComputing, #DevOps, #MachineLearning, #DataScience, #CyberSecurity, #TechLeadership
+  - Mid-tier: #Azure, #AWS, #Python, #Kubernetes, #Microservices, #GenerativeAI, #LLM, #SystemDesign
+- Mix 1-2 broad tags (high follower count) with 2-3 specific/niche tags relevant to the article topic.
+- Do NOT invent hashtags or use obscure tags nobody follows.
+- No duplicate hashtags. No spaces within a hashtag.
 
 ## Final Quality Checks
 - The first line (`hook`) should be compelling and specific.
 - `summary` should be concise and value-focused.
-- `post_text` should include hook, summary, insights, my_2_cents, CTA, and hashtags naturally.
+- `post_text` MUST include: hook, source article link, insights, my_2_cents, CTA, and hashtags — woven naturally.
+- The source article URL must appear in `post_text` as a clickable link.
 - Do not include markdown code fences.

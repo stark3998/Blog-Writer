@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   composeLinkedInPost,
+  publishLinkedInPost,
   startLinkedInOAuth,
   getLinkedInStatus,
 } from "../services/api";
@@ -20,11 +21,6 @@ function getStoredSession(): string | null {
 
 function storeSession(id: string) {
   localStorage.setItem(SESSION_KEY, id);
-}
-
-function openLinkedInComposer(text: string) {
-  const url = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export default function LinkedInButton({ content, title, excerpt }: Props) {
@@ -57,7 +53,6 @@ export default function LinkedInButton({ content, title, excerpt }: Props) {
         const oauthRes = await startLinkedInOAuth(sessionId ?? undefined);
         storeSession(oauthRes.session_id);
 
-        // Open OAuth popup and wait for completion
         const popup = window.open(oauthRes.auth_url, "linkedin-oauth", "width=600,height=700");
 
         await new Promise<void>((resolve, reject) => {
@@ -71,12 +66,10 @@ export default function LinkedInButton({ content, title, excerpt }: Props) {
           };
           window.addEventListener("message", handleMessage);
 
-          // Also poll in case postMessage doesn't work (popup on different origin)
           const pollTimer = setInterval(() => {
             if (popup && popup.closed) {
               clearInterval(pollTimer);
               window.removeEventListener("message", handleMessage);
-              // Check if OAuth completed by rechecking status
               const sid = getStoredSession();
               if (sid) {
                 getLinkedInStatus(sid)
@@ -91,7 +84,6 @@ export default function LinkedInButton({ content, title, excerpt }: Props) {
             }
           }, 500);
 
-          // Timeout after 2 minutes
           setTimeout(() => {
             clearInterval(pollTimer);
             window.removeEventListener("message", handleMessage);
@@ -109,9 +101,28 @@ export default function LinkedInButton({ content, title, excerpt }: Props) {
         post_format: "feed_post",
       });
 
-      // Step 4: Open LinkedIn with the composed post
-      openLinkedInComposer(composed.post_text);
-      setStatus("");
+      // Step 4: Publish via API (with image if available)
+      setStatus("Publishing to LinkedIn...");
+      const sid = getStoredSession();
+      if (!sid) throw new Error("No LinkedIn session found");
+
+      const result = await publishLinkedInPost({
+        session_id: sid,
+        post_text: composed.post_text,
+        image_url: composed.image_url,
+      });
+
+      // Step 5: Open the published post on LinkedIn
+      if (result.post_id) {
+        const activityId = result.post_id.replace("urn:li:share:", "");
+        window.open(
+          `https://www.linkedin.com/feed/update/urn:li:share:${activityId}/`,
+          "_blank",
+          "noopener,noreferrer"
+        );
+      }
+      setStatus("Published!");
+      setTimeout(() => setStatus(""), 3000);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Something went wrong");
       setTimeout(() => setStatus(""), 3000);

@@ -37,6 +37,7 @@ class LinkedInComposeResponse(BaseModel):
     hashtags: list[str]
     post_text: str
     word_count: int
+    image_url: str = ""
 
 
 class LinkedInOAuthStartResponse(BaseModel):
@@ -73,6 +74,7 @@ class LinkedInPublishRequest(BaseModel):
     additional_context: str = ""
     visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
     post_text: str = ""
+    image_url: str = ""
 
 
 class LinkedInPublishResponse(BaseModel):
@@ -219,6 +221,7 @@ async def publish_post(request: LinkedInPublishRequest):
             session_id=request.session_id,
             post_text=publish_text,
             visibility=request.visibility,
+            image_url=request.image_url,
         )
         return LinkedInPublishResponse(
             **result,

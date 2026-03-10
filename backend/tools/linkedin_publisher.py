@@ -183,8 +183,78 @@ def disconnect_session(session_id: str) -> None:
     delete_linkedin_session(session_id)
 
 
-def publish_member_post(session_id: str, post_text: str, visibility: str = "PUBLIC") -> dict[str, Any]:
-    """Publish a LinkedIn member feed post using UGC API."""
+def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str) -> str | None:
+    """Download an image from a URL and upload it to LinkedIn. Returns the asset URN or None."""
+    try:
+        # Download the image
+        img_response = requests.get(image_url, timeout=30, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        })
+        img_response.raise_for_status()
+        image_bytes = img_response.content
+        content_type = img_response.headers.get("Content-Type", "image/jpeg")
+
+        # Register the upload with LinkedIn
+        register_payload = {
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                "owner": person_urn,
+                "serviceRelationships": [
+                    {
+                        "relationshipType": "OWNER",
+                        "identifier": "urn:li:userGeneratedContent",
+                    }
+                ],
+            }
+        }
+
+        headers = _linkedin_headers(access_token)
+        register_response = requests.post(
+            "https://api.linkedin.com/v2/assets?action=registerUpload",
+            json=register_payload,
+            headers=headers,
+            timeout=30,
+        )
+        if register_response.status_code >= 400:
+            return None
+
+        register_data = register_response.json()
+        upload_url = (
+            register_data.get("value", {})
+            .get("uploadMechanism", {})
+            .get("com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest", {})
+            .get("uploadUrl", "")
+        )
+        asset = register_data.get("value", {}).get("asset", "")
+
+        if not upload_url or not asset:
+            return None
+
+        # Upload the image binary
+        upload_response = requests.put(
+            upload_url,
+            data=image_bytes,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": content_type,
+            },
+            timeout=60,
+        )
+        if upload_response.status_code >= 400:
+            return None
+
+        return asset
+    except Exception:
+        return None
+
+
+def publish_member_post(
+    session_id: str,
+    post_text: str,
+    visibility: str = "PUBLIC",
+    image_url: str = "",
+) -> dict[str, Any]:
+    """Publish a LinkedIn member feed post using UGC API, optionally with an image."""
     if not post_text.strip():
         raise RuntimeError("post_text cannot be empty")
 
@@ -192,16 +262,33 @@ def publish_member_post(session_id: str, post_text: str, visibility: str = "PUBL
     access_token = str(token_data["access_token"])
     person_urn = str(token_data["person_urn"])
 
+    # Try to upload image if provided
+    asset_urn = None
+    if image_url.strip():
+        asset_urn = _upload_image_to_linkedin(access_token, person_urn, image_url)
+
+    if asset_urn:
+        share_content = {
+            "shareCommentary": {"text": post_text},
+            "shareMediaCategory": "IMAGE",
+            "media": [
+                {
+                    "status": "READY",
+                    "media": asset_urn,
+                }
+            ],
+        }
+    else:
+        share_content = {
+            "shareCommentary": {"text": post_text},
+            "shareMediaCategory": "NONE",
+        }
+
     payload = {
         "author": person_urn,
         "lifecycleState": "PUBLISHED",
         "specificContent": {
-            "com.linkedin.ugc.ShareContent": {
-                "shareCommentary": {
-                    "text": post_text,
-                },
-                "shareMediaCategory": "NONE",
-            }
+            "com.linkedin.ugc.ShareContent": share_content,
         },
         "visibility": {
             "com.linkedin.ugc.MemberNetworkVisibility": visibility,

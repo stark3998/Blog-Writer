@@ -212,6 +212,7 @@ export interface LinkedInComposeResponse {
   hashtags: string[];
   post_text: string;
   word_count: number;
+  image_url: string;
 }
 
 export interface LinkedInOAuthStartResponse {
@@ -243,6 +244,7 @@ export interface LinkedInPublishRequest {
   post_format?: "feed_post" | "long_form";
   additional_context?: string;
   visibility?: "PUBLIC" | "CONNECTIONS";
+  image_url?: string;
 }
 
 export interface LinkedInPublishResponse {

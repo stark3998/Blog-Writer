@@ -90,6 +90,12 @@ def _normalize_hashtags(hashtags: list[str]) -> list[str]:
     return clean[:5]
 
 
+def _extract_first_image_url(content: str) -> str:
+    """Extract the first image URL from markdown content."""
+    match = re.search(r"!\[[^\]]*\]\((https?://[^\s)]+)\)", content)
+    return match.group(1).strip() if match else ""
+
+
 def _word_count(text: str) -> int:
     return len([word for word in re.split(r"\s+", text.strip()) if word])
 
@@ -107,6 +113,7 @@ def compose_linkedin_post(
 
     resolved_title = title.strip() or _extract_frontmatter_value(blog_content, "title")
     resolved_excerpt = excerpt.strip() or _extract_frontmatter_value(blog_content, "excerpt")
+    image_url = _extract_first_image_url(blog_content)
     body = _strip_frontmatter(blog_content)
 
     if not body:
@@ -157,6 +164,7 @@ def compose_linkedin_post(
             "hashtags": clean_tags,
             "post_text": fallback_post,
             "word_count": _word_count(fallback_post),
+            "image_url": image_url,
         }
 
     hook = str(parsed.get("hook", "")).strip()
@@ -196,4 +204,5 @@ def compose_linkedin_post(
         "hashtags": hashtags,
         "post_text": generated_post,
         "word_count": _word_count(generated_post),
+        "image_url": image_url,
     }

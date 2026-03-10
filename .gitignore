@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 assets/
 node_modules/
+.claude/
 
 # Virtual environments
 .venv/

@@ -20,7 +20,6 @@ export default function ExportDropdown({ content }: Props) {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -56,24 +55,28 @@ export default function ExportDropdown({ content }: Props) {
       <button
         onClick={() => setOpen(!open)}
         disabled={!content.trim()}
-        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-1.5"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-30 border border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04] hover:border-white/[0.1]"
       >
         <Download className="w-3.5 h-3.5" />
         Export
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 rounded-lg bg-slate-800 border border-slate-700 shadow-xl z-50 py-1 overflow-hidden">
-          {FORMATS.map(({ value, label, icon: Icon }) => (
+        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl bg-[#131a2e] border border-white/[0.08] shadow-2xl shadow-black/40 z-50 py-1.5 overflow-hidden animate-scale-in">
+          <div className="px-3 py-1.5 mb-1">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Export format</p>
+          </div>
+          {FORMATS.map(({ value, label, icon: Icon }, i) => (
             <button
               key={value}
               onClick={() => handleExport(value)}
               disabled={exporting !== null}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/[0.04] transition-all duration-150 flex items-center gap-2.5 disabled:opacity-40 text-slate-300 hover:text-white animate-fade-in-up"
+              style={{ animationDelay: `${i * 40}ms` }}
             >
-              <Icon className="w-4 h-4 text-slate-400" />
-              {exporting === value ? "Exporting..." : label}
+              <Icon className="w-4 h-4 text-slate-500" />
+              <span className="font-medium">{exporting === value ? "Exporting..." : label}</span>
             </button>
           ))}
         </div>

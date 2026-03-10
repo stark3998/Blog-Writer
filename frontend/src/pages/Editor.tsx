@@ -32,7 +32,6 @@ export default function Editor() {
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
 
-  // Load draft from Cosmos if ID present
   useEffect(() => {
     if (!id) return;
     getDraft(id)
@@ -43,7 +42,6 @@ export default function Editor() {
       .catch(() => setError("Failed to load draft"));
   }, [id, setDraft, setContent, setError]);
 
-  // Save handler
   const handleSave = useCallback(async () => {
     setSaving(true);
     setSaveStatus("idle");
@@ -52,7 +50,6 @@ export default function Editor() {
         const updated = await updateDraft(draft.id, { content });
         setDraft(updated);
       } else {
-        // Extract title from frontmatter
         const titleMatch = content.match(/title:\s*["']?(.+?)["']?\s*$/m);
         const slugMatch = content.match(/slug:\s*["']?(.+?)["']?\s*$/m);
         const excerptMatch = content.match(/excerpt:\s*["']?(.+?)["']?\s*$/m);
@@ -78,7 +75,6 @@ export default function Editor() {
     }
   }, [content, draft, setDraft, navigate]);
 
-  // Ctrl+S
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -90,7 +86,6 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
-  // Publish to GitHub
   const handlePublish = async () => {
     setPublishing(true);
     setPublishResult(null);
@@ -114,61 +109,53 @@ export default function Editor() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900 text-white">
+    <div className="h-screen flex flex-col bg-[#0b0f1a] text-white">
       {/* Toolbar */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50 bg-slate-900/90 backdrop-blur-sm shrink-0">
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] bg-[#0b0f1a]/90 backdrop-blur-md shrink-0 animate-fade-in-down">
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-200"
             title="Back to Home"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <span className="text-sm text-slate-400 truncate max-w-xs">
+          <div className="w-px h-5 bg-white/[0.06]" />
+          <span className="text-sm text-slate-400 truncate max-w-xs font-medium">
             {draft?.title ?? "Untitled Draft"}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* View mode toggles */}
-          <div className="flex bg-slate-800 rounded-lg p-0.5 mr-2">
-            <button
-              onClick={() => setViewMode("editor")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                viewMode === "editor" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
-              }`}
-              title="Editor only"
-            >
-              <Code className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode("split")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                viewMode === "split" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
-              }`}
-              title="Split view"
-            >
-              <PanelLeftOpen className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode("preview")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                viewMode === "preview" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
-              }`}
-              title="Preview only"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex bg-white/[0.04] rounded-lg p-0.5 mr-1 border border-white/[0.06]">
+            {([
+              { mode: "editor" as ViewMode, icon: Code, label: "Editor only" },
+              { mode: "split" as ViewMode, icon: PanelLeftOpen, label: "Split view" },
+              { mode: "preview" as ViewMode, icon: Eye, label: "Preview only" },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                  viewMode === mode
+                    ? "bg-white/[0.08] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+                title={label}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
           </div>
 
           {/* AI Toggle */}
           <button
             onClick={() => setShowAI(!showAI)}
-            className={`p-2 rounded transition-colors ${
+            className={`p-2 rounded-lg transition-all duration-200 ${
               showAI
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+                ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/25"
+                : "text-slate-500 hover:text-white hover:bg-white/[0.06] border border-transparent"
             }`}
             title="AI Editor"
           >
@@ -178,17 +165,19 @@ export default function Editor() {
           {/* Export */}
           <ExportDropdown content={content} />
 
+          <div className="w-px h-5 bg-white/[0.06] mx-1" />
+
           {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 border border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04] hover:border-white/[0.1]"
             title="Save (Ctrl+S)"
           >
             {saving ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : saveStatus === "saved" ? (
-              <Check className="w-3.5 h-3.5 text-green-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
             ) : (
               <Save className="w-3.5 h-3.5" />
             )}
@@ -199,7 +188,7 @@ export default function Editor() {
           <button
             onClick={handlePublish}
             disabled={publishing || !content.trim()}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-sm font-medium transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm shadow-indigo-500/15 hover:shadow-indigo-500/25 disabled:shadow-none"
           >
             {publishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -213,20 +202,22 @@ export default function Editor() {
 
       {/* Error / PR banner */}
       {error && (
-        <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm border-b border-red-800/50">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">
+        <div className="px-4 py-2.5 bg-red-500/[0.08] text-red-300 text-sm border-b border-red-500/20 flex items-center animate-fade-in-down">
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 text-xs font-medium ml-4 underline underline-offset-2 transition-colors">
             dismiss
           </button>
         </div>
       )}
       {publishResult && (
-        <div className="px-4 py-2 bg-green-900/50 text-green-300 text-sm border-b border-green-800/50">
-          Published!{" "}
-          <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline">
-            View PR
-          </a>
-          <button onClick={() => setPublishResult(null)} className="ml-2 underline">
+        <div className="px-4 py-2.5 bg-emerald-500/[0.08] text-emerald-300 text-sm border-b border-emerald-500/20 flex items-center animate-fade-in-down">
+          <span className="flex-1">
+            Published!{" "}
+            <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-medium hover:text-emerald-200 transition-colors">
+              View PR
+            </a>
+          </span>
+          <button onClick={() => setPublishResult(null)} className="text-emerald-400 hover:text-emerald-300 text-xs font-medium ml-4 underline underline-offset-2 transition-colors">
             dismiss
           </button>
         </div>
@@ -236,7 +227,9 @@ export default function Editor() {
       <div className="flex-1 flex overflow-hidden">
         {/* Editor pane */}
         {viewMode !== "preview" && (
-          <div className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full border-r border-slate-700/50`}>
+          <div
+            className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full border-r border-white/[0.06] transition-all duration-300 animate-fade-in`}
+          >
             <MonacoEditorWrapper
               value={content}
               onChange={setContent}
@@ -246,17 +239,25 @@ export default function Editor() {
 
         {/* Preview pane */}
         {viewMode !== "editor" && (
-          <div className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full overflow-auto`}>
+          <div
+            className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full overflow-auto transition-all duration-300 animate-fade-in`}
+          >
             <MarkdownPreview content={content} />
           </div>
         )}
 
         {/* AI Panel (slides in from right) */}
-        {showAI && (
-          <div className="w-80 shrink-0 border-l border-slate-700/50 bg-slate-800/50">
-            <AIEditPanel onClose={() => setShowAI(false)} />
-          </div>
-        )}
+        <div
+          className={`shrink-0 border-l border-white/[0.06] bg-[#0d1220]/80 backdrop-blur-md overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showAI ? "w-80 opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showAI && (
+            <div className="w-80 h-full animate-slide-in-right">
+              <AIEditPanel onClose={() => setShowAI(false)} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

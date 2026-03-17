@@ -216,6 +216,8 @@ export interface LinkedInComposeRequest {
   excerpt?: string;
   post_format?: "feed_post" | "long_form";
   additional_context?: string;
+  blog_url?: string;
+  source_url?: string;
 }
 
 export interface LinkedInComposeResponse {

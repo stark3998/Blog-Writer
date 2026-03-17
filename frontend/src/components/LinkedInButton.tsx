@@ -110,7 +110,7 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
         title,
         excerpt,
         post_format: "feed_post",
-        additional_context: blogUrl ? `Published blog URL: ${blogUrl}` : undefined,
+        blog_url: blogUrl || undefined,
       });
 
       setPreview({

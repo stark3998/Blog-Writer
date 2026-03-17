@@ -169,7 +169,7 @@ resource "azurerm_container_app" "this" {
 
       env {
         name  = "ENTRA_CLIENT_ID"
-        value = azuread_application.blog_writer.client_id
+        value = data.azuread_application.blog_writer.client_id
       }
 
       env {

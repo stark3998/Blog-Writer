@@ -10,6 +10,10 @@ log_analytics_workspace_name   = "law-blog-writer-dev"
 # Build and push this image to ACR, then update this value before apply
 container_image = "replace-me.azurecr.io/blog-writer-webapp:v1"
 
+# ── Entra ID (Azure AD) ─────────────────────────────────────────────
+# Client ID of your existing Entra ID app registration
+entra_client_id = "your-entra-app-client-id"
+
 container_app_env_vars = {
   PORT                      = "8080"
   PROJECT_ENDPOINT          = "https://<your-resource>.services.ai.azure.com/api/projects/<your-project>"

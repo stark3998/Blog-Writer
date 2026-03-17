@@ -175,10 +175,9 @@ variable "portfolio_secret_env_vars" {
 
 ## ── Entra ID ───────────────────────────────────────────────────────
 
-variable "entra_spa_redirect_uris" {
-  description = "SPA redirect URIs for Entra ID app registration."
-  type        = list(string)
-  default     = ["http://localhost:5173"]
+variable "entra_client_id" {
+  description = "Client (application) ID of the existing Entra ID app registration."
+  type        = string
 }
 
 ## ── Common ──────────────────────────────────────────────────────────

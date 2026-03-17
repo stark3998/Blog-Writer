@@ -1,5 +1,7 @@
 """Blogs Router — CRUD endpoints for blog drafts in Cosmos DB."""
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any
@@ -124,3 +126,93 @@ async def delete_existing_draft(draft_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete draft: {str(e)}")
+
+
+class TestReadinessRequest(BaseModel):
+    topics: list[str] = ["cloud security", "azure", "ai"]
+
+
+class RelevanceResult(BaseModel):
+    is_relevant: bool
+    relevance_score: float
+    matched_topics: list[str]
+    matched_keywords: list[str]
+    method: str
+    reasoning: str
+
+
+class LinkedInPreview(BaseModel):
+    post_text: str
+    hashtags: list[str]
+    word_count: int
+    image_url: str
+
+
+class TestReadinessResponse(BaseModel):
+    relevance: RelevanceResult
+    linkedin_preview: LinkedInPreview | None = None
+
+
+@router.post("/{draft_id}/test-readiness", response_model=TestReadinessResponse)
+async def test_draft_readiness(draft_id: str, request: TestReadinessRequest):
+    """Test a draft's technical relevance score and preview LinkedIn post.
+
+    Runs the same two-stage relevance classifier used during RSS crawls
+    and generates a LinkedIn post preview without publishing.
+    """
+    draft = get_draft(draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    title = draft.get("title", "")
+    excerpt = draft.get("excerpt", "")
+    content = draft.get("content", "")
+
+    # Run relevance classification in a thread (calls LLM)
+    from backend.services.relevance_classifier import classify_article
+
+    try:
+        classification = await asyncio.to_thread(
+            classify_article,
+            title=title,
+            summary=excerpt,
+            content=content[:3000],
+            topics=request.topics,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Relevance check failed: {str(e)}")
+
+    relevance = RelevanceResult(
+        is_relevant=classification.get("is_relevant", False),
+        relevance_score=classification.get("relevance_score", 0),
+        matched_topics=classification.get("matched_topics", []),
+        matched_keywords=classification.get("matched_keywords", []),
+        method=classification.get("method", ""),
+        reasoning=classification.get("reasoning", ""),
+    )
+
+    # Compose LinkedIn post preview
+    linkedin_preview = None
+    try:
+        from backend.services.linkedin_service import compose_linkedin_post
+
+        li_result = await asyncio.to_thread(
+            compose_linkedin_post,
+            blog_content=content,
+            title=title,
+            excerpt=excerpt,
+            source_url=draft.get("sourceUrl", ""),
+        )
+        linkedin_preview = LinkedInPreview(
+            post_text=li_result.get("post_text", ""),
+            hashtags=li_result.get("hashtags", []),
+            word_count=li_result.get("word_count", 0),
+            image_url=li_result.get("image_url", ""),
+        )
+    except Exception:
+        pass  # LinkedIn preview is optional
+
+    return TestReadinessResponse(
+        relevance=relevance,
+        linkedin_preview=linkedin_preview,
+    )

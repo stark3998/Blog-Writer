@@ -544,7 +544,15 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                     "type": "best_selected",
                     "data": {
                         "skipped": True,
-                        "reason": linkedin_result.get("reason", "daily_limit"),
+                        "reason": linkedin_result.get("reason", "unknown"),
+                    },
+                }
+            else:
+                yield {
+                    "type": "best_selected",
+                    "data": {
+                        "skipped": True,
+                        "reason": "publish_failed",
                     },
                 }
 

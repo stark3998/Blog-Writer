@@ -228,16 +228,18 @@ def publish_best_linkedin_post(
     Checks the daily limit first. Returns publish result or None if skipped.
     """
     if not candidates:
+        logger.info("No LinkedIn candidates to select from")
         return None
 
     auto_publish_linkedin = feed_source.get("autoPublishLinkedIn", False)
     if not auto_publish_linkedin:
-        return None
+        logger.info("Auto-publish LinkedIn is disabled for this feed source")
+        return {"skipped": True, "reason": "auto_publish_disabled"}
 
     session_id = _get_active_linkedin_session_id()
     if not session_id:
         logger.warning("Auto-publish LinkedIn requested but no active session found")
-        return None
+        return {"skipped": True, "reason": "no_linkedin_session"}
 
     # Check daily limit
     if has_linkedin_post_today():

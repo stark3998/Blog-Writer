@@ -6,7 +6,14 @@ import AIEditPanel from "../components/AIEditPanel";
 import ExportDropdown from "../components/ExportDropdown";
 import LinkedInButton from "../components/LinkedInButton";
 import { useBlogStore } from "../store/blogStore";
-import { getDraft, updateDraft, createDraft, publishBlog } from "../services/api";
+import {
+  getDraft,
+  updateDraft,
+  createDraft,
+  publishBlog,
+  testDraftReadiness,
+} from "../services/api";
+import type { TestReadinessResponse } from "../services/api";
 import {
   ArrowLeft,
   Save,
@@ -18,6 +25,9 @@ import {
   Loader2,
   Check,
   ExternalLink,
+  FlaskConical,
+  X,
+  Copy,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -33,6 +43,11 @@ export default function Editor() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<string | null>(null);
+  const [showTest, setShowTest] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestReadinessResponse | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [copiedPost, setCopiedPost] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -112,6 +127,27 @@ export default function Editor() {
     }
   };
 
+  const handleTestReadiness = async () => {
+    if (!draft?.id) return;
+    setTesting(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      const result = await testDraftReadiness(draft.id);
+      setTestResult(result);
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : "Test failed");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleCopyPost = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPost(true);
+    setTimeout(() => setCopiedPost(false), 2000);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[var(--bg-base)]">
       {/* Toolbar */}
@@ -188,6 +224,22 @@ export default function Editor() {
             excerpt={draft?.excerpt}
             blogUrl={publishResult ?? undefined}
           />
+
+          {/* Test Readiness */}
+          <button
+            onClick={() => {
+              setShowTest(!showTest);
+              if (!showTest && draft?.id && !testResult) handleTestReadiness();
+            }}
+            className={`p-2 rounded-xl transition-all duration-200 ${
+              showTest
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent"
+            }`}
+            title="Test Readiness"
+          >
+            <FlaskConical className="w-4 h-4" />
+          </button>
 
           <div className="w-px h-5 bg-gray-200 mx-1" />
 
@@ -279,6 +331,176 @@ export default function Editor() {
           {showAI && (
             <div className="w-80 h-full animate-slide-in-right">
               <AIEditPanel onClose={() => setShowAI(false)} />
+            </div>
+          )}
+        </div>
+
+        {/* Test Readiness Panel */}
+        <div
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showTest ? "w-96 opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showTest && (
+            <div className="w-96 h-full flex flex-col animate-slide-in-right">
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/60">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-emerald-500" />
+                  Test Readiness
+                </h3>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleTestReadiness}
+                    disabled={testing || !draft?.id}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 hover:bg-emerald-50 border border-emerald-200/60 transition-all disabled:opacity-40 flex items-center gap-1"
+                  >
+                    {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />}
+                    Re-test
+                  </button>
+                  <button
+                    onClick={() => setShowTest(false)}
+                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Panel body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {testing && !testResult && (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                    <p className="text-sm text-gray-400">Analyzing relevance & composing LinkedIn preview...</p>
+                  </div>
+                )}
+
+                {testError && (
+                  <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200/60 text-red-600 text-xs">
+                    {testError}
+                  </div>
+                )}
+
+                {testResult && (
+                  <>
+                    {/* Relevance Score */}
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Technical Relevance</h4>
+                      <div className="p-4 rounded-xl bg-white border border-gray-200/60">
+                        {/* Score bar */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-gray-900">
+                            Score: {(testResult.relevance.relevance_score * 100).toFixed(0)}%
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              testResult.relevance.is_relevant
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                                : "bg-red-50 text-red-500 border border-red-200/60"
+                            }`}
+                          >
+                            {testResult.relevance.is_relevant ? "RELEVANT" : "NOT RELEVANT"}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              testResult.relevance.relevance_score >= 0.7
+                                ? "bg-emerald-500"
+                                : testResult.relevance.relevance_score >= 0.4
+                                ? "bg-amber-500"
+                                : "bg-red-400"
+                            }`}
+                            style={{ width: `${Math.max(testResult.relevance.relevance_score * 100, 2)}%` }}
+                          />
+                        </div>
+
+                        {/* Method */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase">Method</span>
+                          <span className="text-xs text-gray-600">{testResult.relevance.method}</span>
+                        </div>
+
+                        {/* Matched topics */}
+                        {testResult.relevance.matched_topics.length > 0 && (
+                          <div className="mb-2">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase">Matched Topics</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {testResult.relevance.matched_topics.map((t) => (
+                                <span key={t} className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200/60">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Matched keywords */}
+                        {testResult.relevance.matched_keywords.length > 0 && (
+                          <div className="mb-2">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase">Matched Keywords</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {testResult.relevance.matched_keywords.map((kw) => (
+                                <span key={kw} className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600 border border-amber-200/60">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reasoning */}
+                        {testResult.relevance.reasoning && (
+                          <div>
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase">AI Reasoning</span>
+                            <p className="text-xs text-gray-600 mt-1 leading-relaxed">{testResult.relevance.reasoning}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* LinkedIn Preview */}
+                    {testResult.linkedin_preview && (
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">LinkedIn Post Preview</h4>
+                        <div className="p-4 rounded-xl bg-white border border-gray-200/60">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs text-gray-400">
+                              {testResult.linkedin_preview.word_count} words
+                            </span>
+                            <button
+                              onClick={() => handleCopyPost(testResult.linkedin_preview!.post_text)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 hover:border-indigo-200/60 transition-all"
+                            >
+                              {copiedPost ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                              {copiedPost ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                          <pre className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed font-sans max-h-[300px] overflow-y-auto">
+                            {testResult.linkedin_preview.post_text}
+                          </pre>
+                          {testResult.linkedin_preview.hashtags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100">
+                              {testResult.linkedin_preview.hashtags.map((tag) => (
+                                <span key={tag} className="text-[10px] font-semibold text-blue-500">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!testing && !testResult && !testError && !draft?.id && (
+                  <p className="text-sm text-gray-400 text-center py-8">
+                    Save the draft first to test readiness.
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

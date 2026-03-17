@@ -183,6 +183,20 @@ export default function Settings() {
       onGenerating: (d) => appendLog(feedId, "info", `Generating blog #${d.index}: ${d.title}`),
       onGenerated: (d) => appendLog(feedId, "success", `Blog ${d.status}: ${d.title} (draft: ${d.draft_id.slice(0, 8)}...)`),
       onGenerateError: (d) => appendLog(feedId, "error", `Generation failed for "${d.title}": ${d.error}`),
+      onSelectingBest: (d) => appendLog(feedId, "info", `Selecting best LinkedIn post from ${d.candidates} candidate(s)...`),
+      onBestSelected: (d) => {
+        if (d.skipped) {
+          const reasons: Record<string, string> = {
+            daily_limit: "Already posted to LinkedIn today",
+            auto_publish_disabled: "Auto-publish LinkedIn is disabled for this feed",
+            no_linkedin_session: "No active LinkedIn session found",
+            publish_failed: "LinkedIn publish failed",
+          };
+          appendLog(feedId, "warn", `LinkedIn skipped: ${reasons[d.reason ?? ""] ?? d.reason}`);
+        } else {
+          appendLog(feedId, "success", `LinkedIn post published: ${d.title} (${d.post_id})`);
+        }
+      },
       onComplete: (d) => {
         appendLog(feedId, "success", `Crawl complete — ${d.articles_found} found, ${d.articles_relevant} relevant, ${d.articles_processed} processed`);
         setCrawlingFeeds((prev) => { const next = new Set(prev); next.delete(feedId); return next; });

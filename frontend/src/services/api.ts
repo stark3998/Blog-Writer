@@ -170,6 +170,37 @@ export async function updateDraft(
   return json<BlogDraft>(`/blogs/${id}`, { method: "PUT", body: JSON.stringify(updates) });
 }
 
+export interface RelevanceResult {
+  is_relevant: boolean;
+  relevance_score: number;
+  matched_topics: string[];
+  matched_keywords: string[];
+  method: string;
+  reasoning: string;
+}
+
+export interface LinkedInPreview {
+  post_text: string;
+  hashtags: string[];
+  word_count: number;
+  image_url: string;
+}
+
+export interface TestReadinessResponse {
+  relevance: RelevanceResult;
+  linkedin_preview: LinkedInPreview | null;
+}
+
+export async function testDraftReadiness(
+  id: string,
+  topics: string[] = ["cloud security", "azure", "ai"]
+): Promise<TestReadinessResponse> {
+  return json<TestReadinessResponse>(`/blogs/${id}/test-readiness`, {
+    method: "POST",
+    body: JSON.stringify({ topics }),
+  });
+}
+
 export async function deleteDraft(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/blogs/${id}`, { method: "DELETE" });
   if (!res.ok && res.status !== 204) {

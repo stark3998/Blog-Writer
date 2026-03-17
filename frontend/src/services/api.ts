@@ -3,7 +3,7 @@
  * Handles REST calls and SSE streaming connections.
  */
 
-import type { BlogDraft, GenerateResult, ExportFormat } from "../types";
+import type { BlogDraft, GenerateResult, ExportFormat, FeedSource, CrawledArticle, CrawlJob, CrawlResult, FeedDiscoverResult } from "../types";
 
 const API_BASE = "/api";
 
@@ -187,8 +187,24 @@ export async function publishBlog(data: {
   slug: string;
   title: string;
   excerpt: string;
-}): Promise<{ pr_url: string; branch: string; file_path: string }> {
+  source_url?: string;
+  source_type?: string;
+}): Promise<{ blog_url: string; slug: string; title: string }> {
   return json("/publish", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function getPublishedBlog(slug: string): Promise<{
+  slug: string;
+  title: string;
+  excerpt: string;
+  html_content: string;
+  source_url: string;
+  source_type: string;
+  tags: string[];
+  date: string;
+  published_at: string;
+}> {
+  return json(`/blog/${encodeURIComponent(slug)}`);
 }
 
 // ---------- LinkedIn ----------
@@ -200,6 +216,8 @@ export interface LinkedInComposeRequest {
   excerpt?: string;
   post_format?: "feed_post" | "long_form";
   additional_context?: string;
+  blog_url?: string;
+  source_url?: string;
 }
 
 export interface LinkedInComposeResponse {
@@ -295,4 +313,145 @@ export async function publishLinkedInPost(
   data: LinkedInPublishRequest
 ): Promise<LinkedInPublishResponse> {
   return json("/linkedin/publish", { method: "POST", body: JSON.stringify(data) });
+}
+
+// ---------- Feeds ----------
+
+export async function listFeeds(): Promise<FeedSource[]> {
+  return json<FeedSource[]>("/feeds");
+}
+
+export async function createFeed(data: {
+  base_url: string;
+  name?: string;
+  topics?: string[];
+  crawl_interval_minutes?: number;
+  auto_publish_blog?: boolean;
+  auto_publish_linkedin?: boolean;
+}): Promise<FeedSource> {
+  return json<FeedSource>("/feeds", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function discoverFeed(url: string): Promise<FeedDiscoverResult> {
+  return json<FeedDiscoverResult>(`/feeds/discover?url=${encodeURIComponent(url)}`);
+}
+
+export async function getFeed(id: string): Promise<FeedSource> {
+  return json<FeedSource>(`/feeds/${id}`);
+}
+
+export async function updateFeed(
+  id: string,
+  updates: Partial<{
+    name: string;
+    topics: string[];
+    crawl_interval_minutes: number;
+    auto_publish_blog: boolean;
+    auto_publish_linkedin: boolean;
+    enabled: boolean;
+  }>
+): Promise<FeedSource> {
+  return json<FeedSource>(`/feeds/${id}`, { method: "PUT", body: JSON.stringify(updates) });
+}
+
+export async function deleteFeed(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/feeds/${id}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete failed: HTTP ${res.status}`);
+  }
+}
+
+export async function triggerCrawl(feedId: string): Promise<CrawlResult> {
+  return json<CrawlResult>(`/feeds/${feedId}/crawl`, { method: "POST" });
+}
+
+// ---------- Crawl SSE Streaming ----------
+
+export interface CrawlSSEEvent {
+  type: string;
+  data: Record<string, unknown>;
+}
+
+export interface CrawlSSECallbacks {
+  onCrawlStarted?: (data: { source_name: string; feed_type: string }) => void;
+  onFetchingArticles?: (data: { method: string }) => void;
+  onArticlesFetched?: (data: { total: number; new: number }) => void;
+  onClassifying?: (data: { index: number; total: number; title: string }) => void;
+  onClassified?: (data: { index: number; total: number; title: string; is_relevant: boolean; matched_topics: string[]; relevance_score: number }) => void;
+  onGenerating?: (data: { index: number; total_relevant: number; title: string }) => void;
+  onGenerated?: (data: { index: number; total_relevant: number; title: string; draft_id: string; status: string }) => void;
+  onGenerateError?: (data: { title: string; error: string }) => void;
+  onComplete?: (data: { job_id: string; articles_found: number; new_articles: number; articles_relevant: number; articles_processed: number }) => void;
+  onError?: (error: string) => void;
+}
+
+export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): AbortController {
+  const controller = new AbortController();
+
+  fetch(`${API_BASE}/feeds/${feedId}/crawl/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        callbacks.onError?.(errBody.detail ?? `HTTP ${res.status}`);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "message";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              switch (currentEvent) {
+                case "crawl_started": callbacks.onCrawlStarted?.(data); break;
+                case "fetching_articles": callbacks.onFetchingArticles?.(data); break;
+                case "articles_fetched": callbacks.onArticlesFetched?.(data); break;
+                case "classifying": callbacks.onClassifying?.(data); break;
+                case "classified": callbacks.onClassified?.(data); break;
+                case "generating": callbacks.onGenerating?.(data); break;
+                case "generated": callbacks.onGenerated?.(data); break;
+                case "generate_error": callbacks.onGenerateError?.(data); break;
+                case "complete": callbacks.onComplete?.(data); break;
+                case "error": callbacks.onError?.(data.error); break;
+              }
+            } catch { /* ignore malformed JSON */ }
+            currentEvent = "message";
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        callbacks.onError?.(err.message);
+      }
+    });
+
+  return controller;
+}
+
+export async function listFeedArticles(feedId: string, limit = 50): Promise<CrawledArticle[]> {
+  return json<CrawledArticle[]>(`/feeds/${feedId}/articles?limit=${limit}`);
+}
+
+export async function getCrawlLog(limit = 50): Promise<CrawlJob[]> {
+  return json<CrawlJob[]>(`/feeds/crawl-log?limit=${limit}`);
 }

@@ -10,7 +10,7 @@ export default function MonacoEditorWrapper({ value, onChange }: Props) {
     <MonacoEditor
       height="100%"
       defaultLanguage="markdown"
-      theme="vs-dark"
+      theme="vs"
       value={value}
       onChange={(val) => onChange(val ?? "")}
       options={{

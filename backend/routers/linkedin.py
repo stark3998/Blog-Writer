@@ -1,5 +1,7 @@
 """LinkedIn Router — Compose and publish LinkedIn content with OAuth."""
 
+import os
+import re
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -25,6 +27,8 @@ class LinkedInComposeRequest(BaseModel):
     excerpt: str = ""
     post_format: Literal["feed_post", "long_form"] = "feed_post"
     additional_context: str = ""
+    blog_url: str = ""
+    source_url: str = ""
 
 
 class LinkedInComposeResponse(BaseModel):
@@ -158,6 +162,21 @@ async def compose_post(request: LinkedInComposeRequest):
             detail="Either non-empty content or a valid draft_id is required",
         )
 
+    # Auto-populate blog_url from BLOG_BASE_URL + slug if not provided
+    blog_url = request.blog_url
+    if not blog_url:
+        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        if blog_base:
+            slug = ""
+            if request.draft_id and draft:
+                slug = draft.get("slug", "")
+            if not slug and content:
+                m = re.search(r'^slug:\s*["\']?(.+?)["\']?\s*$', content, re.MULTILINE)
+                if m:
+                    slug = m.group(1).strip()
+            if slug:
+                blog_url = f"{blog_base}/blog/{slug}"
+
     try:
         result = compose_linkedin_post(
             blog_content=content,
@@ -165,6 +184,8 @@ async def compose_post(request: LinkedInComposeRequest):
             excerpt=excerpt,
             post_format=request.post_format,
             additional_context=request.additional_context,
+            blog_url=blog_url,
+            source_url=request.source_url,
         )
         return LinkedInComposeResponse(**result)
     except ValueError as exc:

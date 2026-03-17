@@ -42,7 +42,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import generate, edit, blogs, export, publish, linkedin
+from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds
 
 # Create FastAPI app
 app = FastAPI(
@@ -71,6 +71,28 @@ app.include_router(blogs.router)
 app.include_router(export.router)
 app.include_router(publish.router)
 app.include_router(linkedin.router)
+app.include_router(feeds.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start the feed crawl scheduler on application startup."""
+    try:
+        from backend.services.scheduler import start_scheduler
+        start_scheduler()
+        logger.info("Feed crawl scheduler started")
+    except Exception as exc:
+        logger.warning(f"Scheduler startup skipped: {exc}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shut down the feed crawl scheduler."""
+    try:
+        from backend.services.scheduler import shutdown_scheduler
+        shutdown_scheduler()
+    except Exception:
+        pass
 
 
 @app.get("/api/health")

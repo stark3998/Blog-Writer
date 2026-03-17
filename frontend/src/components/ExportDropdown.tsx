@@ -55,7 +55,7 @@ export default function ExportDropdown({ content }: Props) {
       <button
         onClick={() => setOpen(!open)}
         disabled={!content.trim()}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-30 border border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04] hover:border-white/[0.1]"
+        className="px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-30 border border-gray-200/60 text-gray-500 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300"
       >
         <Download className="w-3.5 h-3.5" />
         Export
@@ -63,19 +63,19 @@ export default function ExportDropdown({ content }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl bg-[#131a2e] border border-white/[0.08] shadow-2xl shadow-black/40 z-50 py-1.5 overflow-hidden animate-scale-in">
+        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl bg-white border border-gray-200/80 shadow-xl shadow-gray-900/5 z-50 py-1.5 overflow-hidden animate-scale-in">
           <div className="px-3 py-1.5 mb-1">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Export format</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Export format</p>
           </div>
           {FORMATS.map(({ value, label, icon: Icon }, i) => (
             <button
               key={value}
               onClick={() => handleExport(value)}
               disabled={exporting !== null}
-              className="w-full px-3 py-2.5 text-left text-sm hover:bg-white/[0.04] transition-all duration-150 flex items-center gap-2.5 disabled:opacity-40 text-slate-300 hover:text-white animate-fade-in-up"
+              className="w-full px-3 py-2.5 text-left text-sm hover:bg-indigo-50 transition-all duration-150 flex items-center gap-2.5 disabled:opacity-40 text-gray-600 hover:text-indigo-600 animate-fade-in-up"
               style={{ animationDelay: `${i * 40}ms` }}
             >
-              <Icon className="w-4 h-4 text-slate-500" />
+              <Icon className="w-4 h-4 text-gray-400" />
               <span className="font-medium">{exporting === value ? "Exporting..." : label}</span>
             </button>
           ))}

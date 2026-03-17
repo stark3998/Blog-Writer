@@ -21,6 +21,10 @@ _client: CosmosClient | None = None
 _container = None
 _linkedin_session_container = None
 _linkedin_state_container = None
+_published_blogs_container = None
+_feed_sources_container = None
+_crawled_articles_container = None
+_crawl_jobs_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -359,7 +363,7 @@ def delete_draft(draft_id: str) -> bool:
     """
     container = _get_container()
     start_time = time.time()
-    
+
     logger.debug(f"Deleting draft: {draft_id}")
     try:
         container.delete_item(item=draft_id, partition_key=draft_id)
@@ -370,3 +374,300 @@ def delete_draft(draft_id: str) -> bool:
         elapsed = time.time() - start_time
         logger.warning(f"Draft not found for deletion in {elapsed:.3f}s: {draft_id}")
         return False
+
+
+# ---------- Published Blogs ----------
+
+
+def _get_published_blogs_container():
+    """Get or create the published blogs container."""
+    global _published_blogs_container
+
+    if _published_blogs_container is not None:
+        return _published_blogs_container
+
+    _published_blogs_container = _create_container_if_not_exists("published-blogs")
+    return _published_blogs_container
+
+
+def publish_blog(
+    slug: str,
+    title: str,
+    excerpt: str,
+    html_content: str,
+    mdx_content: str,
+    source_url: str,
+    source_type: str = "",
+    tags: list[str] | None = None,
+    date: str = "",
+) -> dict[str, Any]:
+    """Publish a blog post to Cosmos DB.
+
+    Uses slug as the document ID so re-publishing overwrites the previous version.
+    """
+    container = _get_published_blogs_container()
+    now = datetime.now(timezone.utc).isoformat()
+
+    item = {
+        "id": slug,
+        "slug": slug,
+        "title": title,
+        "excerpt": excerpt,
+        "htmlContent": html_content,
+        "mdxContent": mdx_content,
+        "sourceUrl": source_url,
+        "sourceType": source_type,
+        "tags": tags or [],
+        "date": date,
+        "publishedAt": now,
+        "updatedAt": now,
+    }
+
+    container.upsert_item(body=item)
+    logger.info(f"Blog published: {slug} ({len(html_content)} chars HTML)")
+    return item
+
+
+def get_published_blog(slug: str) -> dict[str, Any] | None:
+    """Get a published blog by slug."""
+    container = _get_published_blogs_container()
+    try:
+        return dict(container.read_item(item=slug, partition_key=slug))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def list_published_blogs(limit: int = 50) -> list[dict[str, Any]]:
+    """List published blogs (metadata only), most recent first."""
+    container = _get_published_blogs_container()
+    query = (
+        "SELECT c.id, c.slug, c.title, c.excerpt, c.sourceUrl, "
+        "c.publishedAt, c.updatedAt "
+        "FROM c ORDER BY c.publishedAt DESC OFFSET 0 LIMIT @limit"
+    )
+    return list(
+        container.query_items(
+            query=query,
+            parameters=[{"name": "@limit", "value": limit}],
+            enable_cross_partition_query=True,
+        )
+    )
+
+
+# ---------- Feed Sources ----------
+
+
+def _get_feed_sources_container():
+    """Get or create the feed sources container."""
+    global _feed_sources_container
+    if _feed_sources_container is not None:
+        return _feed_sources_container
+    _feed_sources_container = _create_container_if_not_exists("feed-sources")
+    return _feed_sources_container
+
+
+def create_feed_source(
+    name: str,
+    base_url: str,
+    feed_url: str = "",
+    feed_type: str = "rss",
+    topics: list[str] | None = None,
+    auto_publish_blog: bool = False,
+    auto_publish_linkedin: bool = False,
+    crawl_interval_minutes: int = 60,
+) -> dict[str, Any]:
+    """Create a new feed source configuration."""
+    container = _get_feed_sources_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "baseUrl": base_url,
+        "feedUrl": feed_url,
+        "feedType": feed_type,
+        "topics": topics or ["cloud security", "azure", "ai"],
+        "autoPublishBlog": auto_publish_blog,
+        "autoPublishLinkedIn": auto_publish_linkedin,
+        "crawlIntervalMinutes": crawl_interval_minutes,
+        "enabled": True,
+        "lastCrawledAt": "",
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    container.create_item(body=item)
+    logger.info(f"Feed source created: {item['id']} ({name})")
+    return item
+
+
+def list_feed_sources(enabled_only: bool = False) -> list[dict[str, Any]]:
+    """List all feed sources."""
+    container = _get_feed_sources_container()
+    if enabled_only:
+        query = "SELECT * FROM c WHERE c.enabled = true ORDER BY c.createdAt DESC"
+    else:
+        query = "SELECT * FROM c ORDER BY c.createdAt DESC"
+    return list(
+        container.query_items(query=query, enable_cross_partition_query=True)
+    )
+
+
+def get_feed_source(source_id: str) -> dict[str, Any] | None:
+    """Get a feed source by ID."""
+    container = _get_feed_sources_container()
+    try:
+        return dict(container.read_item(item=source_id, partition_key=source_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def update_feed_source(source_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update an existing feed source."""
+    container = _get_feed_sources_container()
+    try:
+        existing = container.read_item(item=source_id, partition_key=source_id)
+    except CosmosResourceNotFoundError:
+        return None
+
+    allowed = {
+        "name", "baseUrl", "feedUrl", "feedType", "topics",
+        "autoPublishBlog", "autoPublishLinkedIn", "crawlIntervalMinutes",
+        "enabled", "lastCrawledAt",
+    }
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    container.replace_item(item=source_id, body=existing)
+    logger.info(f"Feed source updated: {source_id}")
+    return dict(existing)
+
+
+def delete_feed_source(source_id: str) -> bool:
+    """Delete a feed source."""
+    container = _get_feed_sources_container()
+    try:
+        container.delete_item(item=source_id, partition_key=source_id)
+        logger.info(f"Feed source deleted: {source_id}")
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+# ---------- Crawled Articles ----------
+
+
+def _get_crawled_articles_container():
+    """Get or create the crawled articles container."""
+    global _crawled_articles_container
+    if _crawled_articles_container is not None:
+        return _crawled_articles_container
+    _crawled_articles_container = _create_container_if_not_exists("crawled-articles")
+    return _crawled_articles_container
+
+
+def get_crawled_article(article_id: str) -> dict[str, Any] | None:
+    """Get a crawled article by ID."""
+    container = _get_crawled_articles_container()
+    try:
+        return dict(container.read_item(item=article_id, partition_key=article_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def upsert_crawled_article(article: dict[str, Any]) -> dict[str, Any]:
+    """Create or update a crawled article record."""
+    container = _get_crawled_articles_container()
+    container.upsert_item(body=article)
+    return article
+
+
+def list_crawled_articles(
+    feed_source_id: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """List crawled articles, optionally filtered by feed source."""
+    container = _get_crawled_articles_container()
+    if feed_source_id:
+        query = (
+            "SELECT * FROM c WHERE c.feedSourceId = @feedSourceId "
+            "ORDER BY c.crawledAt DESC OFFSET 0 LIMIT @limit"
+        )
+        params = [
+            {"name": "@feedSourceId", "value": feed_source_id},
+            {"name": "@limit", "value": limit},
+        ]
+    else:
+        query = "SELECT * FROM c ORDER BY c.crawledAt DESC OFFSET 0 LIMIT @limit"
+        params = [{"name": "@limit", "value": limit}]
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+
+
+# ---------- Crawl Jobs ----------
+
+
+def _get_crawl_jobs_container():
+    """Get or create the crawl jobs container."""
+    global _crawl_jobs_container
+    if _crawl_jobs_container is not None:
+        return _crawl_jobs_container
+    _crawl_jobs_container = _create_container_if_not_exists("crawl-jobs")
+    return _crawl_jobs_container
+
+
+def create_crawl_job(feed_source_id: str) -> dict[str, Any]:
+    """Create a new crawl job record."""
+    container = _get_crawl_jobs_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "feedSourceId": feed_source_id,
+        "startedAt": now,
+        "completedAt": "",
+        "articlesFound": 0,
+        "articlesRelevant": 0,
+        "articlesProcessed": 0,
+        "status": "running",
+        "error": "",
+    }
+    container.create_item(body=item)
+    return item
+
+
+def update_crawl_job(job_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update a crawl job record."""
+    container = _get_crawl_jobs_container()
+    try:
+        existing = container.read_item(item=job_id, partition_key=job_id)
+    except CosmosResourceNotFoundError:
+        return None
+    for key, value in updates.items():
+        existing[key] = value
+    container.replace_item(item=job_id, body=existing)
+    return dict(existing)
+
+
+def list_crawl_jobs(
+    feed_source_id: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """List crawl jobs, optionally filtered by feed source."""
+    container = _get_crawl_jobs_container()
+    if feed_source_id:
+        query = (
+            "SELECT * FROM c WHERE c.feedSourceId = @feedSourceId "
+            "ORDER BY c.startedAt DESC OFFSET 0 LIMIT @limit"
+        )
+        params = [
+            {"name": "@feedSourceId", "value": feed_source_id},
+            {"name": "@limit", "value": limit},
+        ]
+    else:
+        query = "SELECT * FROM c ORDER BY c.startedAt DESC OFFSET 0 LIMIT @limit"
+        params = [{"name": "@limit", "value": limit}]
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )

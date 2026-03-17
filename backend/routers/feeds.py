@@ -10,6 +10,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from backend.db.cosmos_client import (
     create_feed_source,
+    delete_all_crawled_articles,
     delete_crawled_article,
     delete_crawled_articles_by_feed,
     delete_feed_source,
@@ -219,6 +220,13 @@ async def get_crawl_log(limit: int = 50):
     """Get recent crawl jobs across all feed sources."""
     jobs = list_crawl_jobs(limit=limit)
     return [_to_job_response(j) for j in jobs]
+
+
+@router.delete("/articles/all")
+async def delete_all_articles_global():
+    """Delete all crawled articles across all feeds."""
+    count = delete_all_crawled_articles()
+    return {"status": "deleted", "count": count}
 
 
 @router.get("/{feed_id}", response_model=FeedSourceResponse)

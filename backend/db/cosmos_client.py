@@ -666,6 +666,24 @@ def delete_crawled_article(article_id: str) -> bool:
         return False
 
 
+def delete_all_crawled_articles() -> int:
+    """Delete all crawled articles across all feeds. Returns count deleted."""
+    container = _get_crawled_articles_container()
+    query = "SELECT c.id FROM c"
+    items = list(
+        container.query_items(query=query, enable_cross_partition_query=True)
+    )
+    count = 0
+    for item in items:
+        try:
+            container.delete_item(item=item["id"], partition_key=item["id"])
+            count += 1
+        except CosmosResourceNotFoundError:
+            pass
+    logger.info(f"Deleted all {count} crawled articles")
+    return count
+
+
 def delete_crawled_articles_by_feed(feed_source_id: str) -> int:
     """Delete all crawled articles for a feed source. Returns count deleted."""
     container = _get_crawled_articles_container()

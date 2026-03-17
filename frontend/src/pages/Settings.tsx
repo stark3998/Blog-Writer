@@ -10,6 +10,7 @@ import {
   deleteFeedArticle,
   deleteAllFeedArticles,
   deleteAllDrafts,
+  deleteAllCrawledArticles,
   getCrawlLog,
   streamCrawl,
 } from "../services/api";
@@ -262,6 +263,7 @@ export default function Settings() {
   };
 
   const [deletingAllDrafts, setDeletingAllDrafts] = useState(false);
+  const [deletingAllArticles, setDeletingAllArticles] = useState(false);
 
   const handleDeleteAllDrafts = async () => {
     if (!confirm("Delete ALL blog drafts? This cannot be undone.")) return;
@@ -271,6 +273,23 @@ export default function Settings() {
       alert(`Deleted ${result.count} draft(s).`);
     } catch {}
     setDeletingAllDrafts(false);
+  };
+
+  const handleDeleteAllCrawledArticles = async () => {
+    if (!confirm("Delete ALL crawled articles across all feeds? This resets deduplication so the next crawl will re-process everything. This cannot be undone.")) return;
+    setDeletingAllArticles(true);
+    try {
+      const result = await deleteAllCrawledArticles();
+      alert(`Deleted ${result.count} crawled article(s).`);
+      // Refresh article lists
+      for (const f of feeds) {
+        if (expandedFeed === f.id) {
+          const arts = await listFeedArticles(f.id);
+          setFeedArticles((prev) => ({ ...prev, [f.id]: arts }));
+        }
+      }
+    } catch {}
+    setDeletingAllArticles(false);
   };
 
   const toggleTopic = (topic: string) => {
@@ -886,6 +905,24 @@ export default function Settings() {
                 <Trash2 className="w-3.5 h-3.5" />
               )}
               Delete All Drafts
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-red-100">
+            <div>
+              <p className="text-sm text-gray-700 font-medium">Delete all crawled articles</p>
+              <p className="text-xs text-gray-400 mt-0.5">Remove all crawled article records. The next crawl will re-fetch and re-analyze everything.</p>
+            </div>
+            <button
+              onClick={handleDeleteAllCrawledArticles}
+              disabled={deletingAllArticles}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-red-600 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50 flex items-center gap-2 shrink-0"
+            >
+              {deletingAllArticles ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Delete All Articles
             </button>
           </div>
         </div>

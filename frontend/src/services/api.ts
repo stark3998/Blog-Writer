@@ -550,6 +550,10 @@ export async function deleteAllFeedArticles(feedId: string): Promise<{ count: nu
   return json<{ count: number }>(`/feeds/${feedId}/articles`, { method: "DELETE" });
 }
 
+export async function deleteAllCrawledArticles(): Promise<{ count: number }> {
+  return json<{ count: number }>("/feeds/articles/all", { method: "DELETE" });
+}
+
 export async function listFeedArticles(feedId: string, limit = 50): Promise<CrawledArticle[]> {
   return json<CrawledArticle[]>(`/feeds/${feedId}/articles?limit=${limit}`);
 }

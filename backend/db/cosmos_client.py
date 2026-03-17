@@ -724,6 +724,39 @@ def list_crawled_articles(
         container.query_items(
             query=query, parameters=params, enable_cross_partition_query=True
         )
+
+
+def list_relevant_crawled_articles(
+    exclude_feed_ids: list[str] | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """List relevant crawled articles sorted by relevance score descending.
+
+    Optionally exclude articles belonging to specific feed source IDs
+    (e.g. feeds with auto-publish enabled).
+    """
+    container = _get_crawled_articles_container()
+
+    if exclude_feed_ids:
+        # Cosmos DB doesn't support NOT IN with parameterised lists directly,
+        # so we build the exclusion list inline (safe – these are UUIDs we control).
+        escaped = ", ".join(f"'{fid}'" for fid in exclude_feed_ids)
+        query = (
+            f"SELECT * FROM c WHERE c.isRelevant = true "
+            f"AND c.feedSourceId NOT IN ({escaped}) "
+            f"ORDER BY c.relevanceScore DESC OFFSET 0 LIMIT @limit"
+        )
+        params = [{"name": "@limit", "value": limit}]
+    else:
+        query = (
+            "SELECT * FROM c WHERE c.isRelevant = true "
+            "ORDER BY c.relevanceScore DESC OFFSET 0 LIMIT @limit"
+        )
+        params = [{"name": "@limit", "value": limit}]
+
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
     )
 
 

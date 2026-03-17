@@ -427,6 +427,8 @@ export async function updateFeed(
   id: string,
   updates: Partial<{
     name: string;
+    base_url: string;
+    feed_url: string;
     topics: string[];
     crawl_interval_minutes: number;
     auto_publish_blog: boolean;
@@ -556,6 +558,10 @@ export async function deleteAllCrawledArticles(): Promise<{ count: number }> {
 
 export async function listFeedArticles(feedId: string, limit = 50): Promise<CrawledArticle[]> {
   return json<CrawledArticle[]>(`/feeds/${feedId}/articles?limit=${limit}`);
+}
+
+export async function listRelevantArticles(limit = 30): Promise<CrawledArticle[]> {
+  return json<CrawledArticle[]>(`/feeds/articles/relevant?limit=${limit}`);
 }
 
 export async function getCrawlLog(limit = 50): Promise<CrawlJob[]> {

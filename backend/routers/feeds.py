@@ -18,6 +18,7 @@ from backend.db.cosmos_client import (
     list_crawl_jobs,
     list_crawled_articles,
     list_feed_sources,
+    list_relevant_crawled_articles,
     update_feed_source,
 )
 from backend.services.feed_crawler import crawl_feed_source, crawl_feed_source_stream, discover_feed
@@ -39,6 +40,8 @@ class FeedSourceCreateRequest(BaseModel):
 
 class FeedSourceUpdateRequest(BaseModel):
     name: str | None = None
+    base_url: str | None = None
+    feed_url: str | None = None
     topics: list[str] | None = None
     crawl_interval_minutes: int | None = None
     auto_publish_blog: bool | None = None
@@ -222,6 +225,25 @@ async def get_crawl_log(limit: int = 50):
     return [_to_job_response(j) for j in jobs]
 
 
+@router.get("/articles/relevant", response_model=list[CrawledArticleResponse])
+async def list_relevant_articles(limit: int = 30):
+    """List relevant crawled articles ranked by relevance score.
+
+    Excludes articles from feeds that have auto_publish_linkedin enabled,
+    since those are handled automatically.
+    """
+    sources = list_feed_sources()
+    auto_publish_feed_ids = [
+        s["id"] for s in sources if s.get("autoPublishLinkedIn", False)
+    ]
+
+    articles = list_relevant_crawled_articles(
+        exclude_feed_ids=auto_publish_feed_ids if auto_publish_feed_ids else None,
+        limit=limit,
+    )
+    return [_to_article_response(a) for a in articles]
+
+
 @router.delete("/articles/all")
 async def delete_all_articles_global():
     """Delete all crawled articles across all feeds."""
@@ -244,6 +266,10 @@ async def update_feed(feed_id: str, request: FeedSourceUpdateRequest):
     updates: dict = {}
     if request.name is not None:
         updates["name"] = request.name
+    if request.base_url is not None:
+        updates["baseUrl"] = request.base_url.strip().rstrip("/")
+    if request.feed_url is not None:
+        updates["feedUrl"] = request.feed_url.strip()
     if request.topics is not None:
         updates["topics"] = request.topics
     if request.crawl_interval_minutes is not None:

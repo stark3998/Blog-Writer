@@ -232,6 +232,9 @@ export default function Settings() {
   const handleUpdateFeed = async (
     feedId: string,
     updates: Partial<{
+      name: string;
+      base_url: string;
+      feed_url: string;
       auto_publish_blog: boolean;
       auto_publish_linkedin: boolean;
       crawl_interval_minutes: number;
@@ -642,6 +645,53 @@ export default function Settings() {
                 {/* Expanded: Feed settings + articles */}
                 {expandedFeed === feed.id && (
                   <div className="border-t border-gray-100 p-4">
+                    {/* Editable URLs */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Source URL</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            defaultValue={feed.base_url}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val && val !== feed.base_url) {
+                                handleUpdateFeed(feed.id, { base_url: val });
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Feed URL</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            defaultValue={feed.feed_url}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val !== feed.feed_url) {
+                                handleUpdateFeed(feed.id, { feed_url: val });
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                            placeholder="Auto-discovered RSS/Atom feed URL"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Quick settings */}
                     <div className="flex flex-wrap gap-4 mb-4">
                       <label className="flex items-center gap-2 cursor-pointer">

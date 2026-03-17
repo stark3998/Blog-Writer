@@ -82,9 +82,8 @@ def validate_token(token: str) -> dict:
     if not rsa_key:
         raise HTTPException(status_code=401, detail="Unable to find appropriate signing key")
 
-    # Accept tokens for our custom API scope or for Microsoft Graph (User.Read fallback)
-    graph_app_id = "00000003-0000-0000-c000-000000000000"
-    allowed_audiences = [client_id, f"api://{client_id}", graph_app_id]
+    # Accept access tokens (api://<client-id>) and ID tokens (client_id as audience)
+    allowed_audiences = [client_id, f"api://{client_id}"]
 
     try:
         claims = jwt.decode(
@@ -93,6 +92,7 @@ def validate_token(token: str) -> dict:
             algorithms=["RS256"],
             audience=allowed_audiences,
             issuer=f"https://login.microsoftonline.com/{tenant_id}/v2.0",
+            options={"verify_at_hash": False},
         )
         return claims
     except jwt.ExpiredSignatureError:

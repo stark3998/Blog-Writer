@@ -33,3 +33,4 @@ export const loginRequest = {
 };
 
 export const isAuthConfigured = !!clientId;
+export const hasCustomApiScope = !!apiScope;

@@ -8,7 +8,7 @@ import {
   type AuthenticationResult,
 } from "@azure/msal-browser";
 import { MsalProvider, useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { msalConfig, loginRequest, isAuthConfigured } from "./msalConfig";
+import { msalConfig, loginRequest, isAuthConfigured, hasCustomApiScope } from "./msalConfig";
 import { setAccessTokenGetter } from "../services/api";
 
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -98,6 +98,13 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 
     const account = accounts[0];
     if (!account) return "";
+
+    // When using a custom API scope, acquire an access token for that scope.
+    // When using User.Read (default), the access token is for MS Graph — not useful
+    // for our backend. Use the ID token instead (audience = our client ID).
+    if (!hasCustomApiScope) {
+      return account.idToken || "";
+    }
 
     try {
       const response = await instance.acquireTokenSilent({

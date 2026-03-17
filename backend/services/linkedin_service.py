@@ -103,35 +103,70 @@ def _word_count(text: str) -> int:
     return len([word for word in re.split(r"\s+", text.strip()) if word])
 
 
+def _find_hashtag_line_index(lines: list[str]) -> int | None:
+    """Return the index of the last line that is purely hashtags, or None."""
+    for i in range(len(lines) - 1, -1, -1):
+        stripped = lines[i].strip()
+        if stripped and all(word.startswith("#") for word in stripped.split()):
+            return i
+    return None
+
+
+def _insert_before_hashtags(post_text: str, line: str) -> str:
+    """Insert a line before the trailing hashtag line (or append at end)."""
+    lines = post_text.rstrip().split("\n")
+    idx = _find_hashtag_line_index(lines)
+    if idx is not None:
+        lines.insert(idx, line)
+    else:
+        lines.append(line)
+    return "\n".join(lines)
+
+
+# Pattern matching source_url used in a "primary / CTA" context
+_PRIMARY_CTA_PHRASES = (
+    r"read\s+my\s+|full\s+analysis|my\s+blog|my\s+write-?up"
+    r"|check\s+out\s+my|dive\s+into|my\s+detailed|my\s+breakdown"
+)
+
+
 def _fixup_post_urls(post_text: str, blog_url: str, source_url: str) -> str:
-    """Ensure blog_url is the primary link and source_url appears at most once."""
+    """Ensure blog_url is the primary link and source_url is secondary attribution."""
     if not blog_url:
         return post_text
 
-    # If blog_url is missing, replace the first source_url occurrence with it
-    if blog_url not in post_text:
-        if source_url and source_url in post_text:
-            post_text = post_text.replace(source_url, blog_url, 1)
-        else:
-            # Append blog_url before the hashtag line (or at end)
-            lines = post_text.rstrip().split("\n")
-            hashtag_idx = None
-            for i in range(len(lines) - 1, -1, -1):
-                stripped = lines[i].strip()
-                if stripped and all(word.startswith("#") for word in stripped.split()):
-                    hashtag_idx = i
-                    break
-            link_line = f"\nRead my full analysis: {blog_url}"
-            if hashtag_idx is not None:
-                lines.insert(hashtag_idx, link_line)
-            else:
-                lines.append(link_line)
-            post_text = "\n".join(lines)
+    primary_pattern = re.compile(
+        r"(" + _PRIMARY_CTA_PHRASES + r")[^:\n]*?" + re.escape(source_url),
+        re.IGNORECASE,
+    ) if source_url else None
 
-    # Deduplicate source_url — keep only the first occurrence
-    if source_url and post_text.count(source_url) > 1:
-        first_end = post_text.index(source_url) + len(source_url)
-        post_text = post_text[:first_end] + post_text[first_end:].replace(source_url, "")
+    if blog_url not in post_text:
+        # blog_url missing — replace source_url in CTA context, or first occurrence
+        if source_url and source_url in post_text:
+            m = primary_pattern.search(post_text) if primary_pattern else None
+            if m:
+                post_text = post_text[:m.start()] + m.group().replace(source_url, blog_url) + post_text[m.end():]
+            else:
+                post_text = post_text.replace(source_url, blog_url, 1)
+        else:
+            post_text = _insert_before_hashtags(post_text, f"\nRead my full analysis: {blog_url}")
+    else:
+        # blog_url present — but check if source_url is also used in a CTA context
+        if primary_pattern and source_url in post_text:
+            m = primary_pattern.search(post_text)
+            if m:
+                post_text = post_text[:m.start()] + m.group().replace(source_url, blog_url) + post_text[m.end():]
+
+    # Ensure source_url appears at most once
+    if source_url:
+        count = post_text.count(source_url)
+        if count > 1:
+            first_end = post_text.index(source_url) + len(source_url)
+            post_text = post_text[:first_end] + post_text[first_end:].replace(source_url, "")
+
+        # If source_url was fully removed (replaced with blog_url), add it back as attribution
+        if source_url not in post_text:
+            post_text = _insert_before_hashtags(post_text, f"\nInspired by: {source_url}")
 
     return post_text
 
@@ -177,9 +212,11 @@ def compose_linkedin_post(
     # Build link context for the prompt
     link_lines = ""
     if blog_url:
-        link_lines += f"Blog URL (YOUR published post — this is the PRIMARY link to promote): {blog_url}\n"
+        link_lines += f"Blog URL (YOUR published post — PRIMARY link, use in CTA): {blog_url}\n"
     if source_url:
-        link_lines += f"Source URL (original article — secondary reference/attribution): {source_url}\n"
+        link_lines += f"Source URL (original article — mention ONCE at the end as attribution): {source_url}\n"
+    if blog_url and source_url:
+        link_lines += "RULE: Use blog_url for 'Read my analysis' CTA. Put source_url ONLY as 'Inspired by: ...' near the end.\n"
 
     user_prompt = (
         f"Format: {post_format}\n"

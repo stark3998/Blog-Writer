@@ -164,6 +164,56 @@ terraform init
 terraform apply
 ```
 
+For local redeploys on Windows, you can use [deploy-local.ps1](deploy-local.ps1):
+
+```powershell
+.\deploy-local.ps1
+```
+
+Preview without making changes:
+
+```powershell
+.\deploy-local.ps1 -WhatIf
+.\deploy-local.ps1 -DryRun
+```
+
+## CI CD (GitHub Actions)
+
+This repo includes a main-branch deployment workflow at `.github/workflows/cicd-main.yml`.
+
+On every push to `main`, it will:
+
+- Run Terraform `fmt -check`, `validate`, `plan`, and `apply` for infrastructure
+- Build and push a new web app image to Azure Container Registry with tag = short commit SHA
+- Run Terraform `plan` and `apply` again with the new `container_image` to roll out code
+
+Required GitHub repository secrets:
+
+- `AZURE_CREDENTIALS`: output JSON from `az ad sp create-for-rbac --name <sp-name> --role contributor --scopes /subscriptions/<sub-id> --sdk-auth`
+- `PROJECT_API_KEY`
+- `COSMOS_KEY`
+- `GITHUB_TOKEN`
+- `LINKEDIN_CLIENT_SECRET`
+
+Required GitHub repository variables (`Settings -> Secrets and variables -> Actions -> Variables`):
+
+- `PROJECT_ENDPOINT`
+- `COSMOS_ENDPOINT`
+- `LINKEDIN_CLIENT_ID`
+- `LINKEDIN_REDIRECT_URI`
+
+Recommended optional variables:
+
+- `MODEL_DEPLOYMENT_NAME` (default `gpt-4.1-mini`)
+- `API_VERSION` (default `2024-05-01-preview`)
+- `LINKEDIN_SCOPES` (default `openid profile w_member_social`)
+- `TF_RESOURCE_GROUP_NAME`, `TF_CONTAINER_APP_NAME`, `TF_CONTAINER_APP_ENV_NAME`
+- `TF_TAG_PURPOSE`, `TF_TAG_OWNER`, `TF_TAG_EXPIRY_DATE`
+
+Optional trigger:
+
+- `workflow_dispatch` is enabled for manual runs from the Actions tab
+
 ## API Reference
 
 | Method | Endpoint | Description |

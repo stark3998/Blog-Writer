@@ -1,0 +1,163 @@
+name: Main CI CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: blog-writer-main-deploy
+  cancel-in-progress: false
+
+env:
+  TF_WORKING_DIR: infra/terraform
+  IMAGE_NAME: blog-writer-webapp
+
+jobs:
+  deploy:
+    name: Validate Infra and Deploy App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Validate required CI secrets and vars
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.PROJECT_API_KEY }}" ] || [ -z "${{ secrets.COSMOS_KEY }}" ] || [ -z "${{ secrets.GITHUB_TOKEN }}" ] || [ -z "${{ secrets.LINKEDIN_CLIENT_SECRET }}" ] || [ -z "${{ secrets.AZURE_CREDENTIALS }}" ]; then
+            echo "Missing one or more required GitHub secrets"
+            exit 1
+          fi
+
+          if [ -z "${{ vars.COSMOS_ENDPOINT }}" ] || [ -z "${{ vars.LINKEDIN_CLIENT_ID }}" ] || [ -z "${{ vars.LINKEDIN_REDIRECT_URI }}" ]; then
+            echo "Missing one or more required GitHub repository variables"
+            exit 1
+          fi
+
+      - name: Generate terraform tfvars for CI
+        shell: bash
+        run: |
+          cat > "$TF_WORKING_DIR/terraform.tfvars" <<'EOF'
+          project_name                   = "${{ vars.TF_PROJECT_NAME || 'blog-writer' }}"
+          environment                    = "${{ vars.TF_ENVIRONMENT || 'dev' }}"
+          location                       = "${{ vars.TF_LOCATION || 'eastus' }}"
+          location_short                 = "${{ vars.TF_LOCATION_SHORT || 'eus' }}"
+          resource_group_name            = "${{ vars.TF_RESOURCE_GROUP_NAME || 'rg-blog-writer-dev' }}"
+          container_app_name             = "${{ vars.TF_CONTAINER_APP_NAME || 'ca-blog-writer-dev' }}"
+          container_app_environment_name = "${{ vars.TF_CONTAINER_APP_ENV_NAME || 'cae-blog-writer-dev' }}"
+          log_analytics_workspace_name   = "${{ vars.TF_LOG_ANALYTICS_NAME || 'law-blog-writer-dev' }}"
+
+          container_image = "${{ vars.TF_CONTAINER_IMAGE || 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' }}"
+
+          container_app_env_vars = {
+            PORT                            = "8080"
+            PROJECT_ENDPOINT                = "${{ vars.PROJECT_ENDPOINT }}"
+            MODEL_DEPLOYMENT_NAME           = "${{ vars.MODEL_DEPLOYMENT_NAME || 'gpt-4.1-mini' }}"
+            API_VERSION                     = "${{ vars.API_VERSION || '2024-05-01-preview' }}"
+            COSMOS_ENDPOINT                 = "${{ vars.COSMOS_ENDPOINT }}"
+            COSMOS_DATABASE                 = "${{ vars.COSMOS_DATABASE || 'blog-writer' }}"
+            GITHUB_REPO                     = "${{ vars.GITHUB_REPO || 'owner/repo' }}"
+            LOG_LEVEL                       = "${{ vars.LOG_LEVEL || 'INFO' }}"
+            LINKEDIN_CLIENT_ID              = "${{ vars.LINKEDIN_CLIENT_ID }}"
+            LINKEDIN_REDIRECT_URI           = "${{ vars.LINKEDIN_REDIRECT_URI }}"
+            LINKEDIN_SCOPES                 = "${{ vars.LINKEDIN_SCOPES || 'openid profile w_member_social' }}"
+            LINKEDIN_COSMOS_SESSION_CONTAINER = "${{ vars.LINKEDIN_COSMOS_SESSION_CONTAINER || 'linkedin-sessions' }}"
+            LINKEDIN_COSMOS_STATE_CONTAINER   = "${{ vars.LINKEDIN_COSMOS_STATE_CONTAINER || 'linkedin-oauth-states' }}"
+            LINKEDIN_OAUTH_STATE_TTL_SECONDS  = "${{ vars.LINKEDIN_OAUTH_STATE_TTL_SECONDS || '900' }}"
+          }
+
+          container_app_secrets = {
+            project-api-key        = "${{ secrets.PROJECT_API_KEY }}"
+            cosmos-key             = "${{ secrets.COSMOS_KEY }}"
+            github-token           = "${{ secrets.GITHUB_TOKEN }}"
+            linkedin-client-secret = "${{ secrets.LINKEDIN_CLIENT_SECRET }}"
+          }
+
+          container_app_secret_env_vars = {
+            PROJECT_API_KEY        = "project-api-key"
+            COSMOS_KEY             = "cosmos-key"
+            GITHUB_TOKEN           = "github-token"
+            LINKEDIN_CLIENT_SECRET = "linkedin-client-secret"
+          }
+
+          tags = {
+            app           = "${{ vars.TF_TAG_APP || 'blog-writer' }}"
+            environment   = "${{ vars.TF_ENVIRONMENT || 'dev' }}"
+            managed_by    = "terraform"
+            Purpose       = "${{ vars.TF_TAG_PURPOSE || 'Tool' }}"
+            Owner         = "${{ vars.TF_TAG_OWNER || 'owner-alias' }}"
+            "Expiry Date" = "${{ vars.TF_TAG_EXPIRY_DATE || '2026-12-31' }}"
+          }
+          EOF
+
+      - name: Terraform init
+        run: terraform -chdir="$TF_WORKING_DIR" init
+
+      - name: Terraform fmt check
+        run: terraform -chdir="$TF_WORKING_DIR" fmt -check
+
+      - name: Terraform validate
+        run: terraform -chdir="$TF_WORKING_DIR" validate
+
+      - name: Terraform plan infra
+        run: terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra
+
+      - name: Terraform apply infra
+        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-infra
+
+      - name: Capture infra outputs
+        id: outputs
+        shell: bash
+        run: |
+          ACR_NAME=$(terraform -chdir="$TF_WORKING_DIR" output -raw acr_name)
+          ACR_LOGIN_SERVER=$(terraform -chdir="$TF_WORKING_DIR" output -raw acr_login_server)
+          APP_URL=$(terraform -chdir="$TF_WORKING_DIR" output -raw container_app_url)
+          PORTAL_URL=$(terraform -chdir="$TF_WORKING_DIR" output -raw portal_resource_group_url)
+
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "portal_url=$PORTAL_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image with ACR Tasks
+        id: image
+        shell: bash
+        run: |
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          FULL_IMAGE="${{ steps.outputs.outputs.acr_login_server }}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+          az acr build \
+            --registry "${{ steps.outputs.outputs.acr_name }}" \
+            --image "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --file Dockerfile.webapp \
+            .
+
+          echo "full_image=$FULL_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Terraform plan app image rollout
+        run: terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-app -var "container_image=${{ steps.image.outputs.full_image }}"
+
+      - name: Terraform apply app image rollout
+        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-app
+
+      - name: Deployment summary
+        shell: bash
+        run: |
+          echo "App URL: ${{ steps.outputs.outputs.app_url }}"
+          echo "Resource Group Portal: ${{ steps.outputs.outputs.portal_url }}"

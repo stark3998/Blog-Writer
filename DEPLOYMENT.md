@@ -47,6 +47,31 @@ az login
 az account set --subscription "<your-subscription-id>"
 ```
 
+## Fast Path: Local Deploy Script
+
+For repeat deployments from your local machine, run:
+
+```powershell
+.\deploy-local.ps1
+```
+
+Optional flags:
+
+```powershell
+.\deploy-local.ps1 -Tag v2
+.\deploy-local.ps1 -SkipInfraApply
+.\deploy-local.ps1 -SkipHealthCheck
+```
+
+The script will:
+
+- Run `terraform init` and `terraform validate`
+- Optionally run infra `plan` and `apply`
+- Build and push the app image with `az acr build`
+- Update `container_image` in `infra/terraform/terraform.tfvars`
+- Run rollout `plan` and `apply`
+- Call `/api/health` and print the app and Azure Portal URLs
+
 ---
 
 ## Step 2: Provision Infrastructure with Terraform

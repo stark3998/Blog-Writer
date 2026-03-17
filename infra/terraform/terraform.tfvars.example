@@ -21,7 +21,7 @@ container_app_env_vars = {
   LOG_LEVEL                 = "INFO"
   LINKEDIN_CLIENT_ID        = "your-linkedin-client-id"
   LINKEDIN_REDIRECT_URI     = "https://<your-app-fqdn>/api/linkedin/oauth/callback"
-  LINKEDIN_SCOPES           = "r_liteprofile w_member_social"
+  LINKEDIN_SCOPES           = "openid profile w_member_social"
   LINKEDIN_COSMOS_SESSION_CONTAINER = "linkedin-sessions"
   LINKEDIN_COSMOS_STATE_CONTAINER   = "linkedin-oauth-states"
   LINKEDIN_OAUTH_STATE_TTL_SECONDS  = "900"
@@ -45,4 +45,7 @@ tags = {
   app         = "blog-writer"
   environment = "dev"
   managed_by  = "terraform"
+  Purpose     = "Tool"
+  Owner       = "owner-alias"
+  "Expiry Date" = "2026-12-31"
 }

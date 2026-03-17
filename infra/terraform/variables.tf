@@ -108,6 +108,73 @@ variable "container_app_secret_env_vars" {
   default     = {}
 }
 
+## ── Portfolio Container App ──────────────────────────────────────────
+
+variable "portfolio_container_app_name" {
+  description = "Container App name for the portfolio site."
+  type        = string
+  default     = "ca-portfolio-dev"
+}
+
+variable "portfolio_container_image" {
+  description = "Container image for the portfolio app."
+  type        = string
+  default     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+}
+
+variable "portfolio_target_port" {
+  description = "Portfolio container application port."
+  type        = number
+  default     = 3000
+}
+
+variable "portfolio_min_replicas" {
+  description = "Minimum replicas for the portfolio Container App."
+  type        = number
+  default     = 1
+}
+
+variable "portfolio_max_replicas" {
+  description = "Maximum replicas for the portfolio Container App."
+  type        = number
+  default     = 3
+}
+
+variable "portfolio_container_cpu" {
+  description = "CPU cores allocated to the portfolio container."
+  type        = number
+  default     = 0.5
+}
+
+variable "portfolio_container_memory" {
+  description = "Memory allocated to the portfolio container."
+  type        = string
+  default     = "1Gi"
+}
+
+variable "portfolio_env_vars" {
+  description = "Plaintext environment variables for the portfolio Container App."
+  type        = map(string)
+  default = {
+    NODE_ENV       = "production"
+    COSMOS_DATABASE = "blog-writer"
+  }
+}
+
+variable "portfolio_secrets" {
+  description = "Sensitive values to inject as portfolio Container App secrets."
+  type        = map(string)
+  default     = {}
+}
+
+variable "portfolio_secret_env_vars" {
+  description = "Map of env var name => secret name for the portfolio Container App."
+  type        = map(string)
+  default     = {}
+}
+
+## ── Common ──────────────────────────────────────────────────────────
+
 variable "tags" {
   description = "Common tags applied to all resources."
   type        = map(string)

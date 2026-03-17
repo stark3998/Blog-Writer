@@ -13,6 +13,16 @@ output "container_app_fqdn" {
   value       = azurerm_container_app.this.latest_revision_fqdn
 }
 
+output "portfolio_app_url" {
+  description = "Public URL of the deployed portfolio Container App."
+  value       = "https://${azurerm_container_app.portfolio.latest_revision_fqdn}"
+}
+
+output "portfolio_app_fqdn" {
+  description = "FQDN of the deployed portfolio Container App."
+  value       = azurerm_container_app.portfolio.latest_revision_fqdn
+}
+
 output "acr_name" {
   description = "Azure Container Registry name."
   value       = azurerm_container_registry.this.name

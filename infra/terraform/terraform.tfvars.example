@@ -41,6 +41,27 @@ container_app_secret_env_vars = {
   LINKEDIN_CLIENT_SECRET = "LINKEDIN_CLIENT_SECRET"
 }
 
+# ── Portfolio Container App ──────────────────────────────────────────
+portfolio_container_app_name = "ca-portfolio-dev"
+
+# Build and push this image to ACR, then update this value before apply
+portfolio_container_image = "replace-me.azurecr.io/portfolio:v1"
+
+portfolio_env_vars = {
+  NODE_ENV              = "production"
+  COSMOS_ENDPOINT       = "https://your-cosmos.documents.azure.com:443/"
+  COSMOS_DATABASE       = "blog-writer"
+  NEXT_PUBLIC_SITE_URL  = "https://<your-portfolio-fqdn>"
+}
+
+portfolio_secrets = {
+  cosmos-key = "your-cosmos-key"
+}
+
+portfolio_secret_env_vars = {
+  COSMOS_KEY = "cosmos-key"
+}
+
 tags = {
   app         = "blog-writer"
   environment = "dev"

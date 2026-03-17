@@ -38,12 +38,15 @@ function Invoke-Terraform {
 function Invoke-AcrBuild {
     param(
         [Parameter(Mandatory = $true)][string]$Registry,
-        [Parameter(Mandatory = $true)][string]$Tag
+        [Parameter(Mandatory = $true)][string]$ImageName,
+        [Parameter(Mandatory = $true)][string]$Tag,
+        [Parameter(Mandatory = $true)][string]$DockerfilePath,
+        [Parameter(Mandatory = $true)][string]$ContextPath
     )
 
-    & az acr build --registry $Registry --image "blog-writer-webapp:$Tag" --file Dockerfile.webapp .
+    & az acr build --registry $Registry --image "${ImageName}:$Tag" --file $DockerfilePath $ContextPath
     if ($LASTEXITCODE -ne 0) {
-        throw "ACR build failed."
+        throw "ACR build failed for $ImageName."
     }
 }
 
@@ -66,19 +69,17 @@ function Get-TerraformOutput {
 function Update-ContainerImageInTfvars {
     param(
         [Parameter(Mandatory = $true)][string]$TfvarsPath,
+        [Parameter(Mandatory = $true)][string]$VariableName,
         [Parameter(Mandatory = $true)][string]$Image
     )
 
     $content = Get-Content -Path $TfvarsPath -Raw
-    $updated = [regex]::Replace(
-        $content,
-        'container_image\s*=\s*"[^"]*"',
-        "container_image = `"$Image`"",
-        1
-    )
+    $pattern = "${VariableName}\s*=\s*`"[^`"]*`""
+    $replacement = "${VariableName} = `"$Image`""
+    $updated = [regex]::Replace($content, $pattern, $replacement, 1)
 
     if ($updated -eq $content) {
-        throw "Could not locate container_image in $TfvarsPath"
+        throw "Could not locate $VariableName in $TfvarsPath"
     }
 
     Set-Content -Path $TfvarsPath -Value $updated -NoNewline
@@ -132,16 +133,32 @@ if (-not $acrName -or -not $acrLoginServer) {
 }
 
 $fullImage = "$acrLoginServer/blog-writer-webapp:$Tag"
+$portfolioImage = "$acrLoginServer/portfolio:$Tag"
+$portfolioDir = Join-Path (Split-Path $repoRoot -Parent) "portfolio"
 
-Write-Step "Building and pushing image with ACR Tasks"
+Write-Step "Building and pushing Blog-Writer image with ACR Tasks"
 Write-Host "Image: $fullImage"
 if ($PSCmdlet.ShouldProcess($fullImage, 'az acr build')) {
-    Invoke-AcrBuild -Registry $acrName -Tag $Tag
+    Invoke-AcrBuild -Registry $acrName -ImageName "blog-writer-webapp" -Tag $Tag -DockerfilePath "Dockerfile.webapp" -ContextPath $repoRoot
 }
 
-Write-Step "Persisting latest image tag to terraform.tfvars"
+if (Test-Path $portfolioDir) {
+    Write-Step "Building and pushing Portfolio image with ACR Tasks"
+    Write-Host "Image: $portfolioImage"
+    if ($PSCmdlet.ShouldProcess($portfolioImage, 'az acr build')) {
+        Invoke-AcrBuild -Registry $acrName -ImageName "portfolio" -Tag $Tag -DockerfilePath "$portfolioDir/Dockerfile" -ContextPath $portfolioDir
+    }
+} else {
+    Write-Warning "Portfolio directory not found at $portfolioDir — skipping portfolio build."
+    $portfolioImage = $null
+}
+
+Write-Step "Persisting latest image tags to terraform.tfvars"
 if ($PSCmdlet.ShouldProcess($tfvarsPath, "Update container_image to $fullImage")) {
-    Update-ContainerImageInTfvars -TfvarsPath $tfvarsPath -Image $fullImage
+    Update-ContainerImageInTfvars -TfvarsPath $tfvarsPath -VariableName "container_image" -Image $fullImage
+}
+if ($portfolioImage -and $PSCmdlet.ShouldProcess($tfvarsPath, "Update portfolio_container_image to $portfolioImage")) {
+    Update-ContainerImageInTfvars -TfvarsPath $tfvarsPath -VariableName "portfolio_container_image" -Image $portfolioImage
 }
 
 Write-Step "Planning and applying app rollout"
@@ -156,17 +173,31 @@ if ($WhatIfPreference) {
 }
 
 $appUrl = Get-TerraformOutput -Name 'container_app_url'
+$portfolioUrl = Get-TerraformOutput -Name 'portfolio_app_url' -AllowMissing
 $portalUrl = Get-TerraformOutput -Name 'portal_resource_group_url'
 
 if ($WhatIfPreference) {
     Write-Step 'Preview complete'
     Write-Host 'No Azure resources or local files were changed.'
 } elseif (-not $SkipHealthCheck) {
-    Write-Step "Running health check"
+    Write-Step "Running health check — Blog Writer"
     $health = Invoke-RestMethod -Uri "$appUrl/api/health" -Method Get -TimeoutSec 60
     Write-Host ("Health: " + ($health | ConvertTo-Json -Compress))
+
+    if ($portfolioUrl) {
+        Write-Step "Running health check — Portfolio"
+        try {
+            $portfolioHealth = Invoke-WebRequest -Uri $portfolioUrl -Method Get -TimeoutSec 60 -UseBasicParsing
+            Write-Host "Portfolio: HTTP $($portfolioHealth.StatusCode)"
+        } catch {
+            Write-Warning "Portfolio health check failed: $_"
+        }
+    }
 }
 
 Write-Step "Deployment complete"
-Write-Host "App URL: $appUrl"
-Write-Host "Portal URL: $portalUrl"
+Write-Host "Blog Writer URL: $appUrl"
+if ($portfolioUrl) {
+    Write-Host "Portfolio URL:   $portfolioUrl"
+}
+Write-Host "Portal URL:      $portalUrl"

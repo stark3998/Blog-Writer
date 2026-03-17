@@ -52,6 +52,9 @@ def _get_openai_client() -> tuple[AzureOpenAI, str]:
 
 def _extract_frontmatter_value(content: str, key: str) -> str:
     match = re.search(rf'^{key}:\s*"(.+?)"\s*$', content, re.MULTILINE)
+    if match:
+        return match.group(1).strip()
+    match = re.search(rf'^{key}:\s*(.+?)\s*$', content, re.MULTILINE)
     return match.group(1).strip() if match else ""
 
 
@@ -149,6 +152,16 @@ def compose_linkedin_post(
     resolved_title = title.strip() or _extract_frontmatter_value(blog_content, "title")
     resolved_excerpt = excerpt.strip() or _extract_frontmatter_value(blog_content, "excerpt")
     image_url = _extract_first_image_url(blog_content)
+
+    # Auto-populate blog_url from BLOG_BASE_URL + slug if not provided
+    if not blog_url:
+        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        if blog_base:
+            slug = _extract_frontmatter_value(blog_content, "slug")
+            if slug:
+                blog_url = f"{blog_base}/blog/{slug}"
+                logger.info(f"Auto-populated blog_url: {blog_url}")
+
     body = _strip_frontmatter(blog_content)
 
     # Strip source_url from body so the LLM doesn't confuse it with blog_url

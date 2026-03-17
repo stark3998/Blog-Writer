@@ -82,24 +82,31 @@ def validate_token(token: str) -> dict:
     if not rsa_key:
         raise HTTPException(status_code=401, detail="Unable to find appropriate signing key")
 
-    # Accept access tokens (api://<client-id>) and ID tokens (client_id as audience)
+    # Accept access tokens (api://<client-id>) and ID tokens (client_id as audience).
+    # python-jose audience handling is most reliable with a single audience string,
+    # so attempt decode against each accepted audience.
     allowed_audiences = [client_id, f"api://{client_id}"]
+    last_error: Exception | None = None
 
-    try:
-        claims = jwt.decode(
-            token,
-            rsa_key,
-            algorithms=["RS256"],
-            audience=allowed_audiences,
-            issuer=f"https://login.microsoftonline.com/{tenant_id}/v2.0",
-            options={"verify_at_hash": False},
-        )
-        return claims
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
-    except JWTError as e:
-        logger.warning(f"JWT validation failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+    for audience in allowed_audiences:
+        try:
+            claims = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=audience,
+                issuer=f"https://login.microsoftonline.com/{tenant_id}/v2.0",
+                options={"verify_at_hash": False},
+            )
+            return claims
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token has expired")
+        except JWTError as e:
+            last_error = e
+            continue
+
+    logger.warning(f"JWT validation failed for all audiences {allowed_audiences}: {last_error}")
+    raise HTTPException(status_code=401, detail="Invalid token")
 
 
 def get_current_user(request: Request) -> UserInfo:

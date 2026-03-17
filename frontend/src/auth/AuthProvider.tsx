@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, createContext, useContext, type ReactNode } from "react";
+import { useEffect, useState, createContext, useContext, type ReactNode } from "react";
 import {
   PublicClientApplication,
   InteractionRequiredAuthError,
@@ -40,8 +40,6 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
   const [isLoading, setIsLoading] = useState(true);
 
-  const tokenGetterWired = useRef(false);
-
   useEffect(() => {
     // Wait for MSAL to fully initialize and handle any redirect response
     instance.initialize().then(() => {
@@ -71,13 +69,9 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
     };
   }, [instance]);
 
-  // Wire the token getter into the API module once
-  useEffect(() => {
-    if (!tokenGetterWired.current) {
-      setAccessTokenGetter(getAccessToken);
-      tokenGetterWired.current = true;
-    }
-  });
+  // Register synchronously during render so child effects never run before
+  // the API module can resolve a token getter.
+  setAccessTokenGetter(getAccessToken);
 
   const user = accounts[0] ?? null;
 
@@ -96,14 +90,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
   async function getAccessToken(): Promise<string> {
     if (!isAuthConfigured) return "";
 
-    const account = accounts[0];
+    const account = instance.getActiveAccount() ?? accounts[0] ?? instance.getAllAccounts()[0];
     if (!account) return "";
 
-    // When using a custom API scope, acquire an access token for that scope.
-    // When using User.Read (default), the access token is for MS Graph — not useful
-    // for our backend. Use the ID token instead (audience = our client ID).
-    if (!hasCustomApiScope) {
-      return account.idToken || "";
+    if (!instance.getActiveAccount()) {
+      instance.setActiveAccount(account);
     }
 
     try {
@@ -111,7 +102,10 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
         ...loginRequest,
         account,
       });
-      return response.accessToken;
+      // When using a custom API scope, the access token is for our backend.
+      // When using User.Read (default), the access token is for MS Graph,
+      // so we use the ID token instead (audience = our client ID).
+      return hasCustomApiScope ? response.accessToken : (response.idToken || "");
     } catch (err) {
       if (err instanceof InteractionRequiredAuthError) {
         await instance.acquireTokenRedirect(loginRequest);

@@ -29,15 +29,30 @@ Return ONLY a valid JSON object with this shape:
 - Add a balanced personal perspective in `my_2_cents` (claim + evidence + caveat).
 - Avoid hype, fluff, and buzzword stuffing.
 
-## Source Article Reference
-- The post MUST reference the original article/source URL. This is the author sharing their perspective on the article.
-- Include the source link naturally in the post body — e.g., "I came across this article on [topic]: [URL]" or "Great read on [topic] — [URL]"
-- Place the link early in the post (within the first few lines) so it's visible above the "see more" fold.
-- Frame the post as "my 2 cents" or personal takeaways from reading the source article.
+## Technical Depth
+- Include specific technical details from the source: service names, API endpoints, architecture patterns, config options, version numbers, protocols, etc.
+- When the article covers a how-to or implementation, mention the concrete tools, libraries, or commands involved.
+- Prefer concrete numbers and specifics over vague generalizations (e.g., "reduces cold start from 2s to 200ms" not "improves performance significantly").
+- If the article discusses architecture, call out the specific components and how they interact.
+- Use inline code-style formatting sparingly where it adds clarity (e.g., wrapping a CLI command or config flag).
+- The post should feel like it was written by someone who actually read and understood the tech, not just the headline.
+
+## Blog Post Link (Primary)
+- If a `blog_url` is provided, it is the author's OWN published blog post. This is the PRIMARY link to promote.
+- Place the blog_url prominently — ideally as the main call-to-action link in the post.
+- Frame the post as sharing YOUR blog/analysis/writeup: e.g., "I wrote about this on my blog: [blog_url]" or "Read my full analysis here: [blog_url]"
+- The blog_url should appear above the "see more" fold if possible.
+
+## Source Article Reference (Secondary)
+- If a `source_url` is provided, it is the original article that inspired the blog post.
+- Give credit to the original source, but keep it secondary to the blog link.
+- Mention it briefly — e.g., "Inspired by [source_url]" or "Building on this article: [source_url]"
+- If both blog_url and source_url exist, the blog_url is the hero link; the source_url is a brief attribution.
+- If only source_url exists (no blog_url), treat it as the primary link as before.
 
 ## Length
-- For `feed_post`: target 180-280 words.
-- For `long_form`: target 350-700 words.
+- For `feed_post`: target 220-350 words.
+- For `long_form`: target 400-800 words.
 
 ## Hashtags
 - Provide 3-5 hashtags optimized for LinkedIn reach.
@@ -51,6 +66,7 @@ Return ONLY a valid JSON object with this shape:
 ## Final Quality Checks
 - The first line (`hook`) should be compelling and specific.
 - `summary` should be concise and value-focused.
-- `post_text` MUST include: hook, source article link, insights, my_2_cents, CTA, and hashtags — woven naturally.
-- The source article URL must appear in `post_text` as a clickable link.
+- `post_text` MUST include: hook, blog link (primary) and/or source article link, insights, my_2_cents, CTA, and hashtags — woven naturally.
+- If a blog_url was provided, it MUST appear in `post_text` as the primary clickable link.
+- If a source_url was provided, include it as secondary attribution.
 - Do not include markdown code fences.

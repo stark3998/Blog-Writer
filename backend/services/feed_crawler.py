@@ -1,0 +1,515 @@
+"""Feed Crawler Service — Discover feeds, parse articles, and orchestrate crawls."""
+
+import hashlib
+import logging
+import re
+from collections.abc import Generator
+from datetime import datetime, timezone
+from typing import Any
+from urllib.parse import urljoin, urlparse
+
+import feedparser
+import requests
+from bs4 import BeautifulSoup, Tag
+
+from backend.db.cosmos_client import (
+    create_crawl_job,
+    get_crawled_article,
+    get_feed_source,
+    list_crawled_articles,
+    update_crawl_job,
+    update_feed_source,
+    upsert_crawled_article,
+)
+from backend.services.relevance_classifier import classify_article
+from backend.services.auto_publisher import process_relevant_article
+
+logger = logging.getLogger(__name__)
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+COMMON_FEED_PATHS = [
+    "/feed", "/feed/", "/rss", "/rss/", "/atom.xml",
+    "/feed.xml", "/rss.xml", "/index.xml", "/feeds/posts/default",
+    "/blog/feed", "/blog/rss",
+]
+
+
+def _article_id(url: str) -> str:
+    """Generate a deterministic ID from an article URL."""
+    return hashlib.sha256(url.strip().lower().encode()).hexdigest()[:32]
+
+
+def discover_feed(base_url: str) -> dict[str, Any]:
+    """Discover RSS/Atom feed for a given blog URL.
+
+    Returns dict with keys: feedUrl, feedType ('rss' or 'html'), siteName.
+    """
+    base_url = base_url.strip().rstrip("/")
+    logger.info(f"Discovering feed for: {base_url}")
+
+    try:
+        resp = requests.get(
+            base_url, headers={"User-Agent": USER_AGENT}, timeout=15, allow_redirects=True
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning(f"Failed to fetch base URL {base_url}: {exc}")
+        return {"feedUrl": "", "feedType": "html", "siteName": base_url}
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Extract site name
+    site_name = ""
+    title_tag = soup.find("title")
+    if title_tag:
+        site_name = title_tag.get_text().strip()[:100]
+
+    # Strategy 1: Look for <link> tags pointing to RSS/Atom feeds
+    for link_tag in soup.find_all("link", attrs={"rel": "alternate"}):
+        if not isinstance(link_tag, Tag):
+            continue
+        link_type = str(link_tag.get("type", "")).lower()
+        if any(ft in link_type for ft in ["rss", "atom", "xml"]):
+            href = str(link_tag.get("href", "")).strip()
+            if href:
+                feed_url = urljoin(base_url, href)
+                logger.info(f"Found feed via <link> tag: {feed_url}")
+                return {"feedUrl": feed_url, "feedType": "rss", "siteName": site_name}
+
+    # Strategy 2: Try common feed paths
+    for path in COMMON_FEED_PATHS:
+        candidate = base_url + path
+        try:
+            probe = requests.get(
+                candidate, headers={"User-Agent": USER_AGENT}, timeout=10,
+                allow_redirects=True,
+            )
+            if probe.status_code == 200:
+                content_type = probe.headers.get("content-type", "").lower()
+                text_start = probe.text[:500].strip().lower()
+                if any(
+                    sig in content_type or sig in text_start
+                    for sig in ["xml", "rss", "atom", "<feed", "<rss", "<?xml"]
+                ):
+                    logger.info(f"Found feed at common path: {candidate}")
+                    return {"feedUrl": candidate, "feedType": "rss", "siteName": site_name}
+        except requests.RequestException:
+            continue
+
+    # No feed found — fall back to HTML scraping
+    logger.info(f"No RSS/Atom feed found for {base_url}, will use HTML scraping")
+    return {"feedUrl": "", "feedType": "html", "siteName": site_name}
+
+
+def parse_rss_feed(feed_url: str) -> list[dict[str, Any]]:
+    """Parse an RSS/Atom feed and return a list of articles."""
+    logger.info(f"Parsing RSS feed: {feed_url}")
+    parsed = feedparser.parse(feed_url, agent=USER_AGENT)
+
+    articles: list[dict[str, Any]] = []
+    for entry in parsed.entries:
+        url = getattr(entry, "link", "") or ""
+        if not url:
+            continue
+
+        title = getattr(entry, "title", "") or ""
+        summary = getattr(entry, "summary", "") or ""
+        # Clean HTML from summary
+        if summary and "<" in summary:
+            summary = BeautifulSoup(summary, "html.parser").get_text()[:500]
+
+        published = ""
+        if hasattr(entry, "published_parsed") and entry.published_parsed:
+            try:
+                published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).isoformat()
+            except (TypeError, ValueError):
+                pass
+        elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
+            try:
+                published = datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc).isoformat()
+            except (TypeError, ValueError):
+                pass
+
+        articles.append({
+            "url": url.strip(),
+            "title": title.strip(),
+            "summary": summary.strip(),
+            "published": published,
+        })
+
+    logger.info(f"Parsed {len(articles)} articles from RSS feed")
+    return articles
+
+
+def scrape_blog_listing(base_url: str) -> list[dict[str, Any]]:
+    """Scrape a blog listing page for article links (HTML fallback)."""
+    logger.info(f"Scraping blog listing: {base_url}")
+
+    try:
+        resp = requests.get(
+            base_url, headers={"User-Agent": USER_AGENT}, timeout=15, allow_redirects=True
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning(f"Failed to scrape {base_url}: {exc}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    parsed_base = urlparse(base_url)
+    articles: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    # Look for article links in common patterns
+    candidates = (
+        soup.find_all("article")
+        or soup.find_all("div", class_=re.compile(r"(post|article|entry|blog)", re.I))
+        or soup.find_all("a")
+    )
+
+    for element in candidates:
+        if not isinstance(element, Tag):
+            continue
+
+        # Find the link
+        if element.name == "a":
+            anchor = element
+        else:
+            anchor = element.find("a")
+            if not anchor or not isinstance(anchor, Tag):
+                continue
+
+        href = str(anchor.get("href", "")).strip()
+        if not href or href == "#" or href.lower().startswith("javascript:"):
+            continue
+
+        resolved = urljoin(base_url, href)
+        parsed_link = urlparse(resolved)
+
+        # Only include links from the same domain
+        if parsed_link.netloc != parsed_base.netloc:
+            continue
+
+        # Skip obvious non-article links
+        skip_patterns = [
+            "/tag/", "/category/", "/author/", "/page/",
+            "/search", "/login", "/signup", "/about", "/contact",
+            "#", "?", "/feed", "/rss",
+        ]
+        if any(pat in parsed_link.path.lower() for pat in skip_patterns):
+            continue
+
+        # Must have a path deeper than just "/"
+        if len(parsed_link.path.strip("/")) < 3:
+            continue
+
+        if resolved in seen_urls:
+            continue
+        seen_urls.add(resolved)
+
+        title = anchor.get_text().strip()[:200]
+        if not title or len(title) < 5:
+            # Try to find a heading nearby
+            heading = element.find(["h1", "h2", "h3", "h4"])
+            if heading:
+                title = heading.get_text().strip()[:200]
+
+        if not title or len(title) < 5:
+            continue
+
+        articles.append({
+            "url": resolved,
+            "title": title,
+            "summary": "",
+            "published": "",
+        })
+
+        if len(articles) >= 50:
+            break
+
+    logger.info(f"Scraped {len(articles)} article links from HTML")
+    return articles
+
+
+def crawl_feed_source(source_id: str) -> dict[str, Any]:
+    """Crawl a feed source: fetch articles, classify, and auto-generate content.
+
+    Returns crawl job summary.
+    """
+    source = get_feed_source(source_id)
+    if not source:
+        raise ValueError(f"Feed source not found: {source_id}")
+
+    logger.info(f"Starting crawl for feed source: {source['name']} ({source_id})")
+    job = create_crawl_job(source_id)
+
+    try:
+        # Fetch articles
+        if source["feedType"] == "rss" and source.get("feedUrl"):
+            articles = parse_rss_feed(source["feedUrl"])
+        else:
+            articles = scrape_blog_listing(source["baseUrl"])
+
+        job_updates: dict[str, Any] = {"articlesFound": len(articles)}
+
+        # Deduplicate against already-crawled articles
+        new_articles: list[dict[str, Any]] = []
+        for article in articles:
+            aid = _article_id(article["url"])
+            existing = get_crawled_article(aid)
+            if not existing:
+                new_articles.append(article)
+
+        relevant_count = 0
+        processed_count = 0
+        topics = source.get("topics", ["cloud security", "azure", "ai"])
+
+        for article in new_articles:
+            aid = _article_id(article["url"])
+
+            # Classify relevance
+            classification = classify_article(
+                title=article["title"],
+                summary=article.get("summary", ""),
+                content="",  # Full content fetched later if relevant
+                topics=topics,
+            )
+
+            crawled_record: dict[str, Any] = {
+                "id": aid,
+                "feedSourceId": source_id,
+                "articleUrl": article["url"],
+                "title": article["title"],
+                "isRelevant": classification["is_relevant"],
+                "relevanceScore": classification.get("relevance_score", 0),
+                "matchedTopics": classification.get("matched_topics", []),
+                "draftId": "",
+                "linkedinPostId": "",
+                "status": "skipped" if not classification["is_relevant"] else "pending",
+                "crawledAt": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if classification["is_relevant"]:
+                relevant_count += 1
+                try:
+                    result = process_relevant_article(article, source)
+                    crawled_record["draftId"] = result.get("draft_id", "")
+                    crawled_record["linkedinPostId"] = result.get("linkedin_post_id", "")
+                    crawled_record["status"] = result.get("status", "drafted")
+                    processed_count += 1
+                except Exception as exc:
+                    logger.error(
+                        f"Failed to process article {article['url']}: {exc}"
+                    )
+                    crawled_record["status"] = "error"
+                    crawled_record["error"] = str(exc)[:500]
+
+            upsert_crawled_article(crawled_record)
+
+        # Update job and source
+        now = datetime.now(timezone.utc).isoformat()
+        job_updates.update({
+            "articlesRelevant": relevant_count,
+            "articlesProcessed": processed_count,
+            "completedAt": now,
+            "status": "completed",
+        })
+        update_crawl_job(job["id"], job_updates)
+        update_feed_source(source_id, {"lastCrawledAt": now})
+
+        logger.info(
+            f"Crawl complete for {source['name']}: "
+            f"found={len(articles)}, new={len(new_articles)}, "
+            f"relevant={relevant_count}, processed={processed_count}"
+        )
+
+        return {
+            "job_id": job["id"],
+            "feed_source_id": source_id,
+            "articles_found": len(articles),
+            "new_articles": len(new_articles),
+            "articles_relevant": relevant_count,
+            "articles_processed": processed_count,
+            "status": "completed",
+        }
+
+    except Exception as exc:
+        logger.error(f"Crawl failed for {source['name']}: {exc}")
+        update_crawl_job(job["id"], {
+            "completedAt": datetime.now(timezone.utc).isoformat(),
+            "status": "failed",
+            "error": str(exc)[:500],
+        })
+        raise
+
+
+def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, None]:
+    """Crawl a feed source with streaming progress events.
+
+    Yields dicts with keys: type (event name), data (event payload).
+    Used by the SSE endpoint to give real-time feedback.
+    """
+    source = get_feed_source(source_id)
+    if not source:
+        yield {"type": "error", "data": {"error": f"Feed source not found: {source_id}"}}
+        return
+
+    source_name = source["name"]
+    feed_type = source.get("feedType", "rss")
+
+    yield {"type": "crawl_started", "data": {"source_name": source_name, "feed_type": feed_type}}
+
+    job = create_crawl_job(source_id)
+
+    try:
+        # Fetch articles
+        method = "RSS" if (feed_type == "rss" and source.get("feedUrl")) else "HTML scraping"
+        yield {"type": "fetching_articles", "data": {"method": method}}
+
+        if feed_type == "rss" and source.get("feedUrl"):
+            articles = parse_rss_feed(source["feedUrl"])
+        else:
+            articles = scrape_blog_listing(source["baseUrl"])
+
+        # Deduplicate
+        new_articles: list[dict[str, Any]] = []
+        for article in articles:
+            aid = _article_id(article["url"])
+            existing = get_crawled_article(aid)
+            if not existing:
+                new_articles.append(article)
+
+        yield {
+            "type": "articles_fetched",
+            "data": {"total": len(articles), "new": len(new_articles)},
+        }
+
+        job_updates: dict[str, Any] = {"articlesFound": len(articles)}
+        relevant_count = 0
+        processed_count = 0
+        topics = source.get("topics", ["cloud security", "azure", "ai"])
+
+        for i, article in enumerate(new_articles):
+            aid = _article_id(article["url"])
+
+            yield {
+                "type": "classifying",
+                "data": {"index": i + 1, "total": len(new_articles), "title": article["title"][:100]},
+            }
+
+            classification = classify_article(
+                title=article["title"],
+                summary=article.get("summary", ""),
+                content="",
+                topics=topics,
+            )
+
+            is_relevant = classification["is_relevant"]
+            matched_topics = classification.get("matched_topics", [])
+            score = classification.get("relevance_score", 0)
+
+            yield {
+                "type": "classified",
+                "data": {
+                    "index": i + 1,
+                    "total": len(new_articles),
+                    "title": article["title"][:100],
+                    "is_relevant": is_relevant,
+                    "matched_topics": matched_topics,
+                    "relevance_score": score,
+                },
+            }
+
+            crawled_record: dict[str, Any] = {
+                "id": aid,
+                "feedSourceId": source_id,
+                "articleUrl": article["url"],
+                "title": article["title"],
+                "isRelevant": is_relevant,
+                "relevanceScore": score,
+                "matchedTopics": matched_topics,
+                "draftId": "",
+                "linkedinPostId": "",
+                "status": "skipped" if not is_relevant else "pending",
+                "crawledAt": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if is_relevant:
+                relevant_count += 1
+
+                yield {
+                    "type": "generating",
+                    "data": {
+                        "index": relevant_count,
+                        "total_relevant": relevant_count,
+                        "title": article["title"][:100],
+                    },
+                }
+
+                try:
+                    result = process_relevant_article(article, source)
+                    crawled_record["draftId"] = result.get("draft_id", "")
+                    crawled_record["linkedinPostId"] = result.get("linkedin_post_id", "")
+                    crawled_record["status"] = result.get("status", "drafted")
+                    processed_count += 1
+
+                    yield {
+                        "type": "generated",
+                        "data": {
+                            "index": processed_count,
+                            "total_relevant": relevant_count,
+                            "title": article["title"][:100],
+                            "draft_id": result.get("draft_id", ""),
+                            "status": result.get("status", "drafted"),
+                        },
+                    }
+                except Exception as exc:
+                    logger.error(f"Failed to process article {article['url']}: {exc}")
+                    crawled_record["status"] = "error"
+                    crawled_record["error"] = str(exc)[:500]
+
+                    yield {
+                        "type": "generate_error",
+                        "data": {
+                            "title": article["title"][:100],
+                            "error": str(exc)[:200],
+                        },
+                    }
+
+            upsert_crawled_article(crawled_record)
+
+        # Finalize
+        now = datetime.now(timezone.utc).isoformat()
+        job_updates.update({
+            "articlesRelevant": relevant_count,
+            "articlesProcessed": processed_count,
+            "completedAt": now,
+            "status": "completed",
+        })
+        update_crawl_job(job["id"], job_updates)
+        update_feed_source(source_id, {"lastCrawledAt": now})
+
+        yield {
+            "type": "complete",
+            "data": {
+                "job_id": job["id"],
+                "feed_source_id": source_id,
+                "articles_found": len(articles),
+                "new_articles": len(new_articles),
+                "articles_relevant": relevant_count,
+                "articles_processed": processed_count,
+                "status": "completed",
+            },
+        }
+
+    except Exception as exc:
+        logger.error(f"Crawl failed for {source_name}: {exc}")
+        update_crawl_job(job["id"], {
+            "completedAt": datetime.now(timezone.utc).isoformat(),
+            "status": "failed",
+            "error": str(exc)[:500],
+        })
+        yield {"type": "error", "data": {"error": str(exc)[:500]}}

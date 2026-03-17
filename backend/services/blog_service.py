@@ -403,6 +403,7 @@ def generate_blog_post(analysis: dict[str, Any]) -> dict[str, str]:
     start_time = time.time()
 
     system_prompt = _load_system_prompt()
+    media_assets = list(analysis.get("media_assets", []))
     source_type = analysis.pop("_source_type", "webpage")
     context = _build_analysis_context(analysis, source_type)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -442,7 +443,9 @@ def generate_blog_post(analysis: dict[str, Any]) -> dict[str, str]:
             f"response_length={len(full_response)}"
         )
 
-        return _parse_blog_response(full_response)
+        result = _parse_blog_response(full_response)
+        result["media_assets"] = media_assets
+        return result
     except Exception as e:
         elapsed = time.time() - start_time
         logger.error(

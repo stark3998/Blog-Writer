@@ -16,6 +16,7 @@ import {
   Zap,
   Eye,
   Download,
+  Settings,
 } from "lucide-react";
 
 export default function Home() {
@@ -113,17 +114,26 @@ export default function Home() {
               <span className="text-[11px] font-medium text-indigo-400/70 tracking-wide uppercase">AI-Powered</span>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setContent("");
-              setDraft(null);
-              navigate("/editor");
-            }}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 border border-white/[0.08] hover:border-white/[0.15] hover:text-white hover:bg-white/[0.04] transition-all duration-200"
-          >
-            <PenLine className="w-3.5 h-3.5 inline mr-2" />
-            New Draft
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/settings")}
+              className="p-2 rounded-lg text-slate-400 border border-white/[0.08] hover:border-white/[0.15] hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setContent("");
+                setDraft(null);
+                navigate("/editor");
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 border border-white/[0.08] hover:border-white/[0.15] hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+            >
+              <PenLine className="w-3.5 h-3.5 inline mr-2" />
+              New Draft
+            </button>
+          </div>
         </div>
       </header>
 

@@ -106,6 +106,8 @@ def compose_linkedin_post(
     excerpt: str = "",
     post_format: str = "feed_post",
     additional_context: str = "",
+    blog_url: str = "",
+    source_url: str = "",
 ) -> dict[str, Any]:
     """Compose an insights-driven LinkedIn post from blog content."""
     if post_format not in ("feed_post", "long_form"):
@@ -122,10 +124,18 @@ def compose_linkedin_post(
     system_prompt = _load_linkedin_prompt()
     client, model = _get_openai_client()
 
+    # Build link context for the prompt
+    link_lines = ""
+    if blog_url:
+        link_lines += f"Blog URL (YOUR published post — this is the PRIMARY link to promote): {blog_url}\n"
+    if source_url:
+        link_lines += f"Source URL (original article — secondary reference/attribution): {source_url}\n"
+
     user_prompt = (
         f"Format: {post_format}\n"
         f"Title: {resolved_title or '(missing title)'}\n"
         f"Excerpt: {resolved_excerpt or '(missing excerpt)'}\n"
+        f"{link_lines}"
         f"Additional context: {additional_context or '(none)'}\n\n"
         f"Blog content:\n{body}\n\n"
         "Generate an insights-driven LinkedIn post optimized for reach and meaningful engagement."

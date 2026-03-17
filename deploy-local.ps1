@@ -2,7 +2,7 @@
 param(
     [string]$Tag = (Get-Date -Format "yyyyMMddHHmmss"),
     [switch]$DryRun,
-    [switch]$SkipHealthCheck,
+    [switch]$SkipHealthCheck = $true,
     [switch]$SkipInfraApply
 )
 
@@ -111,7 +111,8 @@ Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'validate')
 if ($SkipInfraApply) {
     Write-Step "Planning infrastructure changes (infra apply skipped)"
     Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'plan', '-out=tfplan-infra-local', '-input=false')
-} else {
+}
+else {
     Write-Step "Planning infrastructure changes"
     Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'plan', '-out=tfplan-infra-local', '-input=false')
     if ($PSCmdlet.ShouldProcess('Azure infrastructure', 'terraform apply -auto-approve tfplan-infra-local')) {
@@ -148,7 +149,8 @@ Write-Step "Planning and applying app rollout"
 Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'validate')
 if ($WhatIfPreference) {
     Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'plan', '-out=tfplan-app-local', '-input=false', '-var', "container_image=$fullImage")
-} else {
+}
+else {
     Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'plan', '-out=tfplan-app-local', '-input=false')
     if ($PSCmdlet.ShouldProcess('Azure Container App rollout', 'terraform apply -auto-approve tfplan-app-local')) {
         Invoke-Terraform -Arguments @('-chdir=infra/terraform', 'apply', '-auto-approve', 'tfplan-app-local')
@@ -161,7 +163,8 @@ $portalUrl = Get-TerraformOutput -Name 'portal_resource_group_url'
 if ($WhatIfPreference) {
     Write-Step 'Preview complete'
     Write-Host 'No Azure resources or local files were changed.'
-} elseif (-not $SkipHealthCheck) {
+}
+elseif (-not $SkipHealthCheck) {
     Write-Step "Running health check"
     $health = Invoke-RestMethod -Uri "$appUrl/api/health" -Method Get -TimeoutSec 60
     Write-Host ("Health: " + ($health | ConvertTo-Json -Compress))

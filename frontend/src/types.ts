@@ -77,3 +77,57 @@ export interface FeedDiscoverResult {
   feed_type: string;
   site_name: string;
 }
+
+export type DiagnosticStatus = "pass" | "fail" | "warn" | "skip";
+
+export interface DiagnosticsCheckFlags {
+  linkedin: boolean;
+  foundry_config: boolean;
+  text_generation: boolean;
+  image_generation: boolean;
+  cosmos: boolean;
+  publish_dry_run: boolean;
+}
+
+export interface DiagnosticsCheckResult {
+  key: string;
+  label: string;
+  status: DiagnosticStatus;
+  severity: "info" | "warning" | "error";
+  billable: boolean;
+  duration_ms: number;
+  recommendation: string;
+  details: Record<string, unknown>;
+}
+
+export interface DiagnosticsSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  warned: number;
+  skipped: number;
+}
+
+export interface DiagnosticsRunRequest {
+  session_id?: string;
+  include_billable?: boolean;
+  checks?: Partial<DiagnosticsCheckFlags>;
+}
+
+export interface DiagnosticsRunResponse {
+  timestamp: string;
+  overall_status: "healthy" | "degraded" | "unhealthy";
+  summary: DiagnosticsSummary;
+  checks: DiagnosticsCheckResult[];
+}
+
+export interface DiagnosticsCheckMetadata {
+  key: string;
+  label: string;
+  billable: boolean;
+  description: string;
+}
+
+export interface DiagnosticsChecksResponse {
+  checks: DiagnosticsCheckMetadata[];
+}

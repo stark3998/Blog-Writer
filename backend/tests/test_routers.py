@@ -278,6 +278,45 @@ class TestLinkedInComposeEndpoint:
                 "content": "",
             },
         )
+
+
+# ---------- Diagnostics ----------
+
+class TestDiagnosticsEndpoint:
+    def test_diagnostics_requires_key_configuration(self):
+        with patch.dict("os.environ", {"DIAGNOSTICS_API_KEY": ""}, clear=False):
+            res = client.post("/api/diagnostics/run", json={})
+            assert res.status_code == 503
+
+    def test_diagnostics_invalid_key(self):
+        with patch.dict("os.environ", {"DIAGNOSTICS_API_KEY": "secret-key"}, clear=False):
+            res = client.post(
+                "/api/diagnostics/run",
+                headers={"X-Diagnostics-Key": "wrong"},
+                json={},
+            )
+            assert res.status_code == 401
+
+    def test_diagnostics_run_with_no_checks(self):
+        with patch.dict("os.environ", {"DIAGNOSTICS_API_KEY": "secret-key"}, clear=False):
+            res = client.post(
+                "/api/diagnostics/run",
+                headers={"X-Diagnostics-Key": "secret-key"},
+                json={
+                    "include_billable": False,
+                    "checks": {
+                        "linkedin": False,
+                        "foundry_config": False,
+                        "text_generation": False,
+                        "image_generation": False,
+                        "cosmos": False,
+                        "publish_dry_run": False,
+                    },
+                },
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["summary"]["total"] == 0
         assert res.status_code == 400
 
 

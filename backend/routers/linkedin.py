@@ -147,6 +147,7 @@ async def compose_post(request: LinkedInComposeRequest):
     content = request.content
     title = request.title
     excerpt = request.excerpt
+    draft = None
 
     if request.draft_id:
         draft = get_draft(request.draft_id)

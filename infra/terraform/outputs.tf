@@ -37,13 +37,3 @@ output "portal_resource_group_url" {
   description = "Azure Portal URL for the deployed resource group."
   value       = "https://portal.azure.com/#@/resource/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.this.name}/overview"
 }
-
-output "entra_client_id" {
-  description = "Entra ID Application (client) ID."
-  value       = azuread_application.blog_writer.client_id
-}
-
-output "entra_tenant_id" {
-  description = "Entra ID Tenant ID."
-  value       = data.azuread_client_config.current.tenant_id
-}

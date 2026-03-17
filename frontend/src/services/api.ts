@@ -12,6 +12,7 @@ import type {
   CrawlJob,
   CrawlResult,
   FeedDiscoverResult,
+  PublishedBlog,
   DiagnosticsRunRequest,
   DiagnosticsRunResponse,
   DiagnosticsChecksResponse,
@@ -272,6 +273,10 @@ export async function getPublishedBlog(slug: string): Promise<{
   published_at: string;
 }> {
   return json(`/blog/${encodeURIComponent(slug)}`);
+}
+
+export async function listPublishedBlogs(limit = 50): Promise<PublishedBlog[]> {
+  return json<PublishedBlog[]>(`/blogs/published?limit=${limit}`);
 }
 
 // ---------- LinkedIn ----------

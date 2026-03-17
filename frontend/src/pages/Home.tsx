@@ -9,8 +9,9 @@ import {
   listRelevantArticles,
   listFeeds,
   getCrawlLog,
+  listPublishedBlogs,
 } from "../services/api";
-import type { GenerateResult, CrawledArticle, FeedSource, CrawlJob } from "../types";
+import type { GenerateResult, CrawledArticle, FeedSource, CrawlJob, PublishedBlog } from "../types";
 import {
   Loader2,
   PenLine,
@@ -31,6 +32,9 @@ import {
   BarChart3,
   Newspaper,
   Plus,
+  Linkedin,
+  CheckCircle2,
+  BookOpen,
 } from "lucide-react";
 
 export default function Home() {
@@ -53,12 +57,14 @@ export default function Home() {
   const [relevantArticles, setRelevantArticles] = useState<CrawledArticle[]>([]);
   const [feeds, setFeeds] = useState<FeedSource[]>([]);
   const [recentJobs, setRecentJobs] = useState<CrawlJob[]>([]);
+  const [publishedBlogs, setPublishedBlogs] = useState<PublishedBlog[]>([]);
 
   useEffect(() => {
     listDrafts().then(setDrafts).catch(() => {});
     listRelevantArticles().then(setRelevantArticles).catch(() => {});
     listFeeds().then(setFeeds).catch(() => {});
     getCrawlLog(5).then(setRecentJobs).catch(() => {});
+    listPublishedBlogs(10).then(setPublishedBlogs).catch(() => {});
   }, [setDrafts]);
 
   const handleGenerate = () => {
@@ -205,7 +211,7 @@ export default function Home() {
               <p className="text-sm text-gray-500 mt-1">Generate, manage, and track your blog content</p>
             </div>
           </div>
-          <div className="relative group max-w-3xl">
+          <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-purple-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative flex gap-3 p-2 rounded-2xl bg-white border border-gray-200/80 shadow-lg shadow-indigo-500/5">
               <div className="relative flex-1">
@@ -257,11 +263,12 @@ export default function Home() {
         </section>
 
         {/* Stats Cards */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-fade-in-up delay-1">
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 animate-fade-in-up delay-1">
           {[
             { label: "Total Drafts", value: drafts.length, icon: FileText, color: "indigo", onClick: () => {} },
             { label: "My Drafts", value: userCount, icon: User, color: "violet", onClick: () => { setOriginFilter("user"); setTagFilter(null); } },
             { label: "RSS Generated", value: rssCount, icon: Rss, color: "orange", onClick: () => { setOriginFilter("rss_crawl"); setTagFilter(null); } },
+            { label: "Published", value: publishedBlogs.length, icon: BookOpen, color: "cyan", onClick: () => {} },
             { label: "Active Feeds", value: activeFeeds, icon: Newspaper, color: "emerald", onClick: () => navigate("/settings") },
           ].map(({ label, value, icon: Icon, color, onClick }) => (
             <button
@@ -488,7 +495,21 @@ export default function Home() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug mb-1.5">{article.title}</h4>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{article.title}</h4>
+                          {article.linkedin_post_id && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200/60 shrink-0" title="Published to LinkedIn">
+                              <Linkedin className="w-2.5 h-2.5" />
+                              LI
+                            </span>
+                          )}
+                          {article.status === "drafted" && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-50 text-cyan-600 border border-cyan-200/60 shrink-0">
+                              <FileText className="w-2.5 h-2.5" />
+                              Draft
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {article.matched_topics.map((topic) => (
                             <span key={topic} className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-50 text-indigo-500 border border-indigo-200/60">
@@ -524,6 +545,48 @@ export default function Home() {
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Published Blogs */}
+            <div className="bg-white rounded-2xl border border-gray-200/60 overflow-hidden">
+              <div className="p-5 border-b border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-cyan-500" />
+                  Published
+                  {publishedBlogs.length > 0 && (
+                    <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {publishedBlogs.length}
+                    </span>
+                  )}
+                </h3>
+              </div>
+
+              <div className="divide-y divide-gray-50 max-h-[300px] overflow-y-auto">
+                {publishedBlogs.length === 0 && (
+                  <div className="p-8 text-center">
+                    <BookOpen className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-xs font-medium text-gray-400">No published blogs yet</p>
+                  </div>
+                )}
+                {publishedBlogs.map((blog) => (
+                  <div
+                    key={blog.id}
+                    className="group px-5 py-3 hover:bg-gray-50/50 transition-colors duration-200 cursor-pointer"
+                    onClick={() => navigate(`/blog/${blog.slug}`)}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <h4 className="text-sm font-semibold text-gray-900 truncate">{blog.title}</h4>
+                    </div>
+                    <div className="flex items-center gap-2 ml-[22px]">
+                      <p className="text-xs text-gray-400 line-clamp-1 flex-1">{blog.excerpt}</p>
+                      <span className="text-[10px] text-gray-400 shrink-0">
+                        {new Date(blog.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
                     </div>
                   </div>
                 ))}

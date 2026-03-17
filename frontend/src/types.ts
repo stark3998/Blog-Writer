@@ -49,8 +49,19 @@ export interface CrawledArticle {
   matched_topics: string[];
   matched_keywords: string[];
   draft_id: string;
+  linkedin_post_id: string;
   status: string;
   crawled_at: string;
+}
+
+export interface PublishedBlog {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  sourceUrl: string;
+  publishedAt: string;
+  updatedAt: string;
 }
 
 export interface CrawlJob {

@@ -91,6 +91,7 @@ class CrawledArticleResponse(BaseModel):
     matched_topics: list[str]
     matched_keywords: list[str] = []
     draft_id: str
+    linkedin_post_id: str = ""
     status: str
     crawled_at: str
 
@@ -139,6 +140,7 @@ def _to_article_response(item: dict) -> dict:
         "matched_topics": item.get("matchedTopics", []),
         "matched_keywords": item.get("matchedKeywords", []),
         "draft_id": item.get("draftId", ""),
+        "linkedin_post_id": item.get("linkedinPostId", ""),
         "status": item.get("status", ""),
         "crawled_at": item.get("crawledAt", ""),
     }

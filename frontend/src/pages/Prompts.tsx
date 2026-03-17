@@ -143,6 +143,7 @@ export default function Prompts() {
     editor_prompt: "AI Editor",
     linkedin_post_prompt: "LinkedIn Post",
     validation_agent_prompt: "Validation Agent",
+    post_selector_prompt: "Post Selector",
   };
 
   const testPlaceholders: Record<string, string> = {
@@ -154,6 +155,8 @@ export default function Prompts() {
       "Paste blog content to test LinkedIn post generation...",
     validation_agent_prompt:
       'Paste content to validate, e.g.:\n\ncontent_type: linkedin_post\nblog_url: https://myblog.com/post\nsource_url: https://source.com/article\n\n--- GENERATED CONTENT ---\nYour post text here...\n\n--- SOURCE MATERIAL ---\nOriginal article text...',
+    post_selector_prompt:
+      'Paste a JSON array of candidate posts, e.g.:\n[{"index":0,"title":"Post A","post_text":"...","article_url":"https://..."},{"index":1,"title":"Post B","post_text":"...","article_url":"https://..."}]',
   };
 
   return (

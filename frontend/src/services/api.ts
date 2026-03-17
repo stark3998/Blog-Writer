@@ -407,7 +407,9 @@ export interface CrawlSSECallbacks {
   onGenerating?: (data: { index: number; total_relevant: number; title: string }) => void;
   onGenerated?: (data: { index: number; total_relevant: number; title: string; draft_id: string; status: string }) => void;
   onGenerateError?: (data: { title: string; error: string }) => void;
-  onComplete?: (data: { job_id: string; articles_found: number; new_articles: number; articles_relevant: number; articles_processed: number }) => void;
+  onSelectingBest?: (data: { candidates: number }) => void;
+  onBestSelected?: (data: { selected_index?: number; title?: string; post_id?: string; skipped?: boolean; reason?: string }) => void;
+  onComplete?: (data: { job_id: string; articles_found: number; new_articles: number; articles_relevant: number; articles_processed: number; linkedin_published?: string }) => void;
   onError?: (error: string) => void;
 }
 
@@ -456,6 +458,8 @@ export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): Abort
                 case "generating": callbacks.onGenerating?.(data); break;
                 case "generated": callbacks.onGenerated?.(data); break;
                 case "generate_error": callbacks.onGenerateError?.(data); break;
+                case "selecting_best": callbacks.onSelectingBest?.(data); break;
+                case "best_selected": callbacks.onBestSelected?.(data); break;
                 case "complete": callbacks.onComplete?.(data); break;
                 case "error": callbacks.onError?.(data.error); break;
               }

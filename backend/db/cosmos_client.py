@@ -582,6 +582,32 @@ def upsert_crawled_article(article: dict[str, Any]) -> dict[str, Any]:
     return article
 
 
+def has_linkedin_post_today() -> bool:
+    """Check if a LinkedIn post was already published today (UTC).
+
+    Looks for any crawled-article record with a non-empty linkedinPostId
+    whose crawledAt falls on today's UTC date.
+    """
+    container = _get_crawled_articles_container()
+    today_start = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00")
+    today_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59")
+    query = (
+        "SELECT VALUE COUNT(1) FROM c "
+        "WHERE c.linkedinPostId != '' "
+        "AND c.crawledAt >= @todayStart "
+        "AND c.crawledAt <= @todayEnd"
+    )
+    params = [
+        {"name": "@todayStart", "value": today_start},
+        {"name": "@todayEnd", "value": today_end},
+    ]
+    results = list(
+        container.query_items(query=query, parameters=params, enable_cross_partition_query=True)
+    )
+    count = results[0] if results else 0
+    return count > 0
+
+
 def list_crawled_articles(
     feed_source_id: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:

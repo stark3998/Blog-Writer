@@ -1,5 +1,6 @@
 """Auto Publisher Service — Generate blog + LinkedIn posts from crawled articles."""
 
+import json
 import logging
 import os
 from typing import Any
@@ -9,6 +10,7 @@ from backend.db.cosmos_client import (
     get_linkedin_session,
     list_feed_sources,
     publish_blog,
+    has_linkedin_post_today,
 )
 from backend.services.blog_service import analyze_source, generate_blog_post, _parse_blog_response
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
@@ -133,23 +135,131 @@ def process_relevant_article(
         logger.error(f"LinkedIn compose failed for {article_url}: {exc}")
         linkedin_data = None
 
-    # Step 5: Auto-publish LinkedIn if configured and session is active
-    if auto_publish_linkedin and linkedin_data:
-        session_id = _get_active_linkedin_session_id()
-        if session_id:
-            try:
-                li_result = publish_member_post(
-                    session_id=session_id,
-                    post_text=linkedin_data["post_text"],
-                    visibility="PUBLIC",
-                    image_url=linkedin_data.get("image_url", ""),
-                )
-                result["linkedin_post_id"] = li_result.get("post_id", "")
-                result["status"] = "published"
-                logger.info(f"LinkedIn post auto-published: {li_result.get('post_id', '')}")
-            except Exception as exc:
-                logger.error(f"LinkedIn auto-publish failed: {exc}")
-        else:
-            logger.warning("Auto-publish LinkedIn requested but no active session found")
+    # LinkedIn data is returned for deferred selection (best-post-per-day)
+    if linkedin_data:
+        result["linkedin_data"] = {
+            "title": blog_data["title"],
+            "post_text": linkedin_data.get("post_text", ""),
+            "image_url": linkedin_data.get("image_url", "") or hero_image_url or "",
+            "article_url": article_url,
+            "blog_url": blog_url,
+        }
 
     return result
+
+
+def select_best_post(candidates: list[dict[str, Any]]) -> int:
+    """Use the post selector prompt to pick the most technical LinkedIn post.
+
+    Args:
+        candidates: List of dicts with keys: title, post_text, article_url.
+
+    Returns:
+        Index of the best candidate (0-based).
+    """
+    if len(candidates) <= 1:
+        return 0
+
+    from backend.routers.prompts import load_prompt_content
+
+    system_prompt = load_prompt_content("post_selector_prompt")
+
+    payload = [
+        {
+            "index": i,
+            "title": c["title"],
+            "post_text": c["post_text"],
+            "article_url": c.get("article_url", ""),
+        }
+        for i, c in enumerate(candidates)
+    ]
+
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+    from openai import AzureOpenAI
+
+    endpoint = os.environ.get("PROJECT_ENDPOINT", "")
+    api_key = os.environ.get("PROJECT_API_KEY", "")
+    api_version = os.environ.get("API_VERSION", "2024-12-01-preview")
+    model = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o")
+
+    if api_key:
+        client = AzureOpenAI(azure_endpoint=endpoint, api_key=api_key, api_version=api_version)
+    else:
+        credential = DefaultAzureCredential()
+        token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
+        client = AzureOpenAI(azure_endpoint=endpoint, azure_ad_token_provider=token_provider, api_version=api_version)
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(payload)},
+            ],
+            temperature=0.3,
+            max_completion_tokens=500,
+        )
+        raw = response.choices[0].message.content or "{}"
+        # Strip markdown fences if present
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        result = json.loads(raw)
+        idx = int(result.get("selected_index", 0))
+        reasoning = result.get("reasoning", "")
+        logger.info(f"Best post selected: index={idx}, reasoning={reasoning}")
+        if 0 <= idx < len(candidates):
+            return idx
+        logger.warning(f"Selected index {idx} out of range, defaulting to 0")
+        return 0
+    except Exception as exc:
+        logger.error(f"Post selector failed: {exc}, defaulting to first candidate")
+        return 0
+
+
+def publish_best_linkedin_post(
+    candidates: list[dict[str, Any]],
+    feed_source: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Select the best LinkedIn post from candidates and publish it.
+
+    Checks the daily limit first. Returns publish result or None if skipped.
+    """
+    if not candidates:
+        return None
+
+    auto_publish_linkedin = feed_source.get("autoPublishLinkedIn", False)
+    if not auto_publish_linkedin:
+        return None
+
+    session_id = _get_active_linkedin_session_id()
+    if not session_id:
+        logger.warning("Auto-publish LinkedIn requested but no active session found")
+        return None
+
+    # Check daily limit
+    if has_linkedin_post_today():
+        logger.info("LinkedIn post already published today — skipping")
+        return {"skipped": True, "reason": "daily_limit"}
+
+    # Select the best post
+    best_idx = select_best_post(candidates)
+    best = candidates[best_idx]
+
+    try:
+        li_result = publish_member_post(
+            session_id=session_id,
+            post_text=best["post_text"],
+            visibility="PUBLIC",
+            image_url=best.get("image_url", ""),
+        )
+        logger.info(f"Best LinkedIn post published: {li_result.get('post_id', '')} — '{best['title'][:60]}'")
+        return {
+            "post_id": li_result.get("post_id", ""),
+            "selected_index": best_idx,
+            "title": best["title"],
+            "status_code": li_result.get("status_code", 0),
+        }
+    except Exception as exc:
+        logger.error(f"LinkedIn auto-publish failed for best post: {exc}")
+        return None

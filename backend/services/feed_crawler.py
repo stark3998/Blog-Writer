@@ -22,7 +22,7 @@ from backend.db.cosmos_client import (
     upsert_crawled_article,
 )
 from backend.services.relevance_classifier import classify_article
-from backend.services.auto_publisher import process_relevant_article
+from backend.services.auto_publisher import process_relevant_article, publish_best_linkedin_post
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +266,7 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
         relevant_count = 0
         processed_count = 0
         topics = source.get("topics", ["cloud security", "azure", "ai"])
+        linkedin_candidates: list[dict[str, Any]] = []
 
         for article in new_articles:
             aid = _article_id(article["url"])
@@ -297,9 +298,15 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                 try:
                     result = process_relevant_article(article, source)
                     crawled_record["draftId"] = result.get("draft_id", "")
-                    crawled_record["linkedinPostId"] = result.get("linkedin_post_id", "")
                     crawled_record["status"] = result.get("status", "drafted")
                     processed_count += 1
+
+                    # Collect LinkedIn candidate for deferred selection
+                    if result.get("linkedin_data"):
+                        linkedin_candidates.append({
+                            **result["linkedin_data"],
+                            "crawled_article_id": aid,
+                        })
                 except Exception as exc:
                     logger.error(
                         f"Failed to process article {article['url']}: {exc}"
@@ -309,6 +316,19 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
 
             upsert_crawled_article(crawled_record)
 
+        # Select and publish the best LinkedIn post (deferred from per-article)
+        linkedin_result = None
+        if linkedin_candidates:
+            linkedin_result = publish_best_linkedin_post(linkedin_candidates, source)
+            if linkedin_result and linkedin_result.get("post_id"):
+                # Update the winning article's crawled record
+                winner_aid = linkedin_candidates[linkedin_result["selected_index"]]["crawled_article_id"]
+                winner_record = get_crawled_article(winner_aid)
+                if winner_record:
+                    winner_record["linkedinPostId"] = linkedin_result["post_id"]
+                    winner_record["status"] = "published"
+                    upsert_crawled_article(winner_record)
+
         # Update job and source
         now = datetime.now(timezone.utc).isoformat()
         job_updates.update({
@@ -317,6 +337,9 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
             "completedAt": now,
             "status": "completed",
         })
+        if linkedin_result and linkedin_result.get("post_id"):
+            job_updates["linkedinPostId"] = linkedin_result["post_id"]
+            job_updates["linkedinSelectedIndex"] = linkedin_result["selected_index"]
         update_crawl_job(job["id"], job_updates)
         update_feed_source(source_id, {"lastCrawledAt": now})
 
@@ -333,6 +356,7 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
             "new_articles": len(new_articles),
             "articles_relevant": relevant_count,
             "articles_processed": processed_count,
+            "linkedin_published": linkedin_result.get("post_id", "") if linkedin_result else "",
             "status": "completed",
         }
 
@@ -391,6 +415,7 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
         relevant_count = 0
         processed_count = 0
         topics = source.get("topics", ["cloud security", "azure", "ai"])
+        linkedin_candidates: list[dict[str, Any]] = []
 
         for i, article in enumerate(new_articles):
             aid = _article_id(article["url"])
@@ -452,9 +477,15 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 try:
                     result = process_relevant_article(article, source)
                     crawled_record["draftId"] = result.get("draft_id", "")
-                    crawled_record["linkedinPostId"] = result.get("linkedin_post_id", "")
                     crawled_record["status"] = result.get("status", "drafted")
                     processed_count += 1
+
+                    # Collect LinkedIn candidate for deferred selection
+                    if result.get("linkedin_data"):
+                        linkedin_candidates.append({
+                            **result["linkedin_data"],
+                            "crawled_article_id": aid,
+                        })
 
                     yield {
                         "type": "generated",
@@ -481,6 +512,41 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
 
             upsert_crawled_article(crawled_record)
 
+        # Select and publish the best LinkedIn post (deferred from per-article)
+        linkedin_result = None
+        if linkedin_candidates:
+            yield {
+                "type": "selecting_best",
+                "data": {"candidates": len(linkedin_candidates)},
+            }
+
+            linkedin_result = publish_best_linkedin_post(linkedin_candidates, source)
+
+            if linkedin_result and linkedin_result.get("post_id"):
+                winner_aid = linkedin_candidates[linkedin_result["selected_index"]]["crawled_article_id"]
+                winner_record = get_crawled_article(winner_aid)
+                if winner_record:
+                    winner_record["linkedinPostId"] = linkedin_result["post_id"]
+                    winner_record["status"] = "published"
+                    upsert_crawled_article(winner_record)
+
+                yield {
+                    "type": "best_selected",
+                    "data": {
+                        "selected_index": linkedin_result["selected_index"],
+                        "title": linkedin_result.get("title", ""),
+                        "post_id": linkedin_result["post_id"],
+                    },
+                }
+            elif linkedin_result and linkedin_result.get("skipped"):
+                yield {
+                    "type": "best_selected",
+                    "data": {
+                        "skipped": True,
+                        "reason": linkedin_result.get("reason", "daily_limit"),
+                    },
+                }
+
         # Finalize
         now = datetime.now(timezone.utc).isoformat()
         job_updates.update({
@@ -489,6 +555,9 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
             "completedAt": now,
             "status": "completed",
         })
+        if linkedin_result and linkedin_result.get("post_id"):
+            job_updates["linkedinPostId"] = linkedin_result["post_id"]
+            job_updates["linkedinSelectedIndex"] = linkedin_result["selected_index"]
         update_crawl_job(job["id"], job_updates)
         update_feed_source(source_id, {"lastCrawledAt": now})
 
@@ -501,6 +570,7 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 "new_articles": len(new_articles),
                 "articles_relevant": relevant_count,
                 "articles_processed": processed_count,
+                "linkedin_published": linkedin_result.get("post_id", "") if linkedin_result else "",
                 "status": "completed",
             },
         }

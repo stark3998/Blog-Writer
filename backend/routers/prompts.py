@@ -31,6 +31,10 @@ PROMPT_REGISTRY: dict[str, tuple[Path, str]] = {
         PROMPT_DIR / "validation_agent_prompt.md",
         "Validation agent — validates accuracy and URL placement in generated content",
     ),
+    "post_selector_prompt": (
+        PROMPT_DIR / "post_selector_prompt.md",
+        "Post selector — picks the most technical LinkedIn post from crawl candidates",
+    ),
 }
 
 

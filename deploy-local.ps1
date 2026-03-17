@@ -89,9 +89,9 @@ function Update-ContainerImageInTfvars {
     )
 
     $content = Get-Content -Path $TfvarsPath -Raw
-    $pattern = "${VariableName}\s*=\s*`"[^`"]*`""
-    $replacement = "${VariableName} = `"$Image`""
-    $updated = [regex]::Replace($content, $pattern, $replacement, 1)
+    $pattern = $VariableName + '\s*=\s*"[^"]*"'
+    $replacement = $VariableName + ' = "' + $Image + '"'
+    $updated = [regex]::Replace($content, $pattern, $replacement)
 
     if ($updated -eq $content) {
         throw "Could not locate $VariableName in $TfvarsPath"

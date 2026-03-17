@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── Enterprise Design Tokens ───────────────────────────────── */
+/* ── Design Tokens ────────────────────────────────────────── */
 
 :root {
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -9,6 +9,21 @@
   --duration-normal: 250ms;
   --duration-slow: 400ms;
   --duration-entrance: 600ms;
+
+  /* Light creative palette */
+  --bg-base: #fafbff;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f4f6fb;
+  --bg-inset: #eef1f8;
+  --border-subtle: rgba(99, 102, 241, 0.08);
+  --border-default: rgba(99, 102, 241, 0.12);
+  --border-strong: rgba(99, 102, 241, 0.2);
+  --text-primary: #1e1b4b;
+  --text-secondary: #4b5563;
+  --text-tertiary: #9ca3af;
+  --accent: #6366f1;
+  --accent-soft: rgba(99, 102, 241, 0.08);
+  --accent-medium: rgba(99, 102, 241, 0.15);
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
@@ -18,8 +33,8 @@ body {
     Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #0b0f1a;
-  color: #e2e8f0;
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────── */
@@ -34,12 +49,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(99, 102, 241, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(99, 102, 241, 0.25);
 }
 
 /* ── Keyframes ───────────────────────────────────────────────── */
@@ -90,6 +105,11 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
 /* ── Animation Utilities ─────────────────────────────────────── */
 
 .animate-fade-in {
@@ -119,6 +139,9 @@ body {
   background-size: 200% 200%;
   animation: gradient-shift 6s ease infinite;
 }
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
 
 /* Staggered entrance delays */
 .delay-1 { animation-delay: 80ms; }
@@ -126,3 +149,17 @@ body {
 .delay-3 { animation-delay: 240ms; }
 .delay-4 { animation-delay: 320ms; }
 .delay-5 { animation-delay: 400ms; }
+
+/* ── Glass effect ────────────────────────────────────────────── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useBlogStore } from "../store/blogStore";
 import { generateBlogStream, listDrafts, createDraft, deleteDraft } from "../services/api";
 import type { GenerateResult } from "../types";
@@ -17,6 +17,7 @@ import {
   Eye,
   Download,
   Settings,
+  Rss,
 } from "lucide-react";
 
 export default function Home() {
@@ -95,70 +96,85 @@ export default function Home() {
   const busy = phase === "analyzing" || phase === "generating";
 
   return (
-    <div className="min-h-screen bg-[#0b0f1a] text-white">
-      {/* Ambient background glow */}
+    <div className="min-h-screen bg-[var(--bg-base)]">
+      {/* Decorative background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[20%] w-[600px] h-[600px] bg-indigo-600/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[15%] w-[500px] h-[500px] bg-cyan-600/[0.03] rounded-full blur-[100px]" />
+        <div className="absolute top-[-30%] right-[-10%] w-[800px] h-[800px] bg-indigo-200/30 rounded-full blur-[140px] animate-float" />
+        <div className="absolute bottom-[-20%] left-[-5%] w-[600px] h-[600px] bg-violet-200/20 rounded-full blur-[120px] animate-float" style={{ animationDelay: "3s" }} />
+        <div className="absolute top-[20%] left-[50%] w-[400px] h-[400px] bg-cyan-200/15 rounded-full blur-[100px] animate-float" style={{ animationDelay: "1.5s" }} />
       </div>
 
-      {/* Header */}
-      <header className="relative border-b border-white/[0.06] backdrop-blur-md bg-[#0b0f1a]/80 animate-fade-in-down">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-4 h-4 text-white" />
+      {/* Navigation */}
+      <nav className="relative glass-strong border-b border-indigo-100/60 animate-fade-in-down sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow">
+              <Sparkles className="w-4.5 h-4.5 text-white" />
             </div>
             <div className="flex items-baseline gap-2">
-              <h1 className="text-lg font-semibold tracking-tight text-white">Blog Writer</h1>
-              <span className="text-[11px] font-medium text-indigo-400/70 tracking-wide uppercase">AI-Powered</span>
+              <span className="text-lg font-bold tracking-tight text-gray-900">Blog Writer</span>
+              <span className="text-[10px] font-semibold text-indigo-500 tracking-widest uppercase">AI</span>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/settings")}
-              className="p-2 rounded-lg text-slate-400 border border-white/[0.08] hover:border-white/[0.15] hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+              title="Feed Settings"
+            >
+              <Rss className="w-4.5 h-4.5" />
+            </button>
+            <button
+              onClick={() => navigate("/settings")}
+              className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
               title="Settings"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-4.5 h-4.5" />
             </button>
+            <div className="w-px h-6 bg-gray-200 mx-1" />
             <button
               onClick={() => {
                 setContent("");
                 setDraft(null);
                 navigate("/editor");
               }}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 border border-white/[0.08] hover:border-white/[0.15] hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all duration-200 flex items-center gap-2"
             >
-              <PenLine className="w-3.5 h-3.5 inline mr-2" />
+              <PenLine className="w-3.5 h-3.5" />
               New Draft
             </button>
           </div>
         </div>
-      </header>
+      </nav>
 
       <main className="relative max-w-6xl mx-auto px-6">
         {/* Hero Section */}
-        <section className="pt-20 pb-16">
+        <section className="pt-24 pb-20">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-5xl font-extrabold tracking-tight leading-[1.1] mb-6 animate-fade-in-up">
-              <span className="text-white">Generate blogs </span>
-              <span className="bg-gradient-to-r from-indigo-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent animate-gradient">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-600 text-xs font-semibold mb-8 animate-fade-in-up">
+              <Zap className="w-3.5 h-3.5" />
+              Powered by GPT-4o
+            </div>
+            <h2 className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.08] mb-6 animate-fade-in-up delay-1">
+              <span className="text-gray-900">Generate blogs</span>
+              <br />
+              <span className="bg-gradient-to-r from-indigo-600 via-violet-500 to-purple-500 bg-clip-text text-transparent animate-gradient">
                 from any URL
               </span>
             </h2>
-            <p className="text-lg text-slate-400 leading-relaxed max-w-xl mx-auto animate-fade-in-up delay-1">
+            <p className="text-lg text-gray-500 leading-relaxed max-w-xl mx-auto animate-fade-in-up delay-2">
               Paste a GitHub repo or webpage link. AI analyzes the source and writes
-              a polished, publication-ready blog post.
+              a polished, publication-ready blog post in seconds.
             </p>
           </div>
 
           {/* URL Input */}
-          <div className="max-w-2xl mx-auto mt-12 animate-fade-in-up delay-2">
-            <div className="p-1 rounded-2xl bg-gradient-to-r from-indigo-500/20 via-transparent to-cyan-500/20">
-              <div className="flex gap-3 p-2 rounded-xl bg-[#0f1629] border border-white/[0.06]">
+          <div className="max-w-2xl mx-auto mt-12 animate-fade-in-up delay-3">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-purple-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative flex gap-3 p-2 rounded-2xl bg-white border border-gray-200/80 shadow-xl shadow-indigo-500/5">
                 <div className="relative flex-1">
-                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                   <input
                     type="url"
                     placeholder="https://github.com/user/repo or any webpage URL"
@@ -166,13 +182,13 @@ export default function Home() {
                     onChange={(e) => setUrl(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !busy && handleGenerate()}
                     disabled={busy}
-                    className="w-full pl-12 pr-4 py-3.5 rounded-lg bg-transparent text-white placeholder-slate-500 outline-none text-[15px] disabled:opacity-50 transition-opacity"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-transparent text-gray-900 placeholder-gray-400 outline-none text-[15px] disabled:opacity-50 transition-opacity"
                   />
                 </div>
                 <button
                   onClick={handleGenerate}
                   disabled={busy || !url.trim()}
-                  className="px-7 py-3.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:shadow-none hover:-translate-y-[1px] active:translate-y-0"
+                  className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none hover:-translate-y-[1px] active:translate-y-0"
                 >
                   {busy ? (
                     <>
@@ -191,16 +207,16 @@ export default function Home() {
 
             {/* Status / Error */}
             {statusMessage && !error && (
-              <div className="mt-4 flex justify-center animate-fade-in">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+              <div className="mt-5 flex justify-center animate-fade-in">
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-indigo-50 text-indigo-600 border border-indigo-200/60">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   {statusMessage}
                 </span>
               </div>
             )}
             {error && (
-              <div className="mt-4 flex justify-center animate-fade-in">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium bg-red-500/10 text-red-300 border border-red-500/20">
+              <div className="mt-5 flex justify-center animate-fade-in">
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-red-50 text-red-600 border border-red-200/60">
                   {error}
                 </span>
               </div>
@@ -209,34 +225,37 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section className="py-12 border-t border-white/[0.04] animate-fade-in-up delay-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section className="py-16 border-t border-gray-100 animate-fade-in-up delay-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               {
                 icon: Zap,
                 title: "Smart Analysis",
                 desc: "Auto-detects GitHub repos vs. webpages and extracts key content, structure, and metadata.",
+                color: "indigo",
               },
               {
                 icon: Eye,
                 title: "Live Preview",
                 desc: "Split-pane Monaco editor with real-time Markdown preview, Mermaid diagrams, and syntax highlighting.",
+                color: "violet",
               },
               {
                 icon: Download,
                 title: "Multi-Format Export",
                 desc: "Export as Markdown, HTML, PDF, DOCX, or MDX. Publish directly to GitHub as a PR.",
+                color: "purple",
               },
-            ].map(({ icon: Icon, title, desc }) => (
+            ].map(({ icon: Icon, title, desc, color }) => (
               <div
                 key={title}
-                className="group p-6 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.04] transition-all duration-300"
+                className="group p-6 rounded-2xl bg-white border border-gray-200/60 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 group-hover:bg-indigo-500/15 transition-colors duration-300">
-                  <Icon className="w-5 h-5 text-indigo-400" />
+                <div className={`w-11 h-11 rounded-xl bg-${color}-50 border border-${color}-200/60 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon className={`w-5 h-5 text-${color}-500`} />
                 </div>
-                <h3 className="text-sm font-semibold text-white mb-1.5">{title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
+                <h3 className="text-sm font-bold text-gray-900 mb-1.5">{title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -244,12 +263,12 @@ export default function Home() {
 
         {/* Saved Drafts */}
         {drafts.length > 0 && (
-          <section className="py-12 border-t border-white/[0.04] animate-fade-in-up delay-4">
+          <section className="py-12 border-t border-gray-100 animate-fade-in-up delay-5">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-base font-semibold text-white flex items-center gap-2.5">
-                <FileText className="w-4.5 h-4.5 text-slate-500" />
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2.5">
+                <FileText className="w-4.5 h-4.5 text-gray-400" />
                 Your Drafts
-                <span className="text-xs font-medium text-slate-500 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
                   {drafts.length}
                 </span>
               </h3>
@@ -258,7 +277,7 @@ export default function Home() {
               {drafts.map((draft, i) => (
                 <div
                   key={draft.id}
-                  className="group p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300 flex items-center justify-between animate-fade-in-up"
+                  className="group p-4 rounded-xl bg-white border border-gray-200/60 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-300 flex items-center justify-between animate-fade-in-up"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div
@@ -266,19 +285,19 @@ export default function Home() {
                     onClick={() => navigate(`/editor/${draft.id}`)}
                   >
                     <div className="flex items-center gap-2.5 mb-1">
-                      <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200/60 flex items-center justify-center shrink-0">
                         {draft.sourceType === "github" ? (
-                          <Github className="w-3.5 h-3.5 text-slate-400" />
+                          <Github className="w-3.5 h-3.5 text-gray-500" />
                         ) : (
-                          <Globe className="w-3.5 h-3.5 text-slate-400" />
+                          <Globe className="w-3.5 h-3.5 text-gray-500" />
                         )}
                       </div>
-                      <h4 className="font-medium text-sm text-white truncate">{draft.title}</h4>
+                      <h4 className="font-semibold text-sm text-gray-900 truncate">{draft.title}</h4>
                     </div>
-                    <p className="text-xs text-slate-500 line-clamp-1 ml-[34px]">{draft.excerpt}</p>
+                    <p className="text-xs text-gray-400 line-clamp-1 ml-[36px]">{draft.excerpt}</p>
                   </div>
                   <div className="flex items-center gap-1 ml-4 shrink-0">
-                    <span className="text-xs text-slate-600 mr-2 hidden sm:inline">
+                    <span className="text-xs text-gray-400 mr-2 hidden sm:inline">
                       {new Date(draft.updatedAt).toLocaleDateString(undefined, {
                         month: "short",
                         day: "numeric",
@@ -286,7 +305,7 @@ export default function Home() {
                     </span>
                     <button
                       onClick={() => navigate(`/editor/${draft.id}`)}
-                      className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-200 opacity-0 group-hover:opacity-100"
+                      className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
                       title="Edit"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -296,7 +315,7 @@ export default function Home() {
                         href={draft.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
                         title="Open source"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -307,7 +326,7 @@ export default function Home() {
                         e.stopPropagation();
                         handleDeleteDraft(draft.id);
                       }}
-                      className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                      className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
                       title="Delete"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -320,8 +339,8 @@ export default function Home() {
         )}
 
         {/* Footer */}
-        <footer className="py-8 border-t border-white/[0.04] text-center">
-          <p className="text-xs text-slate-600">
+        <footer className="py-10 border-t border-gray-100 text-center">
+          <p className="text-xs text-gray-400">
             Built with Azure OpenAI GPT-4o &middot; FastAPI &middot; React
           </p>
         </footer>

@@ -42,6 +42,7 @@ Return ONLY a valid JSON object with this shape:
 - Place the blog_url prominently — ideally as the main call-to-action link in the post.
 - Frame the post as sharing YOUR blog/analysis/writeup: e.g., "I wrote about this on my blog: [blog_url]" or "Read my full analysis here: [blog_url]"
 - The blog_url should appear above the "see more" fold if possible.
+- IMPORTANT: The blog_url and source_url are DIFFERENT URLs on different domains — never substitute one for the other. Do NOT copy a URL from the blog content body and use it as the blog link. Use ONLY the exact blog_url value provided in the parameters above.
 
 ## Source Article Reference (Secondary)
 - If a `source_url` is provided, it is the original article that inspired the blog post.
@@ -67,6 +68,7 @@ Return ONLY a valid JSON object with this shape:
 - The first line (`hook`) should be compelling and specific.
 - `summary` should be concise and value-focused.
 - `post_text` MUST include: hook, blog link (primary) and/or source article link, insights, my_2_cents, CTA, and hashtags — woven naturally.
-- If a blog_url was provided, it MUST appear in `post_text` as the primary clickable link.
-- If a source_url was provided, include it as secondary attribution.
+- If a blog_url was provided, it MUST appear in `post_text` as the primary clickable link. Use the EXACT blog_url value — do not substitute it with the source_url or any URL from the blog content.
+- The source_url must NOT appear more than once. Never use source_url as a substitute for blog_url — they are different domains.
+- If a source_url was provided, include it as secondary attribution (one mention only).
 - Do not include markdown code fences.

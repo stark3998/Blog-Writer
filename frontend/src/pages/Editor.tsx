@@ -113,19 +113,19 @@ export default function Editor() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0b0f1a] text-white">
+    <div className="h-screen flex flex-col bg-[var(--bg-base)]">
       {/* Toolbar */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] bg-[#0b0f1a]/90 backdrop-blur-md shrink-0 animate-fade-in-down overflow-visible z-50 relative">
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200/80 glass-strong shrink-0 animate-fade-in-down overflow-visible z-50 relative">
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-200"
+            className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
             title="Back to Home"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-px h-5 bg-white/[0.06]" />
-          <span className="text-sm text-slate-400 truncate max-w-xs font-medium">
+          <div className="w-px h-5 bg-gray-200" />
+          <span className="text-sm text-gray-600 truncate max-w-xs font-semibold">
             {draft?.title ?? "Untitled Draft"}
           </span>
           {draft?.sourceUrl && (
@@ -133,7 +133,7 @@ export default function Editor() {
               href={draft.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 border border-white/[0.06] transition-all duration-200"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all duration-200"
               title={draft.sourceUrl}
             >
               <ExternalLink className="w-3 h-3" />
@@ -144,7 +144,7 @@ export default function Editor() {
 
         <div className="flex items-center gap-1.5">
           {/* View mode toggles */}
-          <div className="flex bg-white/[0.04] rounded-lg p-0.5 mr-1 border border-white/[0.06]">
+          <div className="flex bg-gray-100 rounded-xl p-0.5 mr-1 border border-gray-200/60">
             {([
               { mode: "editor" as ViewMode, icon: Code, label: "Editor only" },
               { mode: "split" as ViewMode, icon: PanelLeftOpen, label: "Split view" },
@@ -153,10 +153,10 @@ export default function Editor() {
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                   viewMode === mode
-                    ? "bg-white/[0.08] text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
                 }`}
                 title={label}
               >
@@ -168,10 +168,10 @@ export default function Editor() {
           {/* AI Toggle */}
           <button
             onClick={() => setShowAI(!showAI)}
-            className={`p-2 rounded-lg transition-all duration-200 ${
+            className={`p-2 rounded-xl transition-all duration-200 ${
               showAI
-                ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/25"
-                : "text-slate-500 hover:text-white hover:bg-white/[0.06] border border-transparent"
+                ? "bg-indigo-50 text-indigo-600 border border-indigo-200/60"
+                : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent"
             }`}
             title="AI Editor"
           >
@@ -189,19 +189,19 @@ export default function Editor() {
             blogUrl={publishResult ?? undefined}
           />
 
-          <div className="w-px h-5 bg-white/[0.06] mx-1" />
+          <div className="w-px h-5 bg-gray-200 mx-1" />
 
           {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 border border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04] hover:border-white/[0.1]"
+            className="px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 border border-gray-200/60 text-gray-500 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300"
             title="Save (Ctrl+S)"
           >
             {saving ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : saveStatus === "saved" ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
             ) : (
               <Save className="w-3.5 h-3.5" />
             )}
@@ -212,7 +212,7 @@ export default function Editor() {
           <button
             onClick={handlePublish}
             disabled={publishing || !content.trim()}
-            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm shadow-indigo-500/15 hover:shadow-indigo-500/25 disabled:shadow-none"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:shadow-none"
           >
             {publishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -226,22 +226,22 @@ export default function Editor() {
 
       {/* Error / PR banner */}
       {error && (
-        <div className="px-4 py-2.5 bg-red-500/[0.08] text-red-300 text-sm border-b border-red-500/20 flex items-center animate-fade-in-down">
+        <div className="px-4 py-2.5 bg-red-50 text-red-600 text-sm border-b border-red-200/60 flex items-center animate-fade-in-down">
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 text-xs font-medium ml-4 underline underline-offset-2 transition-colors">
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 text-xs font-semibold ml-4 underline underline-offset-2 transition-colors">
             dismiss
           </button>
         </div>
       )}
       {publishResult && (
-        <div className="px-4 py-2.5 bg-emerald-500/[0.08] text-emerald-300 text-sm border-b border-emerald-500/20 flex items-center animate-fade-in-down">
+        <div className="px-4 py-2.5 bg-emerald-50 text-emerald-700 text-sm border-b border-emerald-200/60 flex items-center animate-fade-in-down">
           <span className="flex-1">
             Published!{" "}
-            <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-medium hover:text-emerald-200 transition-colors">
+            <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-semibold hover:text-emerald-800 transition-colors">
               View Blog
             </a>
           </span>
-          <button onClick={() => setPublishResult(null)} className="text-emerald-400 hover:text-emerald-300 text-xs font-medium ml-4 underline underline-offset-2 transition-colors">
+          <button onClick={() => setPublishResult(null)} className="text-emerald-500 hover:text-emerald-700 text-xs font-semibold ml-4 underline underline-offset-2 transition-colors">
             dismiss
           </button>
         </div>
@@ -252,7 +252,7 @@ export default function Editor() {
         {/* Editor pane */}
         {viewMode !== "preview" && (
           <div
-            className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full border-r border-white/[0.06] transition-all duration-300 animate-fade-in`}
+            className={`${viewMode === "split" ? "w-1/2" : "w-full"} h-full border-r border-gray-200/60 transition-all duration-300 animate-fade-in`}
           >
             <MonacoEditorWrapper
               value={content}
@@ -272,7 +272,7 @@ export default function Editor() {
 
         {/* AI Panel (slides in from right) */}
         <div
-          className={`shrink-0 border-l border-white/[0.06] bg-[#0d1220]/80 backdrop-blur-md overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             showAI ? "w-80 opacity-100" : "w-0 opacity-0"
           }`}
         >

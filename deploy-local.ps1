@@ -3,7 +3,9 @@ param(
     [string]$Tag = (Get-Date -Format "yyyyMMddHHmmss"),
     [switch]$DryRun,
     [switch]$SkipHealthCheck = $true,
-    [switch]$SkipInfraApply
+    [switch]$SkipInfraApply,
+    [switch]$SkipBuild = $true,
+    [switch]$IncludePortfolio = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,6 +66,19 @@ function Get-TerraformOutput {
         throw "Failed to read Terraform output '$Name'."
     }
     return $value.Trim()
+}
+
+function Get-LatestAcrTag {
+    param(
+        [Parameter(Mandatory = $true)][string]$Registry,
+        [Parameter(Mandatory = $true)][string]$Repository
+    )
+
+    $tag = & az acr repository show-tags --name $Registry --repository $Repository --orderby time_desc --top 1 --output tsv
+    if ($LASTEXITCODE -ne 0 -or -not $tag) {
+        throw "Failed to fetch latest tag for $Repository from ACR '$Registry'."
+    }
+    return $tag.Trim()
 }
 
 function Update-ContainerImageInTfvars {
@@ -133,25 +148,43 @@ if (-not $acrName -or -not $acrLoginServer) {
     throw 'Terraform outputs for ACR are not available. Run the infrastructure deployment first.'
 }
 
-$fullImage = "$acrLoginServer/blog-writer-webapp:$Tag"
-$portfolioImage = "$acrLoginServer/portfolio:$Tag"
-$portfolioDir = Join-Path (Split-Path $repoRoot -Parent) "portfolio"
+$portfolioImage = $null
 
-Write-Step "Building and pushing Blog-Writer image with ACR Tasks"
-Write-Host "Image: $fullImage"
-if ($PSCmdlet.ShouldProcess($fullImage, 'az acr build')) {
-    Invoke-AcrBuild -Registry $acrName -ImageName "blog-writer-webapp" -Tag $Tag -DockerfilePath "Dockerfile.webapp" -ContextPath $repoRoot
-}
+if ($SkipBuild) {
+    Write-Step "Skipping ACR build — fetching latest image tags from ACR"
+    $latestTag = Get-LatestAcrTag -Registry $acrName -Repository "blog-writer-webapp"
+    $fullImage = "$acrLoginServer/blog-writer-webapp:$latestTag"
+    Write-Host "Blog-Writer image: $fullImage"
 
-if (Test-Path $portfolioDir) {
-    Write-Step "Building and pushing Portfolio image with ACR Tasks"
-    Write-Host "Image: $portfolioImage"
-    if ($PSCmdlet.ShouldProcess($portfolioImage, 'az acr build')) {
-        Invoke-AcrBuild -Registry $acrName -ImageName "portfolio" -Tag $Tag -DockerfilePath "$portfolioDir/Dockerfile" -ContextPath $portfolioDir
+    if ($IncludePortfolio) {
+        $latestPortfolioTag = Get-LatestAcrTag -Registry $acrName -Repository "portfolio"
+        $portfolioImage = "$acrLoginServer/portfolio:$latestPortfolioTag"
+        Write-Host "Portfolio image:   $portfolioImage"
     }
 } else {
-    Write-Warning "Portfolio directory not found at $portfolioDir — skipping portfolio build."
-    $portfolioImage = $null
+    $fullImage = "$acrLoginServer/blog-writer-webapp:$Tag"
+
+    Write-Step "Building and pushing Blog-Writer image with ACR Tasks"
+    Write-Host "Image: $fullImage"
+    if ($PSCmdlet.ShouldProcess($fullImage, 'az acr build')) {
+        Invoke-AcrBuild -Registry $acrName -ImageName "blog-writer-webapp" -Tag $Tag -DockerfilePath "Dockerfile.webapp" -ContextPath $repoRoot
+    }
+
+    if ($IncludePortfolio) {
+        $portfolioDir = Join-Path (Split-Path $repoRoot -Parent) "portfolio"
+        $portfolioImage = "$acrLoginServer/portfolio:$Tag"
+
+        if (Test-Path $portfolioDir) {
+            Write-Step "Building and pushing Portfolio image with ACR Tasks"
+            Write-Host "Image: $portfolioImage"
+            if ($PSCmdlet.ShouldProcess($portfolioImage, 'az acr build')) {
+                Invoke-AcrBuild -Registry $acrName -ImageName "portfolio" -Tag $Tag -DockerfilePath "$portfolioDir/Dockerfile" -ContextPath $portfolioDir
+            }
+        } else {
+            Write-Warning "Portfolio directory not found at $portfolioDir — skipping portfolio build."
+            $portfolioImage = $null
+        }
+    }
 }
 
 Write-Step "Persisting latest image tags to terraform.tfvars"

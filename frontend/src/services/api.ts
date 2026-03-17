@@ -3,7 +3,19 @@
  * Handles REST calls and SSE streaming connections.
  */
 
-import type { BlogDraft, GenerateResult, ExportFormat, FeedSource, CrawledArticle, CrawlJob, CrawlResult, FeedDiscoverResult } from "../types";
+import type {
+  BlogDraft,
+  GenerateResult,
+  ExportFormat,
+  FeedSource,
+  CrawledArticle,
+  CrawlJob,
+  CrawlResult,
+  FeedDiscoverResult,
+  DiagnosticsRunRequest,
+  DiagnosticsRunResponse,
+  DiagnosticsChecksResponse,
+} from "../types";
 
 const API_BASE = "/api";
 
@@ -454,4 +466,29 @@ export async function listFeedArticles(feedId: string, limit = 50): Promise<Craw
 
 export async function getCrawlLog(limit = 50): Promise<CrawlJob[]> {
   return json<CrawlJob[]>(`/feeds/crawl-log?limit=${limit}`);
+}
+
+// ---------- Diagnostics ----------
+
+export async function listDiagnosticsChecks(apiKey: string): Promise<DiagnosticsChecksResponse> {
+  return json<DiagnosticsChecksResponse>("/diagnostics/checks", {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Diagnostics-Key": apiKey,
+    },
+  });
+}
+
+export async function runDiagnostics(
+  request: DiagnosticsRunRequest,
+  apiKey: string
+): Promise<DiagnosticsRunResponse> {
+  return json<DiagnosticsRunResponse>("/diagnostics/run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Diagnostics-Key": apiKey,
+    },
+    body: JSON.stringify(request),
+  });
 }

@@ -18,6 +18,7 @@ import {
   Download,
   Settings,
   Rss,
+  Activity,
 } from "lucide-react";
 
 export default function Home() {
@@ -130,6 +131,13 @@ export default function Home() {
               title="Settings"
             >
               <Settings className="w-4.5 h-4.5" />
+            </button>
+            <button
+              onClick={() => navigate("/diagnostics")}
+              className="p-2.5 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
+              title="Diagnostics"
+            >
+              <Activity className="w-4.5 h-4.5" />
             </button>
             <div className="w-px h-6 bg-gray-200 mx-1" />
             <button

@@ -5,12 +5,12 @@ output "resource_group_name" {
 
 output "container_app_url" {
   description = "Public URL of the deployed Container App."
-  value       = "https://${azurerm_container_app.this.latest_revision_fqdn}"
+  value       = "https://${azurerm_container_app.this.ingress[0].fqdn}"
 }
 
 output "container_app_fqdn" {
   description = "FQDN of the deployed Container App."
-  value       = azurerm_container_app.this.latest_revision_fqdn
+  value       = azurerm_container_app.this.ingress[0].fqdn
 }
 
 output "portfolio_app_url" {

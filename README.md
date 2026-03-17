@@ -11,6 +11,7 @@ Full-stack AI-powered blog generation web app. Enter a **GitHub repository** or 
 - **Export** — download as **Markdown**, **HTML**, **PDF**, **DOCX**, or **MDX**
 - **Publish to GitHub** — opens a PR on your portfolio repo
 - **LinkedIn Publishing** — AI-composed, insights-driven LinkedIn posts via OAuth (feed posts or long-form)
+- **Diagnostics Page** — run quick end-to-end checks for LinkedIn, Foundry/OpenAI config, API/model calls, image generation, Cosmos connectivity, and publish dry-run
 - **Cloud Persistence** — drafts and LinkedIn sessions saved to Azure Cosmos DB (NoSQL)
 - **Agent Mode** — standalone Azure AI Agent Framework agent for automated analyze → generate → publish pipelines
 
@@ -95,7 +96,9 @@ cp .env.example .env
 | `LINKEDIN_CLIENT_ID` | LinkedIn OAuth app client ID | — |
 | `LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth app client secret | — |
 | `LINKEDIN_REDIRECT_URI` | LinkedIn OAuth redirect URI | `http://localhost:8080/api/linkedin/oauth/callback` |
-| `LINKEDIN_SCOPES` | LinkedIn API scopes | `r_liteprofile w_member_social` |
+| `LINKEDIN_SCOPES` | LinkedIn API scopes | `openid profile w_member_social` |
+| `IMAGE_MODEL_DEPLOYMENT_NAME` | Azure OpenAI image model deployment | `gpt-image-1-mini` |
+| `DIAGNOSTICS_API_KEY` | Required key for `/api/diagnostics/*` endpoints | — |
 | `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
 | `PORT` | Backend listen port | `8080` |
 

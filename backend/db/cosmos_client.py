@@ -26,6 +26,7 @@ _feed_sources_container = None
 _crawled_articles_container = None
 _crawl_jobs_container = None
 _prompts_container = None
+_keywords_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -227,7 +228,7 @@ def list_drafts(limit: int = 50) -> list[dict[str, Any]]:
     
     query = (
         "SELECT c.id, c.title, c.slug, c.excerpt, c.sourceUrl, "
-        "c.sourceType, c.createdAt, c.updatedAt "
+        "c.sourceType, c.origin, c.tags, c.createdAt, c.updatedAt "
         "FROM c ORDER BY c.updatedAt DESC OFFSET 0 LIMIT @limit"
     )
     
@@ -277,6 +278,8 @@ def create_draft(
     content: str,
     source_url: str,
     source_type: str,
+    origin: str = "user",
+    tags: list[str] | None = None,
 ) -> dict[str, Any]:
     """Create a new blog draft.
 
@@ -303,6 +306,8 @@ def create_draft(
         "content": content,
         "sourceUrl": source_url,
         "sourceType": source_type,
+        "origin": origin,
+        "tags": tags or [],
         "createdAt": now,
         "updatedAt": now,
     }
@@ -608,6 +613,36 @@ def has_linkedin_post_today() -> bool:
     return count > 0
 
 
+def delete_crawled_article(article_id: str) -> bool:
+    """Delete a crawled article by ID."""
+    container = _get_crawled_articles_container()
+    try:
+        container.delete_item(item=article_id, partition_key=article_id)
+        logger.info(f"Crawled article deleted: {article_id}")
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+def delete_crawled_articles_by_feed(feed_source_id: str) -> int:
+    """Delete all crawled articles for a feed source. Returns count deleted."""
+    container = _get_crawled_articles_container()
+    query = "SELECT c.id FROM c WHERE c.feedSourceId = @feedSourceId"
+    params = [{"name": "@feedSourceId", "value": feed_source_id}]
+    items = list(
+        container.query_items(query=query, parameters=params, enable_cross_partition_query=True)
+    )
+    count = 0
+    for item in items:
+        try:
+            container.delete_item(item=item["id"], partition_key=item["id"])
+            count += 1
+        except CosmosResourceNotFoundError:
+            pass
+    logger.info(f"Deleted {count} crawled articles for feed source: {feed_source_id}")
+    return count
+
+
 def list_crawled_articles(
     feed_source_id: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:
@@ -751,6 +786,63 @@ def list_prompts() -> list[dict[str, Any]]:
     """List all prompt overrides."""
     container = _get_prompts_container()
     query = "SELECT c.id, c.name, c.updatedAt FROM c ORDER BY c.name"
+    return list(
+        container.query_items(query=query, enable_cross_partition_query=True)
+    )
+
+
+# ---------- Keywords ----------
+
+
+def _get_keywords_container():
+    """Get or create the keywords container."""
+    global _keywords_container
+    if _keywords_container is not None:
+        return _keywords_container
+    _keywords_container = _create_container_if_not_exists("keywords")
+    return _keywords_container
+
+
+def get_topic_keywords(topic: str) -> list[str] | None:
+    """Get keyword override for a topic. Returns None if no override exists."""
+    container = _get_keywords_container()
+    try:
+        item = dict(container.read_item(item=topic, partition_key=topic))
+        return item.get("keywords", [])
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def upsert_topic_keywords(topic: str, keywords: list[str]) -> dict[str, Any]:
+    """Create or update keyword list for a topic."""
+    container = _get_keywords_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": topic,
+        "topic": topic,
+        "keywords": keywords,
+        "updatedAt": now,
+    }
+    container.upsert_item(body=item)
+    logger.info(f"Keywords upserted for topic '{topic}': {len(keywords)} keywords")
+    return item
+
+
+def delete_topic_keywords(topic: str) -> bool:
+    """Delete keyword override for a topic (reverts to code defaults)."""
+    container = _get_keywords_container()
+    try:
+        container.delete_item(item=topic, partition_key=topic)
+        logger.info(f"Keywords deleted (reset to default): {topic}")
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+def list_topic_keyword_overrides() -> list[dict[str, Any]]:
+    """List all keyword overrides."""
+    container = _get_keywords_container()
+    query = "SELECT c.id, c.topic, c.updatedAt FROM c ORDER BY c.topic"
     return list(
         container.query_items(query=query, enable_cross_partition_query=True)
     )

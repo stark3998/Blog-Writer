@@ -478,6 +478,17 @@ export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): Abort
   return controller;
 }
 
+export async function deleteFeedArticle(feedId: string, articleId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/feeds/${feedId}/articles/${articleId}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete failed: HTTP ${res.status}`);
+  }
+}
+
+export async function deleteAllFeedArticles(feedId: string): Promise<{ count: number }> {
+  return json<{ count: number }>(`/feeds/${feedId}/articles`, { method: "DELETE" });
+}
+
 export async function listFeedArticles(feedId: string, limit = 50): Promise<CrawledArticle[]> {
   return json<CrawledArticle[]>(`/feeds/${feedId}/articles?limit=${limit}`);
 }
@@ -562,5 +573,56 @@ export async function testPrompt(data: {
   return json<PromptTestResponse>("/prompts/test", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+// ---------- Keywords ----------
+
+export interface TopicKeywordsInfo {
+  topic: string;
+  keywords: string[];
+  keyword_count: number;
+  is_customized: boolean;
+}
+
+export interface TopicKeywordsDetail {
+  topic: string;
+  keywords: string[];
+  default_keywords: string[];
+  keyword_count: number;
+  is_customized: boolean;
+}
+
+export async function listKeywords(): Promise<TopicKeywordsInfo[]> {
+  return json<TopicKeywordsInfo[]>("/keywords");
+}
+
+export async function getTopicKeywords(topic: string): Promise<TopicKeywordsDetail> {
+  return json<TopicKeywordsDetail>(`/keywords/${encodeURIComponent(topic)}`);
+}
+
+export async function updateTopicKeywords(
+  topic: string,
+  keywords: string[]
+): Promise<TopicKeywordsDetail> {
+  return json<TopicKeywordsDetail>(`/keywords/${encodeURIComponent(topic)}`, {
+    method: "PUT",
+    body: JSON.stringify({ keywords }),
+  });
+}
+
+export async function resetTopicKeywords(
+  topic: string
+): Promise<{ status: string; topic: string }> {
+  return json(`/keywords/${encodeURIComponent(topic)}`, { method: "DELETE" });
+}
+
+export async function addTopicKeywords(
+  topic: string,
+  keywords: string[]
+): Promise<TopicKeywordsDetail> {
+  return json<TopicKeywordsDetail>(`/keywords/${encodeURIComponent(topic)}/add`, {
+    method: "POST",
+    body: JSON.stringify({ keywords }),
   });
 }

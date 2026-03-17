@@ -22,6 +22,8 @@ class CreateDraftRequest(BaseModel):
     content: str
     source_url: str = ""
     source_type: str = "unknown"
+    origin: str = "user"
+    tags: list[str] = []
 
 
 class UpdateDraftRequest(BaseModel):
@@ -38,6 +40,8 @@ class DraftSummary(BaseModel):
     excerpt: str
     sourceUrl: str
     sourceType: str
+    origin: str = "user"
+    tags: list[str] = []
     createdAt: str
     updatedAt: str
 
@@ -83,6 +87,8 @@ async def create_new_draft(request: CreateDraftRequest):
             content=request.content,
             source_url=request.source_url,
             source_type=request.source_type,
+            origin=request.origin,
+            tags=request.tags,
         )
         return draft
     except Exception as e:

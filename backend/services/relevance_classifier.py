@@ -27,6 +27,7 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
         "azure openai", "azure ai", "microsoft fabric",
     ],
     "ai": [
+        # Core terms
         "artificial intelligence", "machine learning", "deep learning",
         "neural network", "llm", "large language model", "gpt",
         "generative ai", "gen ai", "genai", "copilot", "chatgpt",
@@ -35,6 +36,32 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
         "fine-tuning", "fine tuning", "vector database",
         "embedding", "ai agent", "agentic", "computer vision",
         "natural language processing", "nlp", "mlops",
+        # Agents & orchestration
+        "ai agents", "multi-agent", "agent framework", "autogen",
+        "crewai", "semantic kernel", "function calling", "tool use",
+        "mcp", "model context protocol",
+        # ML fundamentals
+        "ml", "model training", "model inference", "inference",
+        "training data", "supervised learning", "unsupervised learning",
+        "reinforcement learning", "classification", "regression", "clustering",
+        # Models & architectures
+        "foundation model", "small language model", "slm", "multimodal",
+        "vision language", "text-to-image", "text-to-speech", "speech-to-text",
+        "stable diffusion", "midjourney", "claude", "gemini",
+        "llama", "mistral", "phi-3", "phi-4",
+        # Tuning & optimization
+        "fine-tune", "finetuning", "lora", "qlora",
+        "quantization", "distillation", "pruning", "onnx", "tensorrt",
+        # RAG & data
+        "vector search", "vector store", "semantic search",
+        "knowledge graph", "chunking", "reranking", "hybrid search",
+        # Ops & platforms
+        "ai ops", "aiops", "model deployment", "model serving",
+        "hugging face", "huggingface", "pytorch", "tensorflow",
+        "scikit-learn", "jupyter",
+        # Responsible AI
+        "responsible ai", "ai safety", "ai ethics", "hallucination",
+        "guardrails", "red teaming", "ai governance",
     ],
 }
 
@@ -42,6 +69,16 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
 def _normalize(text: str) -> str:
     """Lowercase and normalize whitespace."""
     return re.sub(r"\s+", " ", text.lower().strip())
+
+
+def get_active_keywords(topic: str) -> list[str]:
+    """Get active keywords for a topic: Cosmos DB override if present, else code default."""
+    from backend.db.cosmos_client import get_topic_keywords
+
+    override = get_topic_keywords(topic)
+    if override is not None:
+        return override
+    return TOPIC_KEYWORDS.get(topic, [topic])
 
 
 def keyword_prefilter(
@@ -58,7 +95,7 @@ def keyword_prefilter(
 
     for topic in topics:
         topic_lower = topic.lower().strip()
-        keywords = TOPIC_KEYWORDS.get(topic_lower, [topic_lower])
+        keywords = get_active_keywords(topic_lower)
         for kw in keywords:
             if kw in text:
                 if topic_lower not in matched_topics:
@@ -154,6 +191,7 @@ def classify_article(
             "is_relevant": False,
             "relevance_score": 0,
             "matched_topics": [],
+            "matched_keywords": [],
             "method": "keyword_prefilter",
             "reasoning": "No keyword matches found",
         }
@@ -170,6 +208,7 @@ def classify_article(
         "is_relevant": ai_result["is_relevant"],
         "relevance_score": ai_result["relevance_score"],
         "matched_topics": ai_result["matched_topics"] or kw_result["matched_topics"],
+        "matched_keywords": kw_result["matched_keywords"],
         "method": "keyword+ai",
         "reasoning": ai_result["reasoning"],
     }

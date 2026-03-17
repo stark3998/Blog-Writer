@@ -6,6 +6,8 @@ export interface BlogDraft {
   content: string;
   sourceUrl: string;
   sourceType: string;
+  origin: string;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +47,7 @@ export interface CrawledArticle {
   is_relevant: boolean;
   relevance_score: number;
   matched_topics: string[];
+  matched_keywords: string[];
   draft_id: string;
   status: string;
   crawled_at: string;

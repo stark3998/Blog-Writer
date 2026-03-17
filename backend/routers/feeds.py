@@ -10,6 +10,8 @@ from sse_starlette.sse import EventSourceResponse
 
 from backend.db.cosmos_client import (
     create_feed_source,
+    delete_crawled_article,
+    delete_crawled_articles_by_feed,
     delete_feed_source,
     get_feed_source,
     list_crawl_jobs,
@@ -83,6 +85,7 @@ class CrawledArticleResponse(BaseModel):
     is_relevant: bool
     relevance_score: float
     matched_topics: list[str]
+    matched_keywords: list[str] = []
     draft_id: str
     status: str
     crawled_at: str
@@ -130,6 +133,7 @@ def _to_article_response(item: dict) -> dict:
         "is_relevant": item.get("isRelevant", False),
         "relevance_score": item.get("relevanceScore", 0),
         "matched_topics": item.get("matchedTopics", []),
+        "matched_keywords": item.get("matchedKeywords", []),
         "draft_id": item.get("draftId", ""),
         "status": item.get("status", ""),
         "crawled_at": item.get("crawledAt", ""),
@@ -297,6 +301,25 @@ async def get_feed_articles(feed_id: str, limit: int = 50):
 
     articles = list_crawled_articles(feed_source_id=feed_id, limit=limit)
     return [_to_article_response(a) for a in articles]
+
+
+@router.delete("/{feed_id}/articles")
+async def delete_all_feed_articles(feed_id: str):
+    """Delete all crawled articles for a feed source."""
+    source = get_feed_source(feed_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Feed source not found")
+    count = delete_crawled_articles_by_feed(feed_id)
+    return {"status": "deleted", "feed_id": feed_id, "count": count}
+
+
+@router.delete("/{feed_id}/articles/{article_id}")
+async def delete_single_article(feed_id: str, article_id: str):
+    """Delete a single crawled article."""
+    deleted = delete_crawled_article(article_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"status": "deleted", "id": article_id}
 
 
 @router.post("/{feed_id}/crawl/stream")

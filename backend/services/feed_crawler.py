@@ -287,6 +287,7 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                 "isRelevant": classification["is_relevant"],
                 "relevanceScore": classification.get("relevance_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
+                "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
                 "linkedinPostId": "",
                 "status": "skipped" if not classification["is_relevant"] else "pending",

@@ -7,6 +7,8 @@ import {
   deleteFeed,
   discoverFeed,
   listFeedArticles,
+  deleteFeedArticle,
+  deleteAllFeedArticles,
   getCrawlLog,
   streamCrawl,
 } from "../services/api";
@@ -222,6 +224,24 @@ export default function Settings() {
     try {
       const updated = await updateFeed(feedId, updates);
       setFeeds((prev) => prev.map((f) => (f.id === feedId ? updated : f)));
+    } catch {}
+  };
+
+  const handleDeleteArticle = async (feedId: string, articleId: string) => {
+    try {
+      await deleteFeedArticle(feedId, articleId);
+      setFeedArticles((prev) => ({
+        ...prev,
+        [feedId]: (prev[feedId] ?? []).filter((a) => a.id !== articleId),
+      }));
+    } catch {}
+  };
+
+  const handleDeleteAllArticles = async (feedId: string) => {
+    if (!confirm("Delete all crawled articles for this feed? This cannot be undone.")) return;
+    try {
+      await deleteAllFeedArticles(feedId);
+      setFeedArticles((prev) => ({ ...prev, [feedId]: [] }));
     } catch {}
   };
 
@@ -667,7 +687,18 @@ export default function Settings() {
                     )}
 
                     {/* Crawled articles */}
-                    <h5 className="text-xs font-semibold text-gray-500 mb-2">Crawled Articles</h5>
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-xs font-semibold text-gray-500">Crawled Articles</h5>
+                      {(feedArticles[feed.id]?.length ?? 0) > 0 && (
+                        <button
+                          onClick={() => handleDeleteAllArticles(feed.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-red-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200/60 transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Clear All
+                        </button>
+                      )}
+                    </div>
                     {!feedArticles[feed.id] ? (
                       <div className="flex justify-center py-4">
                         <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -692,12 +723,21 @@ export default function Settings() {
                                 />
                                 <span className="text-gray-700 truncate">{article.title}</span>
                               </div>
-                              <div className="flex items-center gap-2 mt-0.5 ml-4">
+                              <div className="flex items-center gap-2 mt-0.5 ml-4 flex-wrap">
                                 {article.matched_topics.map((t) => (
                                   <span key={t} className="text-[10px] text-indigo-500 font-medium">
                                     {t}
                                   </span>
                                 ))}
+                                {article.matched_keywords?.length > 0 &&
+                                  article.matched_keywords.map((kw) => (
+                                    <span
+                                      key={kw}
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600 border border-amber-200/60"
+                                    >
+                                      {kw}
+                                    </span>
+                                  ))}
                                 <span
                                   className={`text-[10px] font-medium ${
                                     article.status === "published"
@@ -713,14 +753,23 @@ export default function Settings() {
                                 </span>
                               </div>
                             </div>
-                            <a
-                              href={article.article_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-gray-400 hover:text-indigo-600"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <a
+                                href={article.article_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-gray-400 hover:text-indigo-600"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                              <button
+                                onClick={() => handleDeleteArticle(feed.id, article.id)}
+                                className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                                title="Delete article"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -84,6 +84,8 @@ def process_relevant_article(
         content=blog_data["mdx_content"],
         source_url=article_url,
         source_type=source_type,
+        origin="rss_crawl",
+        tags=feed_source.get("topics", []),
     )
     result["draft_id"] = draft["id"]
     logger.info(f"Draft created: {draft['id']} for article {article_url}")

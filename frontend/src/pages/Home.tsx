@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useBlogStore } from "../store/blogStore";
 import { generateBlogStream, listDrafts, createDraft, deleteDraft } from "../services/api";
@@ -19,6 +19,8 @@ import {
   Settings,
   Rss,
   Activity,
+  Tag,
+  User,
 } from "lucide-react";
 
 export default function Home() {
@@ -96,6 +98,27 @@ export default function Home() {
 
   const busy = phase === "analyzing" || phase === "generating";
 
+  const [originFilter, setOriginFilter] = useState<"all" | "user" | "rss_crawl">("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    drafts.forEach((d) => (d.tags ?? []).forEach((t) => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [drafts]);
+
+  const userCount = useMemo(() => drafts.filter((d) => (d.origin || "user") === "user").length, [drafts]);
+  const rssCount = useMemo(() => drafts.filter((d) => d.origin === "rss_crawl").length, [drafts]);
+
+  const filteredDrafts = useMemo(() => {
+    return drafts.filter((d) => {
+      const origin = d.origin || "user";
+      if (originFilter !== "all" && origin !== originFilter) return false;
+      if (tagFilter && !(d.tags ?? []).includes(tagFilter)) return false;
+      return true;
+    });
+  }, [drafts, originFilter, tagFilter]);
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">
       {/* Decorative background */}
@@ -131,6 +154,13 @@ export default function Home() {
               title="Prompt Editor"
             >
               <FileText className="w-4.5 h-4.5" />
+            </button>
+            <button
+              onClick={() => navigate("/keywords")}
+              className="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200"
+              title="Keyword Manager"
+            >
+              <Tag className="w-4.5 h-4.5" />
             </button>
             <button
               onClick={() => navigate("/settings")}
@@ -279,7 +309,7 @@ export default function Home() {
         {/* Saved Drafts */}
         {drafts.length > 0 && (
           <section className="py-12 border-t border-gray-100 animate-fade-in-up delay-5">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2.5">
                 <FileText className="w-4.5 h-4.5 text-gray-400" />
                 Your Drafts
@@ -288,8 +318,63 @@ export default function Home() {
                 </span>
               </h3>
             </div>
+
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 mb-5">
+              {([
+                { key: "all" as const, label: "All", count: drafts.length, icon: null },
+                { key: "user" as const, label: "My Drafts", count: userCount, icon: User },
+                { key: "rss_crawl" as const, label: "RSS Feed", count: rssCount, icon: Rss },
+              ] as const).map(({ key, label, count, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setOriginFilter(key); setTagFilter(null); }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border ${
+                    originFilter === key && !tagFilter
+                      ? "bg-indigo-50 text-indigo-600 border-indigo-200/60"
+                      : "bg-white text-gray-500 border-gray-200/60 hover:text-gray-900 hover:border-gray-300"
+                  }`}
+                >
+                  {Icon && <Icon className="w-3 h-3" />}
+                  {label}
+                  <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                    {count}
+                  </span>
+                </button>
+              ))}
+
+              {allTags.length > 0 && (
+                <>
+                  <div className="w-px h-5 bg-gray-200 mx-1" />
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setTagFilter(tagFilter === tag ? null : tag);
+                        setOriginFilter("all");
+                      }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
+                        tagFilter === tag
+                          ? "bg-amber-50 text-amber-600 border-amber-200/60"
+                          : "bg-white text-gray-400 border-gray-200/60 hover:text-amber-600 hover:border-amber-200"
+                      }`}
+                    >
+                      <Tag className="w-3 h-3" />
+                      {tag}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Draft List */}
             <div className="grid gap-2">
-              {drafts.map((draft, i) => (
+              {filteredDrafts.length === 0 && (
+                <p className="text-sm text-gray-400 py-8 text-center">
+                  No drafts match the current filter.
+                </p>
+              )}
+              {filteredDrafts.map((draft, i) => (
                 <div
                   key={draft.id}
                   className="group p-4 rounded-xl bg-white border border-gray-200/60 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-300 flex items-center justify-between animate-fade-in-up"
@@ -308,8 +393,28 @@ export default function Home() {
                         )}
                       </div>
                       <h4 className="font-semibold text-sm text-gray-900 truncate">{draft.title}</h4>
+                      {draft.origin === "rss_crawl" && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-50 text-orange-500 border border-orange-200/60 shrink-0">
+                          <Rss className="w-2.5 h-2.5" />
+                          RSS
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-400 line-clamp-1 ml-[36px]">{draft.excerpt}</p>
+                    <div className="flex items-center gap-2 ml-[36px]">
+                      <p className="text-xs text-gray-400 line-clamp-1">{draft.excerpt}</p>
+                      {(draft.tags ?? []).length > 0 && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {draft.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-50 text-gray-400 border border-gray-200/60"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 ml-4 shrink-0">
                     <span className="text-xs text-gray-400 mr-2 hidden sm:inline">

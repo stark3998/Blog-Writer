@@ -232,6 +232,19 @@ export interface LinkedInComposeRequest {
   source_url?: string;
 }
 
+export interface ValidationResult {
+  is_valid: boolean;
+  score: number;
+  issues: Array<{
+    severity: "error" | "warning" | "info";
+    category: string;
+    description: string;
+    suggestion: string;
+  }>;
+  corrected_content: string | null;
+  summary: string;
+}
+
 export interface LinkedInComposeResponse {
   format: string;
   title: string;
@@ -243,6 +256,7 @@ export interface LinkedInComposeResponse {
   post_text: string;
   word_count: number;
   image_url: string;
+  validation: ValidationResult | null;
 }
 
 export interface LinkedInOAuthStartResponse {
@@ -490,5 +504,59 @@ export async function runDiagnostics(
       "X-Diagnostics-Key": apiKey,
     },
     body: JSON.stringify(request),
+  });
+}
+
+// ---------- Prompts ----------
+
+export interface PromptInfo {
+  name: string;
+  description: string;
+  is_customized: boolean;
+  updated_at: string | null;
+}
+
+export interface PromptDetail {
+  name: string;
+  description: string;
+  content: string;
+  default_content: string;
+  is_customized: boolean;
+  updated_at: string | null;
+}
+
+export interface PromptTestResponse {
+  output: string;
+  model: string;
+  prompt_name: string;
+}
+
+export async function listPrompts(): Promise<PromptInfo[]> {
+  return json<PromptInfo[]>("/prompts");
+}
+
+export async function getPrompt(name: string): Promise<PromptDetail> {
+  return json<PromptDetail>(`/prompts/${encodeURIComponent(name)}`);
+}
+
+export async function updatePrompt(name: string, content: string): Promise<PromptDetail> {
+  return json<PromptDetail>(`/prompts/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function resetPrompt(name: string): Promise<{ status: string; name: string }> {
+  return json(`/prompts/${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+export async function testPrompt(data: {
+  prompt_name: string;
+  test_input: string;
+  content_override?: string;
+}): Promise<PromptTestResponse> {
+  return json<PromptTestResponse>("/prompts/test", {
+    method: "POST",
+    body: JSON.stringify(data),
   });
 }

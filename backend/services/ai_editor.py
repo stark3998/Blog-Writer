@@ -7,7 +7,6 @@ and returns the modified content. Supports streaming.
 import logging
 import os
 import time
-from pathlib import Path
 from typing import AsyncGenerator
 
 from openai import AzureOpenAI
@@ -15,12 +14,10 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 logger = logging.getLogger(__name__)
 
-EDITOR_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "editor_prompt.md"
-
-
 def _load_editor_prompt() -> str:
-    """Load the AI editor system prompt."""
-    return EDITOR_PROMPT_PATH.read_text(encoding="utf-8")
+    """Load the editor prompt: Cosmos override if present, otherwise the default .md file."""
+    from backend.routers.prompts import load_prompt_content
+    return load_prompt_content("editor_prompt")
 
 
 def _get_openai_client() -> tuple[AzureOpenAI, str]:

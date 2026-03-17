@@ -42,6 +42,7 @@ class LinkedInComposeResponse(BaseModel):
     post_text: str
     word_count: int
     image_url: str = ""
+    validation: dict | None = None
 
 
 class LinkedInOAuthStartResponse(BaseModel):

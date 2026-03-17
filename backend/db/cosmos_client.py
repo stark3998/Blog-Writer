@@ -25,6 +25,7 @@ _published_blogs_container = None
 _feed_sources_container = None
 _crawled_articles_container = None
 _crawl_jobs_container = None
+_prompts_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -670,4 +671,60 @@ def list_crawl_jobs(
         container.query_items(
             query=query, parameters=params, enable_cross_partition_query=True
         )
+    )
+
+
+# ---------- Prompts ----------
+
+
+def _get_prompts_container():
+    """Get or create the prompts container."""
+    global _prompts_container
+    if _prompts_container is not None:
+        return _prompts_container
+    _prompts_container = _create_container_if_not_exists("prompts")
+    return _prompts_container
+
+
+def get_prompt(name: str) -> dict[str, Any] | None:
+    """Get a prompt override by name."""
+    container = _get_prompts_container()
+    try:
+        return dict(container.read_item(item=name, partition_key=name))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def upsert_prompt(name: str, content: str) -> dict[str, Any]:
+    """Create or update a prompt override."""
+    container = _get_prompts_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": name,
+        "name": name,
+        "content": content,
+        "updatedAt": now,
+    }
+    container.upsert_item(body=item)
+    logger.info(f"Prompt upserted: {name} ({len(content)} chars)")
+    return item
+
+
+def delete_prompt(name: str) -> bool:
+    """Delete a prompt override (reverts to file default)."""
+    container = _get_prompts_container()
+    try:
+        container.delete_item(item=name, partition_key=name)
+        logger.info(f"Prompt deleted (reset to default): {name}")
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+def list_prompts() -> list[dict[str, Any]]:
+    """List all prompt overrides."""
+    container = _get_prompts_container()
+    query = "SELECT c.id, c.name, c.updatedAt FROM c ORDER BY c.name"
+    return list(
+        container.query_items(query=query, enable_cross_partition_query=True)
     )

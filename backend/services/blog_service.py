@@ -9,7 +9,6 @@ import os
 import re
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, AsyncGenerator
 
 from openai import AzureOpenAI
@@ -20,12 +19,10 @@ from backend.tools.webpage_analyzer import analyze_webpage
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "system_prompt.md"
-
-
 def _load_system_prompt() -> str:
-    """Load the system prompt from the markdown file."""
-    return SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+    """Load the system prompt: Cosmos override if present, otherwise the default .md file."""
+    from backend.routers.prompts import load_prompt_content
+    return load_prompt_content("system_prompt")
 
 
 def _is_github_url(url: str) -> bool:
@@ -445,6 +442,25 @@ def generate_blog_post(analysis: dict[str, Any]) -> dict[str, str]:
 
         result = _parse_blog_response(full_response)
         result["media_assets"] = media_assets
+
+        # Run validation agent on the generated blog
+        try:
+            from backend.services.validation_agent import validate_content
+            source_url = analysis.get("url", "") or analysis.get("repo_url", "")
+            validation = validate_content(
+                content_type="blog",
+                generated_content=result.get("mdx_content", ""),
+                source_material=context[:8000],
+                source_url=source_url,
+            )
+            result["validation"] = validation
+            if validation.get("corrected_content"):
+                logger.info("Validation agent applied corrections to blog post")
+                result["mdx_content"] = validation["corrected_content"]
+        except Exception as val_exc:
+            logger.warning(f"Blog validation agent failed (non-fatal): {val_exc}")
+            result["validation"] = None
+
         return result
     except Exception as e:
         elapsed = time.time() - start_time

@@ -126,6 +126,13 @@ export default function Home() {
               <Rss className="w-4.5 h-4.5" />
             </button>
             <button
+              onClick={() => navigate("/prompts")}
+              className="p-2.5 rounded-xl text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200"
+              title="Prompt Editor"
+            >
+              <FileText className="w-4.5 h-4.5" />
+            </button>
+            <button
               onClick={() => navigate("/settings")}
               className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
               title="Settings"

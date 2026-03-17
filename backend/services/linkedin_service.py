@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
 from typing import Any
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -12,11 +11,9 @@ from openai import AzureOpenAI
 
 logger = logging.getLogger(__name__)
 
-LINKEDIN_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "linkedin_post_prompt.md"
-
-
 def _load_linkedin_prompt() -> str:
-    return LINKEDIN_PROMPT_PATH.read_text(encoding="utf-8")
+    from backend.routers.prompts import load_prompt_content
+    return load_prompt_content("linkedin_post_prompt")
 
 
 def _get_openai_client() -> tuple[AzureOpenAI, str]:
@@ -262,6 +259,7 @@ def compose_linkedin_post(
             "post_text": fallback_post,
             "word_count": _word_count(fallback_post),
             "image_url": image_url,
+            "validation": None,
         }
 
     hook = str(parsed.get("hook", "")).strip()
@@ -288,10 +286,26 @@ def compose_linkedin_post(
             sections.append(" ".join(hashtags))
         generated_post = "\n\n".join([section for section in sections if section])
 
-    generated_post = _fixup_post_urls(generated_post, blog_url, source_url)
-
     if not hashtags:
         hashtags = ["#SoftwareEngineering", "#AI", "#Leadership"]
+
+    # Run validation agent to check accuracy and URL placement
+    validation = None
+    try:
+        from backend.services.validation_agent import validate_content
+        validation = validate_content(
+            content_type="linkedin_post",
+            generated_content=generated_post,
+            source_material=body,
+            blog_url=blog_url,
+            source_url=source_url,
+        )
+        if validation.get("corrected_content"):
+            logger.info("Validation agent applied corrections to LinkedIn post")
+            generated_post = validation["corrected_content"]
+    except Exception as exc:
+        logger.warning(f"Validation agent failed, falling back to regex fixup: {exc}")
+        generated_post = _fixup_post_urls(generated_post, blog_url, source_url)
 
     return {
         "format": post_format,
@@ -304,4 +318,5 @@ def compose_linkedin_post(
         "post_text": generated_post,
         "word_count": _word_count(generated_post),
         "image_url": image_url,
+        "validation": validation,
     }

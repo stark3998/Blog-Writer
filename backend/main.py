@@ -42,7 +42,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds, diagnostics
+from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds, diagnostics, prompts
 
 # Create FastAPI app
 app = FastAPI(
@@ -73,6 +73,7 @@ app.include_router(publish.router)
 app.include_router(linkedin.router)
 app.include_router(feeds.router)
 app.include_router(diagnostics.router)
+app.include_router(prompts.router)
 
 
 @app.on_event("startup")

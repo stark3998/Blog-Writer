@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: "Skip ACR image build and use the latest existing image"
+        type: boolean
+        default: false
+      include_portfolio:
+        description: "Build and deploy the portfolio app"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -74,6 +83,7 @@ jobs:
             COSMOS_DATABASE                 = "${{ vars.COSMOS_DATABASE || 'blog-writer' }}"
             GITHUB_REPO                     = "${{ vars.GITHUB_REPO || 'owner/repo' }}"
             LOG_LEVEL                       = "${{ vars.LOG_LEVEL || 'INFO' }}"
+            BLOG_BASE_URL                   = "${{ vars.BLOG_BASE_URL }}"
             LINKEDIN_CLIENT_ID              = "${{ vars.LINKEDIN_CLIENT_ID }}"
             LINKEDIN_REDIRECT_URI           = "${{ vars.LINKEDIN_REDIRECT_URI }}"
             LINKEDIN_SCOPES                 = "${{ vars.LINKEDIN_SCOPES || 'openid profile w_member_social' }}"
@@ -87,6 +97,7 @@ jobs:
             cosmos-key             = "${{ secrets.COSMOS_KEY }}"
             github-token           = "${{ secrets.GITHUB_TOKEN }}"
             linkedin-client-secret = "${{ secrets.LINKEDIN_CLIENT_SECRET }}"
+            diagnostics-api-key    = "${{ secrets.DIAGNOSTICS_API_KEY }}"
           }
 
           container_app_secret_env_vars = {
@@ -94,6 +105,7 @@ jobs:
             COSMOS_KEY             = "cosmos-key"
             GITHUB_TOKEN           = "github-token"
             LINKEDIN_CLIENT_SECRET = "linkedin-client-secret"
+            DIAGNOSTICS_API_KEY    = "diagnostics-api-key"
           }
 
           tags = {
@@ -135,8 +147,9 @@ jobs:
           echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
           echo "portal_url=$PORTAL_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push image with ACR Tasks
-        id: image
+      - name: Build and push Blog-Writer image with ACR Tasks
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        id: build
         shell: bash
         run: |
           IMAGE_TAG="${GITHUB_SHA::7}"
@@ -150,8 +163,87 @@ jobs:
 
           echo "full_image=$FULL_IMAGE" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch latest Blog-Writer image from ACR
+        if: ${{ github.event.inputs.skip_build == 'true' }}
+        id: fetch
+        shell: bash
+        run: |
+          LATEST_TAG=$(az acr repository show-tags \
+            --name "${{ steps.outputs.outputs.acr_name }}" \
+            --repository "$IMAGE_NAME" \
+            --orderby time_desc --top 1 --output tsv)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::No existing image found for $IMAGE_NAME in ACR"
+            exit 1
+          fi
+
+          FULL_IMAGE="${{ steps.outputs.outputs.acr_login_server }}/${IMAGE_NAME}:${LATEST_TAG}"
+          echo "Latest image: $FULL_IMAGE"
+          echo "full_image=$FULL_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Blog-Writer image
+        id: image
+        shell: bash
+        run: |
+          if [ -n "${{ steps.build.outputs.full_image }}" ]; then
+            echo "full_image=${{ steps.build.outputs.full_image }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "full_image=${{ steps.fetch.outputs.full_image }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push Portfolio image with ACR Tasks
+        if: ${{ github.event.inputs.include_portfolio == 'true' && github.event.inputs.skip_build != 'true' }}
+        id: portfolio_build
+        shell: bash
+        run: |
+          PORTFOLIO_DIR="../portfolio"
+          if [ ! -d "$PORTFOLIO_DIR" ]; then
+            echo "::warning::Portfolio directory not found at $PORTFOLIO_DIR — skipping"
+            exit 0
+          fi
+
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          PORTFOLIO_IMAGE="${{ steps.outputs.outputs.acr_login_server }}/portfolio:${IMAGE_TAG}"
+
+          az acr build \
+            --registry "${{ steps.outputs.outputs.acr_name }}" \
+            --image "portfolio:${IMAGE_TAG}" \
+            --file "$PORTFOLIO_DIR/Dockerfile" \
+            "$PORTFOLIO_DIR"
+
+          echo "portfolio_image=$PORTFOLIO_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch latest Portfolio image from ACR
+        if: ${{ github.event.inputs.include_portfolio == 'true' && github.event.inputs.skip_build == 'true' }}
+        id: portfolio_fetch
+        shell: bash
+        run: |
+          LATEST_TAG=$(az acr repository show-tags \
+            --name "${{ steps.outputs.outputs.acr_name }}" \
+            --repository "portfolio" \
+            --orderby time_desc --top 1 --output tsv 2>/dev/null || true)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::warning::No existing portfolio image found in ACR — skipping"
+            exit 0
+          fi
+
+          PORTFOLIO_IMAGE="${{ steps.outputs.outputs.acr_login_server }}/portfolio:${LATEST_TAG}"
+          echo "Latest portfolio image: $PORTFOLIO_IMAGE"
+          echo "portfolio_image=$PORTFOLIO_IMAGE" >> "$GITHUB_OUTPUT"
+
       - name: Terraform plan app image rollout
-        run: terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-app -var "container_image=${{ steps.image.outputs.full_image }}"
+        shell: bash
+        run: |
+          PLAN_ARGS="-out=tfplan-app -var container_image=${{ steps.image.outputs.full_image }}"
+
+          PORTFOLIO_IMAGE="${{ steps.portfolio_build.outputs.portfolio_image }}${{ steps.portfolio_fetch.outputs.portfolio_image }}"
+          if [ -n "$PORTFOLIO_IMAGE" ]; then
+            PLAN_ARGS="$PLAN_ARGS -var portfolio_container_image=$PORTFOLIO_IMAGE"
+          fi
+
+          terraform -chdir="$TF_WORKING_DIR" plan $PLAN_ARGS
 
       - name: Terraform apply app image rollout
         run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-app
@@ -159,5 +251,6 @@ jobs:
       - name: Deployment summary
         shell: bash
         run: |
+          echo "Blog-Writer image: ${{ steps.image.outputs.full_image }}"
           echo "App URL: ${{ steps.outputs.outputs.app_url }}"
           echo "Resource Group Portal: ${{ steps.outputs.outputs.portal_url }}"

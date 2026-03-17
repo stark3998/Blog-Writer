@@ -46,7 +46,7 @@ Return ONLY a valid JSON object with this shape:
 
 ## Source Article Reference (Secondary)
 - If a `source_url` is provided, it is the original article that inspired the blog post.
-- Give credit to the original source, but keep it secondary to the blog link.
+- Always Give credit to the original source, but keep it secondary to the blog link, Add the reference at the end.
 - Mention it briefly — e.g., "Inspired by [source_url]" or "Building on this article: [source_url]"
 - If both blog_url and source_url exist, the blog_url is the hero link; the source_url is a brief attribution.
 - If only source_url exists (no blog_url), treat it as the primary link as before.

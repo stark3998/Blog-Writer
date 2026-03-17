@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import BlogView from "./pages/BlogView";
 import Settings from "./pages/Settings";
+import Prompts from "./pages/Prompts";
 import Diagnostics from "./pages/Diagnostics";
 
 createRoot(document.getElementById("root")!).render(
@@ -17,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/editor/:id" element={<Editor />} />
         <Route path="/blog/:slug" element={<BlogView />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/prompts" element={<Prompts />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Routes>
     </BrowserRouter>

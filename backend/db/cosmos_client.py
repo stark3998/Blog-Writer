@@ -724,6 +724,7 @@ def list_crawled_articles(
         container.query_items(
             query=query, parameters=params, enable_cross_partition_query=True
         )
+    )
 
 
 def list_relevant_crawled_articles(

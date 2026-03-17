@@ -26,7 +26,6 @@ import {
   Tag,
   User,
   TrendingUp,
-  Star,
   Settings,
   Clock,
   BarChart3,

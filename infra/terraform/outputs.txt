@@ -1,0 +1,6 @@
+acr_login_server = "blogwriterdeveus6c2uw5.azurecr.io"
+acr_name = "blogwriterdeveus6c2uw5"
+container_app_fqdn = "ca-blog-writer-dev--mp1anyu.purplepebble-4c304df7.eastus.azurecontainerapps.io"
+container_app_url = "https://ca-blog-writer-dev--mp1anyu.purplepebble-4c304df7.eastus.azurecontainerapps.io"
+portal_resource_group_url = "https://portal.azure.com/#@/resource/subscriptions/c49edb83-3b90-4a88-9fed-6b622851c4a6/resourceGroups/rg-blog-writer-dev/overview"
+resource_group_name = "rg-blog-writer-dev"

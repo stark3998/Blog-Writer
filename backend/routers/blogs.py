@@ -12,6 +12,7 @@ from backend.db.cosmos_client import (
     create_draft,
     update_draft,
     delete_draft,
+    delete_all_drafts,
 )
 
 router = APIRouter(prefix="/api/blogs", tags=["blogs"])
@@ -62,6 +63,16 @@ async def list_all_drafts(limit: int = 50):
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list drafts: {str(e)}")
+
+
+@router.delete("/all")
+async def delete_all_drafts_endpoint():
+    """Delete all blog drafts."""
+    try:
+        count = delete_all_drafts()
+        return {"status": "deleted", "count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete drafts: {str(e)}")
 
 
 @router.get("/{draft_id}", response_model=DraftFull)

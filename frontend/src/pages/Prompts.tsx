@@ -10,7 +10,6 @@ import {
 } from "../services/api";
 import type { PromptInfo, PromptDetail, PromptTestResponse } from "../services/api";
 import {
-  Sparkles,
   ArrowLeft,
   Save,
   RotateCcw,
@@ -160,22 +159,32 @@ export default function Prompts() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-[var(--bg-base)]">
+      {/* Decorative background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-200/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[10%] w-[500px] h-[500px] bg-violet-200/15 rounded-full blur-[100px]" />
+      </div>
+
+      {/* Navigation */}
+      <nav className="relative glass-strong border-b border-purple-100/60 animate-fade-in-down sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               to="/"
-              className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+              className="p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
             >
               <ArrowLeft size={20} />
             </Link>
             <div className="flex items-center gap-2">
-              <Sparkles className="text-indigo-400" size={24} />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                Prompt Editor
-              </h1>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center shadow-lg shadow-purple-500/25">
+                <FileText className="w-4.5 h-4.5 text-white" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold tracking-tight text-gray-900">
+                  Prompt Editor
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -183,16 +192,20 @@ export default function Prompts() {
               <button
                 onClick={handleReset}
                 disabled={resetting}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200/60 transition-all disabled:opacity-50"
               >
-                {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                {resetting ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={14} />
+                )}
                 Reset to Default
               </button>
             )}
             <button
               onClick={handleSave}
               disabled={saving || !isDirty}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-purple-500 hover:bg-purple-400 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -205,40 +218,43 @@ export default function Prompts() {
             </button>
           </div>
         </div>
+      </nav>
 
+      <main className="relative max-w-6xl mx-auto px-6 py-8">
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200/60 text-red-600 text-sm flex items-center gap-2">
             <AlertTriangle size={14} />
             {error}
-            <button onClick={() => setError("")} className="ml-auto text-red-400 hover:text-red-300">&times;</button>
+            <button onClick={() => setError("")} className="ml-auto text-red-400 hover:text-red-600">
+              &times;
+            </button>
           </div>
         )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-indigo-400" />
+            <Loader2 size={24} className="animate-spin text-purple-500" />
           </div>
         ) : (
-          <div className="flex gap-4 h-[calc(100vh-10rem)]">
+          <div className="flex gap-6 h-[calc(100vh-10rem)]">
             {/* Sidebar — prompt list */}
-            <div className="w-56 flex-shrink-0 space-y-1">
+            <div className="w-52 flex-shrink-0 space-y-1.5">
               {promptList.map((p) => (
                 <button
                   key={p.name}
                   onClick={() => selectPrompt(p.name)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2 ${
+                  className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all flex items-center gap-2 ${
                     selected === p.name
-                      ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                      : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                      ? "bg-purple-50 text-purple-700 border border-purple-200/60 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-transparent"
                   }`}
                 >
-                  <FileText size={14} />
+                  <FileText size={14} className="shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{promptLabels[p.name] ?? p.name}</div>
-                    <div className="text-xs opacity-60 truncate">{p.description.slice(0, 40)}...</div>
+                    <div className="font-semibold truncate">{promptLabels[p.name] ?? p.name}</div>
                   </div>
                   {p.is_customized && (
-                    <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" title="Customized" />
+                    <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-purple-400" title="Customized" />
                   )}
                 </button>
               ))}
@@ -248,20 +264,20 @@ export default function Prompts() {
             <div className="flex-1 flex flex-col min-w-0">
               {detail && (
                 <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm text-gray-400">{detail.description}</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-gray-500">{detail.description}</span>
                     {detail.is_customized && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200/60 font-semibold">
                         Customized
                       </span>
                     )}
                     {isDirty && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-200/60 font-semibold">
                         Unsaved changes
                       </span>
                     )}
                   </div>
-                  <div className="flex-1 rounded-lg overflow-hidden border border-white/10">
+                  <div className="flex-1 rounded-xl overflow-hidden border border-gray-200/60 bg-white shadow-sm">
                     <Editor
                       height="100%"
                       language="markdown"
@@ -280,12 +296,12 @@ export default function Prompts() {
                   </div>
 
                   {/* Test panel */}
-                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02]">
+                  <div className="mt-3 rounded-xl border border-gray-200/60 bg-white shadow-sm">
                     <button
                       onClick={() => setTestOpen(!testOpen)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-300 hover:text-white transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
                     >
-                      <span className="flex items-center gap-2 font-medium">
+                      <span className="flex items-center gap-2 font-semibold">
                         <Play size={14} />
                         Test Prompt
                       </span>
@@ -293,19 +309,19 @@ export default function Prompts() {
                     </button>
 
                     {testOpen && (
-                      <div className="px-4 pb-4 space-y-3">
+                      <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
                         <textarea
                           value={testInput}
                           onChange={(e) => setTestInput(e.target.value)}
                           placeholder={testPlaceholders[selected ?? ""] ?? "Enter test input..."}
                           rows={4}
-                          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500/50 focus:outline-none resize-y"
+                          className="w-full mt-3 rounded-xl bg-gray-50 border border-gray-200/80 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-300 focus:ring-2 focus:ring-purple-500/10 outline-none resize-y"
                         />
                         <div className="flex items-center gap-2">
                           <button
                             onClick={handleTest}
                             disabled={testing || !testInput.trim()}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-600/80 hover:bg-green-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 hover:bg-emerald-400 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {testing ? (
                               <Loader2 size={14} className="animate-spin" />
@@ -315,24 +331,24 @@ export default function Prompts() {
                             {testing ? "Running..." : "Run Test"}
                           </button>
                           {isDirty && (
-                            <span className="text-xs text-blue-400">
+                            <span className="text-xs text-blue-500 font-medium">
                               Testing with unsaved editor content
                             </span>
                           )}
                         </div>
 
                         {testError && (
-                          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                          <div className="p-3 rounded-lg bg-red-50 border border-red-200/60 text-red-600 text-sm">
                             {testError}
                           </div>
                         )}
 
                         {testResult && (
                           <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
                               <span>Model: {testResult.model}</span>
                             </div>
-                            <div className="rounded-lg bg-black/30 border border-white/10 p-3 max-h-64 overflow-y-auto">
+                            <div className="rounded-xl bg-gray-900 border border-gray-800 p-3 max-h-64 overflow-y-auto">
                               <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono">
                                 {testResult.output}
                               </pre>
@@ -347,7 +363,7 @@ export default function Prompts() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

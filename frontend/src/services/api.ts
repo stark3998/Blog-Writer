@@ -201,6 +201,10 @@ export async function testDraftReadiness(
   });
 }
 
+export async function deleteAllDrafts(): Promise<{ count: number }> {
+  return json<{ count: number }>("/blogs/all", { method: "DELETE" });
+}
+
 export async function deleteDraft(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/blogs/${id}`, { method: "DELETE" });
   if (!res.ok && res.status !== 204) {

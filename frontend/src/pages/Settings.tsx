@@ -9,6 +9,7 @@ import {
   listFeedArticles,
   deleteFeedArticle,
   deleteAllFeedArticles,
+  deleteAllDrafts,
   getCrawlLog,
   streamCrawl,
 } from "../services/api";
@@ -28,6 +29,7 @@ import {
   X,
   ExternalLink,
   Settings as SettingsIcon,
+  AlertTriangle,
 } from "lucide-react";
 
 interface CrawlLogEntry {
@@ -257,6 +259,18 @@ export default function Settings() {
       await deleteAllFeedArticles(feedId);
       setFeedArticles((prev) => ({ ...prev, [feedId]: [] }));
     } catch {}
+  };
+
+  const [deletingAllDrafts, setDeletingAllDrafts] = useState(false);
+
+  const handleDeleteAllDrafts = async () => {
+    if (!confirm("Delete ALL blog drafts? This cannot be undone.")) return;
+    setDeletingAllDrafts(true);
+    try {
+      const result = await deleteAllDrafts();
+      alert(`Deleted ${result.count} draft(s).`);
+    } catch {}
+    setDeletingAllDrafts(false);
   };
 
   const toggleTopic = (topic: string) => {
@@ -848,6 +862,32 @@ export default function Settings() {
               })}
             </div>
           )}
+        </div>
+
+        {/* Danger Zone */}
+        <div className="mt-10 p-5 rounded-2xl border border-red-200/60 bg-red-50/30">
+          <h3 className="text-sm font-bold text-red-600 flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4" />
+            Danger Zone
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-700 font-medium">Delete all blog drafts</p>
+              <p className="text-xs text-gray-400 mt-0.5">Permanently remove every draft from the database. This cannot be undone.</p>
+            </div>
+            <button
+              onClick={handleDeleteAllDrafts}
+              disabled={deletingAllDrafts}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-red-600 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50 flex items-center gap-2 shrink-0"
+            >
+              {deletingAllDrafts ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Delete All Drafts
+            </button>
+          </div>
         </div>
 
         {/* Footer */}

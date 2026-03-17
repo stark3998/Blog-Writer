@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   X,
   Plus,
-  Sparkles,
 } from "lucide-react";
 
 export default function Keywords() {

@@ -358,6 +358,26 @@ def update_draft(draft_id: str, updates: dict[str, Any]) -> dict[str, Any] | Non
     return dict(existing)
 
 
+def delete_all_drafts() -> int:
+    """Delete all drafts. Returns count of deleted items."""
+    container = _get_container()
+    start_time = time.time()
+    query = "SELECT c.id FROM c"
+    items = list(
+        container.query_items(query=query, enable_cross_partition_query=True)
+    )
+    count = 0
+    for item in items:
+        try:
+            container.delete_item(item=item["id"], partition_key=item["id"])
+            count += 1
+        except CosmosResourceNotFoundError:
+            pass
+    elapsed = time.time() - start_time
+    logger.info(f"Deleted {count} drafts in {elapsed:.3f}s")
+    return count
+
+
 def delete_draft(draft_id: str) -> bool:
     """Delete a draft by ID.
 

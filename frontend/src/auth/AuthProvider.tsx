@@ -2,18 +2,16 @@ import { useEffect, useRef, useState, createContext, useContext, type ReactNode 
 import {
   PublicClientApplication,
   InteractionRequiredAuthError,
+  EventType,
   type AccountInfo,
+  type EventMessage,
+  type AuthenticationResult,
 } from "@azure/msal-browser";
 import { MsalProvider, useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { msalConfig, loginRequest, isAuthConfigured } from "./msalConfig";
 import { setAccessTokenGetter } from "../services/api";
 
 const msalInstance = new PublicClientApplication(msalConfig);
-
-// Initialize MSAL — handles redirect promise on page load
-msalInstance.initialize().then(() => {
-  msalInstance.handleRedirectPromise().catch(console.error);
-});
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -45,10 +43,33 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
   const tokenGetterWired = useRef(false);
 
   useEffect(() => {
-    // Brief delay to let MSAL finish initializing
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+    // Wait for MSAL to fully initialize and handle any redirect response
+    instance.initialize().then(() => {
+      instance.handleRedirectPromise().then((response) => {
+        if (response?.account) {
+          instance.setActiveAccount(response.account);
+        }
+        setIsLoading(false);
+      }).catch((err) => {
+        console.error("MSAL redirect handling failed:", err);
+        setIsLoading(false);
+      });
+    });
+
+    // Listen for login success events (from popup or redirect)
+    const callbackId = instance.addEventCallback((event: EventMessage) => {
+      if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+        const result = event.payload as AuthenticationResult;
+        if (result.account) {
+          instance.setActiveAccount(result.account);
+        }
+      }
+    });
+
+    return () => {
+      if (callbackId) instance.removeEventCallback(callbackId);
+    };
+  }, [instance]);
 
   // Wire the token getter into the API module once
   useEffect(() => {
@@ -62,14 +83,14 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 
   async function login() {
     try {
-      await instance.loginPopup(loginRequest);
+      await instance.loginRedirect(loginRequest);
     } catch (err) {
       console.error("Login failed:", err);
     }
   }
 
   function logout() {
-    instance.logoutPopup({ postLogoutRedirectUri: window.location.origin });
+    instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
   }
 
   async function getAccessToken(): Promise<string> {
@@ -86,8 +107,8 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
       return response.accessToken;
     } catch (err) {
       if (err instanceof InteractionRequiredAuthError) {
-        const response = await instance.acquireTokenPopup(loginRequest);
-        return response.accessToken;
+        await instance.acquireTokenRedirect(loginRequest);
+        return "";
       }
       console.error("Token acquisition failed:", err);
       return "";

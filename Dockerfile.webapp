@@ -1,6 +1,11 @@
 # ---- Stage 1: Build React frontend ----
 FROM node:20-alpine AS frontend-build
 
+# Entra ID config baked into the frontend at build time
+ARG VITE_ENTRA_CLIENT_ID=""
+ARG VITE_ENTRA_TENANT_ID=""
+ARG VITE_ENTRA_API_SCOPE=""
+
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install

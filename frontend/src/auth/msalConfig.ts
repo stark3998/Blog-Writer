@@ -2,6 +2,7 @@ import { Configuration, LogLevel } from "@azure/msal-browser";
 
 const clientId = import.meta.env.VITE_ENTRA_CLIENT_ID || "";
 const tenantId = import.meta.env.VITE_ENTRA_TENANT_ID || "";
+const apiScope = import.meta.env.VITE_ENTRA_API_SCOPE || "";
 
 export const msalConfig: Configuration = {
   auth: {
@@ -26,7 +27,9 @@ export const msalConfig: Configuration = {
 };
 
 export const loginRequest = {
-  scopes: clientId ? [`api://${clientId}/access_as_user`] : [],
+  scopes: apiScope
+    ? [apiScope]
+    : ["User.Read"],
 };
 
 export const isAuthConfigured = !!clientId;

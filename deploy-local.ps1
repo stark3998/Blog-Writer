@@ -43,10 +43,17 @@ function Invoke-AcrBuild {
         [Parameter(Mandatory = $true)][string]$ImageName,
         [Parameter(Mandatory = $true)][string]$Tag,
         [Parameter(Mandatory = $true)][string]$DockerfilePath,
-        [Parameter(Mandatory = $true)][string]$ContextPath
+        [Parameter(Mandatory = $true)][string]$ContextPath,
+        [hashtable]$BuildArgs = @{}
     )
 
-    & az acr build --registry $Registry --image "${ImageName}:$Tag" --file $DockerfilePath $ContextPath
+    $buildArgFlags = @()
+    foreach ($key in $BuildArgs.Keys) {
+        $buildArgFlags += "--build-arg"
+        $buildArgFlags += "$key=$($BuildArgs[$key])"
+    }
+
+    & az acr build --registry $Registry --image "${ImageName}:$Tag" --file $DockerfilePath @buildArgFlags $ContextPath
     if ($LASTEXITCODE -ne 0) {
         throw "ACR build failed for $ImageName."
     }
@@ -164,10 +171,18 @@ if ($SkipBuild) {
 } else {
     $fullImage = "$acrLoginServer/blog-writer-webapp:$Tag"
 
+    # Fetch Entra ID config from Terraform outputs for frontend build args
+    $entraClientId = Get-TerraformOutput -Name 'entra_client_id' -AllowMissing
+    $entraTenantId = Get-TerraformOutput -Name 'entra_tenant_id' -AllowMissing
+    $frontendBuildArgs = @{}
+    if ($entraClientId) { $frontendBuildArgs["VITE_ENTRA_CLIENT_ID"] = $entraClientId }
+    if ($entraTenantId) { $frontendBuildArgs["VITE_ENTRA_TENANT_ID"] = $entraTenantId }
+
     Write-Step "Building and pushing Blog-Writer image with ACR Tasks"
     Write-Host "Image: $fullImage"
+    if ($entraClientId) { Write-Host "Entra ID Client: $entraClientId" }
     if ($PSCmdlet.ShouldProcess($fullImage, 'az acr build')) {
-        Invoke-AcrBuild -Registry $acrName -ImageName "blog-writer-webapp" -Tag $Tag -DockerfilePath "Dockerfile.webapp" -ContextPath $repoRoot
+        Invoke-AcrBuild -Registry $acrName -ImageName "blog-writer-webapp" -Tag $Tag -DockerfilePath "Dockerfile.webapp" -ContextPath $repoRoot -BuildArgs $frontendBuildArgs
     }
 
     if ($IncludePortfolio) {

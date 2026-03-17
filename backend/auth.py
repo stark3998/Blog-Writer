@@ -82,12 +82,16 @@ def validate_token(token: str) -> dict:
     if not rsa_key:
         raise HTTPException(status_code=401, detail="Unable to find appropriate signing key")
 
+    # Accept tokens for our custom API scope or for Microsoft Graph (User.Read fallback)
+    graph_app_id = "00000003-0000-0000-c000-000000000000"
+    allowed_audiences = [client_id, f"api://{client_id}", graph_app_id]
+
     try:
         claims = jwt.decode(
             token,
             rsa_key,
             algorithms=["RS256"],
-            audience=client_id,
+            audience=allowed_audiences,
             issuer=f"https://login.microsoftonline.com/{tenant_id}/v2.0",
         )
         return claims

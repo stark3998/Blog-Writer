@@ -9,7 +9,10 @@ resource "azuread_application" "blog_writer" {
   sign_in_audience = "AzureADMyOrg"
 
   single_page_application {
-    redirect_uris = var.entra_spa_redirect_uris
+    redirect_uris = concat(
+      var.entra_spa_redirect_uris,
+      ["https://${azurerm_container_app.this.ingress[0].fqdn}"]
+    )
   }
 
   api {
@@ -36,6 +39,11 @@ resource "azuread_application" "blog_writer" {
 }
 
 resource "random_uuid" "scope_id" {}
+
+resource "azuread_application_identifier_uri" "blog_writer" {
+  application_id = azuread_application.blog_writer.id
+  identifier_uri = "api://${azuread_application.blog_writer.client_id}"
+}
 
 resource "azuread_application_password" "blog_writer" {
   application_id = azuread_application.blog_writer.id

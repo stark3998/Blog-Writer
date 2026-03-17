@@ -166,6 +166,24 @@ resource "azurerm_container_app" "this" {
           secret_name = env.value
         }
       }
+
+      startup_probe {
+        transport               = "HTTP"
+        path                    = "/api/health"
+        port                    = 8080
+        interval_seconds        = 10
+        timeout                 = 5
+        failure_count_threshold = 30
+      }
+
+      liveness_probe {
+        transport               = "HTTP"
+        path                    = "/api/health"
+        port                    = 8080
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 3
+      }
     }
   }
 }

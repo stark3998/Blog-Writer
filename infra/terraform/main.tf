@@ -167,6 +167,16 @@ resource "azurerm_container_app" "this" {
         }
       }
 
+      env {
+        name  = "ENTRA_CLIENT_ID"
+        value = azuread_application.blog_writer.client_id
+      }
+
+      env {
+        name  = "ENTRA_TENANT_ID"
+        value = data.azuread_client_config.current.tenant_id
+      }
+
       startup_probe {
         transport               = "HTTP"
         path                    = "/api/health"

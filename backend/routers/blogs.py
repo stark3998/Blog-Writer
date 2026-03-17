@@ -1,11 +1,12 @@
 """Blogs Router — CRUD endpoints for blog drafts in Cosmos DB."""
 
 import asyncio
-
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from backend.auth import get_current_user
 from backend.db.cosmos_client import (
     list_drafts,
     get_draft,
@@ -14,6 +15,7 @@ from backend.db.cosmos_client import (
     delete_draft,
     delete_all_drafts,
 )
+from backend.models.user import UserInfo
 
 router = APIRouter(prefix="/api/blogs", tags=["blogs"])
 
@@ -54,10 +56,10 @@ class DraftFull(DraftSummary):
 
 
 @router.get("", response_model=list[DraftSummary])
-async def list_all_drafts(limit: int = 50):
+async def list_all_drafts(limit: int = 50, user: UserInfo = Depends(get_current_user)):
     """List all blog drafts (without full content)."""
     try:
-        drafts = list_drafts(limit=limit)
+        drafts = list_drafts(limit=limit, user_id=user.user_id)
         return drafts
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -90,7 +92,7 @@ async def get_single_draft(draft_id: str):
 
 
 @router.post("", response_model=DraftFull, status_code=201)
-async def create_new_draft(request: CreateDraftRequest):
+async def create_new_draft(request: CreateDraftRequest, user: UserInfo = Depends(get_current_user)):
     """Create a new blog draft."""
     try:
         draft = create_draft(
@@ -102,6 +104,7 @@ async def create_new_draft(request: CreateDraftRequest):
             source_type=request.source_type,
             origin=request.origin,
             tags=request.tags,
+            user_id=user.user_id,
         )
         return draft
     except Exception as e:

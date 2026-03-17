@@ -11,6 +11,8 @@
     "dev:all": "concurrently --kill-others \"npm run dev\" \"npm run dev:backend\""
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.5.0",
+    "@azure/msal-react": "^5.0.7",
     "@monaco-editor/react": "^4.7.0",
     "lucide-react": "^0.513.0",
     "mermaid": "^11.12.0",

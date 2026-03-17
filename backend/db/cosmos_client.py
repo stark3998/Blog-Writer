@@ -27,6 +27,7 @@ _crawled_articles_container = None
 _crawl_jobs_container = None
 _prompts_container = None
 _keywords_container = None
+_user_profiles_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -141,7 +142,9 @@ def _get_linkedin_state_container():
     return _linkedin_state_container
 
 
-def upsert_linkedin_session(session_id: str, token_data: dict[str, Any]) -> dict[str, Any]:
+def upsert_linkedin_session(
+    session_id: str, token_data: dict[str, Any], user_id: str | None = None
+) -> dict[str, Any]:
     """Create or update a LinkedIn OAuth session token record."""
     container = _get_linkedin_session_container()
     now = datetime.now(timezone.utc).isoformat()
@@ -154,6 +157,8 @@ def upsert_linkedin_session(session_id: str, token_data: dict[str, Any]) -> dict
         "memberId": token_data.get("member_id", ""),
         "updatedAt": now,
     }
+    if user_id:
+        item["userId"] = user_id
     container.upsert_item(body=item)
     return item
 
@@ -214,36 +219,50 @@ def consume_linkedin_oauth_state(state: str) -> str | None:
     return str(item.get("sessionId", "") or "") or None
 
 
-def list_drafts(limit: int = 50) -> list[dict[str, Any]]:
+def list_drafts(limit: int = 50, user_id: str | None = None) -> list[dict[str, Any]]:
     """List all blog drafts, ordered by most recently updated.
 
     Args:
         limit: Maximum number of drafts to return.
+        user_id: If provided, filter to drafts owned by this user.
 
     Returns:
         List of draft documents (without full content for list view).
     """
     container = _get_container()
     start_time = time.time()
-    
-    query = (
-        "SELECT c.id, c.title, c.slug, c.excerpt, c.sourceUrl, "
-        "c.sourceType, c.origin, c.tags, c.createdAt, c.updatedAt "
-        "FROM c ORDER BY c.updatedAt DESC OFFSET 0 LIMIT @limit"
+
+    fields = (
+        "c.id, c.title, c.slug, c.excerpt, c.sourceUrl, "
+        "c.sourceType, c.origin, c.tags, c.createdAt, c.updatedAt"
     )
-    
-    logger.debug(f"Querying drafts with limit={limit}")
+    params: list[dict[str, Any]] = [{"name": "@limit", "value": limit}]
+
+    if user_id:
+        query = (
+            f"SELECT {fields} FROM c "
+            "WHERE c.userId = @userId "
+            "ORDER BY c.updatedAt DESC OFFSET 0 LIMIT @limit"
+        )
+        params.append({"name": "@userId", "value": user_id})
+    else:
+        query = (
+            f"SELECT {fields} FROM c "
+            "ORDER BY c.updatedAt DESC OFFSET 0 LIMIT @limit"
+        )
+
+    logger.debug(f"Querying drafts with limit={limit}, user_id={user_id}")
     items = list(
         container.query_items(
             query=query,
-            parameters=[{"name": "@limit", "value": limit}],
+            parameters=params,
             enable_cross_partition_query=True,
         )
     )
-    
+
     elapsed = time.time() - start_time
     logger.info(f"Listed {len(items)} drafts in {elapsed:.3f}s")
-    
+
     return items
 
 
@@ -280,6 +299,7 @@ def create_draft(
     source_type: str,
     origin: str = "user",
     tags: list[str] | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a new blog draft.
 
@@ -311,6 +331,8 @@ def create_draft(
         "createdAt": now,
         "updatedAt": now,
     }
+    if user_id:
+        draft["userId"] = user_id
 
     logger.debug(f"Creating draft: id={draft['id']}, title={title}, source_type={source_type}")
     container.create_item(body=draft)
@@ -866,3 +888,70 @@ def list_topic_keyword_overrides() -> list[dict[str, Any]]:
     return list(
         container.query_items(query=query, enable_cross_partition_query=True)
     )
+
+
+# ---------- User Profiles ----------
+
+
+def _get_user_profiles_container():
+    """Get or create the user profiles container."""
+    global _user_profiles_container
+    if _user_profiles_container is not None:
+        return _user_profiles_container
+    _user_profiles_container = _create_container_if_not_exists("user-profiles")
+    return _user_profiles_container
+
+
+def get_or_create_user_profile(
+    user_id: str, name: str, email: str
+) -> dict[str, Any]:
+    """Get existing user profile or create one on first login."""
+    container = _get_user_profiles_container()
+    now = datetime.now(timezone.utc).isoformat()
+
+    try:
+        existing = dict(container.read_item(item=user_id, partition_key=user_id))
+        existing["lastLoginAt"] = now
+        existing["name"] = name
+        existing["email"] = email
+        container.replace_item(item=user_id, body=existing)
+        return existing
+    except CosmosResourceNotFoundError:
+        item = {
+            "id": user_id,
+            "name": name,
+            "email": email,
+            "linkedinSessionId": "",
+            "settings": {},
+            "createdAt": now,
+            "lastLoginAt": now,
+        }
+        container.create_item(body=item)
+        logger.info(f"User profile created: {user_id} ({email})")
+        return item
+
+
+def get_user_profile(user_id: str) -> dict[str, Any] | None:
+    """Get a user profile by ID."""
+    container = _get_user_profiles_container()
+    try:
+        return dict(container.read_item(item=user_id, partition_key=user_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def update_user_profile(user_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update an existing user profile."""
+    container = _get_user_profiles_container()
+    try:
+        existing = container.read_item(item=user_id, partition_key=user_id)
+    except CosmosResourceNotFoundError:
+        return None
+
+    allowed = {"name", "email", "linkedinSessionId", "settings"}
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    container.replace_item(item=user_id, body=existing)
+    return dict(existing)

@@ -13,6 +13,9 @@ azure-identity>=1.21.0
 # Azure Cosmos DB
 azure-cosmos>=4.9.0
 
+# Auth — JWT validation for Entra ID tokens
+python-jose[cryptography]>=3.3.0
+
 # Web scraping / analysis
 requests>=2.32.0
 beautifulsoup4>=4.13.0

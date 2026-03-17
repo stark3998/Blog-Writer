@@ -19,12 +19,28 @@ import type {
 
 const API_BASE = "/api";
 
+// ---------- auth token ----------
+
+let _getAccessToken: (() => Promise<string>) | null = null;
+
+/** Called once from App init to wire up the MSAL token getter. */
+export function setAccessTokenGetter(fn: () => Promise<string>) {
+  _getAccessToken = fn;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!_getAccessToken) return {};
+  const token = await _getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // ---------- helpers ----------
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
+  const auth = await authHeaders();
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: { "Content-Type": "application/json", ...auth, ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -47,9 +63,10 @@ export interface SSECallbacks {
 export function streamSSE(url: string, body: object, callbacks: SSECallbacks): AbortController {
   const controller = new AbortController();
 
+  authHeaders().then((auth) => {
   fetch(`${API_BASE}${url}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...auth },
     body: JSON.stringify(body),
     signal: controller.signal,
   })
@@ -118,6 +135,7 @@ export function streamSSE(url: string, body: object, callbacks: SSECallbacks): A
         callbacks.onError?.(err.message);
       }
     });
+  }); // end authHeaders().then()
 
   return controller;
 }
@@ -206,7 +224,8 @@ export async function deleteAllDrafts(): Promise<{ count: number }> {
 }
 
 export async function deleteDraft(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/blogs/${id}`, { method: "DELETE" });
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/blogs/${id}`, { method: "DELETE", headers: auth });
   if (!res.ok && res.status !== 204) {
     throw new Error(`Delete failed: HTTP ${res.status}`);
   }
@@ -215,9 +234,10 @@ export async function deleteDraft(id: string): Promise<void> {
 // ---------- Export ----------
 
 export async function exportBlog(content: string, format: ExportFormat): Promise<Blob> {
+  const auth = await authHeaders();
   const res = await fetch(`${API_BASE}/export`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...auth },
     body: JSON.stringify({ content, format }),
   });
   if (!res.ok) {
@@ -360,8 +380,10 @@ export async function getLinkedInStatus(sessionId: string): Promise<LinkedInStat
 }
 
 export async function disconnectLinkedIn(sessionId: string): Promise<{ status: string; session_id: string }> {
+  const auth = await authHeaders();
   const res = await fetch(`${API_BASE}/linkedin/disconnect?session_id=${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
+    headers: auth,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -416,7 +438,8 @@ export async function updateFeed(
 }
 
 export async function deleteFeed(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/feeds/${id}`, { method: "DELETE" });
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/feeds/${id}`, { method: "DELETE", headers: auth });
   if (!res.ok && res.status !== 204) {
     throw new Error(`Delete failed: HTTP ${res.status}`);
   }
@@ -451,9 +474,10 @@ export interface CrawlSSECallbacks {
 export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): AbortController {
   const controller = new AbortController();
 
+  authHeaders().then((auth) => {
   fetch(`${API_BASE}/feeds/${feedId}/crawl/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...auth },
     signal: controller.signal,
   })
     .then(async (res) => {
@@ -509,12 +533,14 @@ export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): Abort
         callbacks.onError?.(err.message);
       }
     });
+  }); // end authHeaders().then()
 
   return controller;
 }
 
 export async function deleteFeedArticle(feedId: string, articleId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/feeds/${feedId}/articles/${articleId}`, { method: "DELETE" });
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/feeds/${feedId}/articles/${articleId}`, { method: "DELETE", headers: auth });
   if (!res.ok && res.status !== 204) {
     throw new Error(`Delete failed: HTTP ${res.status}`);
   }
@@ -660,4 +686,19 @@ export async function addTopicKeywords(
     method: "POST",
     body: JSON.stringify({ keywords }),
   });
+}
+
+// ---------- User Profile ----------
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  linkedinSessionId: string;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
+export async function getUserProfile(): Promise<UserProfile> {
+  return json<UserProfile>("/user/me");
 }

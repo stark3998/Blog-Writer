@@ -38,11 +38,12 @@ logging.getLogger("backend.services.linkedin_service").setLevel(
 logger = logging.getLogger(__name__)
 logger.info(f"Blog Writer initialized with log level: {log_level}")
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds, diagnostics, prompts, keywords
+from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds, diagnostics, prompts, keywords, user
 
 # Create FastAPI app
 app = FastAPI(
@@ -64,6 +65,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Auth middleware — validate Entra ID tokens on /api/* routes (except health)
+AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/callback"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Require valid Entra ID bearer token for API routes."""
+    path = request.url.path
+
+    # Skip auth for non-API routes (static files), health, and LinkedIn callback
+    if not path.startswith("/api/") or path in AUTH_SKIP_PATHS:
+        return await call_next(request)
+
+    # Skip auth if Entra ID is not configured (local dev without auth)
+    entra_client_id = os.environ.get("ENTRA_CLIENT_ID", "")
+    if not entra_client_id:
+        return await call_next(request)
+
+    from backend.auth import validate_token
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Missing or invalid Authorization header"},
+        )
+
+    token = auth_header[7:]
+    try:
+        claims = validate_token(token)
+        # Store user claims on request state for downstream use
+        request.state.user_claims = claims
+    except Exception as e:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": str(e.detail) if hasattr(e, "detail") else "Authentication failed"},
+        )
+
+    return await call_next(request)
+
+
 # Register API routers
 app.include_router(generate.router)
 app.include_router(edit.router)
@@ -75,6 +117,7 @@ app.include_router(feeds.router)
 app.include_router(diagnostics.router)
 app.include_router(prompts.router)
 app.include_router(keywords.router)
+app.include_router(user.router)
 
 
 @app.on_event("startup")

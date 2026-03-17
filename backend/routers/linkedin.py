@@ -4,10 +4,12 @@ import os
 import re
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.auth import get_current_user
 from backend.db.cosmos_client import get_draft
+from backend.models.user import UserInfo
 from backend.services.linkedin_service import compose_linkedin_post
 from backend.tools.linkedin_publisher import (
     disconnect_session,
@@ -92,7 +94,7 @@ class LinkedInPublishResponse(BaseModel):
 
 
 @router.get("/oauth/start", response_model=LinkedInOAuthStartResponse)
-async def oauth_start(session_id: str | None = None):
+async def oauth_start(session_id: str | None = None, user: UserInfo = Depends(get_current_user)):
     """Generate LinkedIn OAuth authorization URL for a session."""
     try:
         result = start_oauth(session_id)

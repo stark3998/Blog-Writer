@@ -251,3 +251,9 @@ if ($portfolioUrl) {
     Write-Host "Portfolio URL:   $portfolioUrl"
 }
 Write-Host "Portal URL:      $portalUrl"
+
+Write-Host ""
+Write-Step "OAuth Redirect URIs (configure in your developer portals)"
+Write-Host "  LinkedIn: $appUrl/api/linkedin/oauth/callback"
+Write-Host "  Twitter:  $appUrl/api/twitter/oauth/callback"
+Write-Host "  Medium:   No redirect needed (uses integration tokens)"

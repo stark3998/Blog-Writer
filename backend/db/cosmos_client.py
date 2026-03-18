@@ -21,6 +21,9 @@ _client: CosmosClient | None = None
 _container = None
 _linkedin_session_container = None
 _linkedin_state_container = None
+_twitter_session_container = None
+_twitter_state_container = None
+_medium_session_container = None
 _published_blogs_container = None
 _feed_sources_container = None
 _crawled_articles_container = None
@@ -217,6 +220,166 @@ def consume_linkedin_oauth_state(state: str) -> str | None:
         return None
 
     return str(item.get("sessionId", "") or "") or None
+
+
+# ---------- Twitter/X Sessions ----------
+
+
+def _get_twitter_session_container():
+    """Get or create Twitter session container."""
+    global _twitter_session_container
+    if _twitter_session_container is not None:
+        return _twitter_session_container
+    container_name = os.environ.get("TWITTER_COSMOS_SESSION_CONTAINER", "twitter-sessions")
+    _twitter_session_container = _create_container_if_not_exists(container_name)
+    return _twitter_session_container
+
+
+def _get_twitter_state_container():
+    """Get or create Twitter OAuth state container."""
+    global _twitter_state_container
+    if _twitter_state_container is not None:
+        return _twitter_state_container
+    container_name = os.environ.get("TWITTER_COSMOS_STATE_CONTAINER", "twitter-oauth-states")
+    _twitter_state_container = _create_container_if_not_exists(container_name)
+    return _twitter_state_container
+
+
+def upsert_twitter_session(
+    session_id: str, token_data: dict[str, Any], user_id: str | None = None
+) -> dict[str, Any]:
+    """Create or update a Twitter OAuth session token record."""
+    container = _get_twitter_session_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": session_id,
+        "sessionId": session_id,
+        "accessToken": token_data.get("access_token", ""),
+        "refreshToken": token_data.get("refresh_token", ""),
+        "expiresAt": float(token_data.get("expires_at", 0) or 0),
+        "username": token_data.get("username", ""),
+        "twitterUserId": token_data.get("user_id", ""),
+        "updatedAt": now,
+    }
+    if user_id:
+        item["userId"] = user_id
+    container.upsert_item(body=item)
+    return item
+
+
+def get_twitter_session(session_id: str) -> dict[str, Any] | None:
+    """Get Twitter OAuth session by session ID."""
+    container = _get_twitter_session_container()
+    try:
+        return dict(container.read_item(item=session_id, partition_key=session_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def delete_twitter_session(session_id: str) -> bool:
+    """Delete Twitter OAuth session."""
+    container = _get_twitter_session_container()
+    try:
+        container.delete_item(item=session_id, partition_key=session_id)
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+def store_twitter_oauth_state(
+    state: str, session_id: str, code_verifier: str, expires_at: float
+) -> dict[str, Any]:
+    """Store OAuth state mapping for Twitter callback verification (includes PKCE verifier)."""
+    container = _get_twitter_state_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": state,
+        "state": state,
+        "sessionId": session_id,
+        "codeVerifier": code_verifier,
+        "expiresAt": float(expires_at),
+        "createdAt": now,
+    }
+    container.upsert_item(body=item)
+    return item
+
+
+def consume_twitter_oauth_state(state: str) -> dict[str, str] | None:
+    """Read-and-delete OAuth state mapping, returning session_id and code_verifier if valid."""
+    container = _get_twitter_state_container()
+    try:
+        item = dict(container.read_item(item=state, partition_key=state))
+    except CosmosResourceNotFoundError:
+        return None
+
+    try:
+        container.delete_item(item=state, partition_key=state)
+    except CosmosResourceNotFoundError:
+        pass
+
+    expires_at = float(item.get("expiresAt", 0) or 0)
+    if expires_at and time.time() >= expires_at:
+        return None
+
+    session_id = str(item.get("sessionId", "") or "")
+    code_verifier = str(item.get("codeVerifier", "") or "")
+    if not session_id:
+        return None
+
+    return {"session_id": session_id, "code_verifier": code_verifier}
+
+
+# ---------- Medium Sessions ----------
+
+
+def _get_medium_session_container():
+    """Get or create Medium session container."""
+    global _medium_session_container
+    if _medium_session_container is not None:
+        return _medium_session_container
+    container_name = os.environ.get("MEDIUM_COSMOS_SESSION_CONTAINER", "medium-sessions")
+    _medium_session_container = _create_container_if_not_exists(container_name)
+    return _medium_session_container
+
+
+def upsert_medium_session(
+    session_id: str, token_data: dict[str, Any], user_id: str | None = None
+) -> dict[str, Any]:
+    """Create or update a Medium session record."""
+    container = _get_medium_session_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": session_id,
+        "sessionId": session_id,
+        "accessToken": token_data.get("access_token", ""),
+        "authorId": token_data.get("author_id", ""),
+        "username": token_data.get("username", ""),
+        "name": token_data.get("name", ""),
+        "updatedAt": now,
+    }
+    if user_id:
+        item["userId"] = user_id
+    container.upsert_item(body=item)
+    return item
+
+
+def get_medium_session(session_id: str) -> dict[str, Any] | None:
+    """Get Medium session by session ID."""
+    container = _get_medium_session_container()
+    try:
+        return dict(container.read_item(item=session_id, partition_key=session_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def delete_medium_session(session_id: str) -> bool:
+    """Delete Medium session."""
+    container = _get_medium_session_container()
+    try:
+        container.delete_item(item=session_id, partition_key=session_id)
+        return True
+    except CosmosResourceNotFoundError:
+        return False
 
 
 def list_drafts(limit: int = 50, user_id: str | None = None) -> list[dict[str, Any]]:

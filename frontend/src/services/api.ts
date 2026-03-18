@@ -403,6 +403,162 @@ export async function publishLinkedInPost(
   return json("/linkedin/publish", { method: "POST", body: JSON.stringify(data) });
 }
 
+// ---------- Twitter/X ----------
+
+export interface TwitterComposeRequest {
+  content?: string;
+  draft_id?: string;
+  title?: string;
+  excerpt?: string;
+  blog_url?: string;
+  additional_context?: string;
+}
+
+export interface TwitterComposeResponse {
+  tweet_text: string;
+  hashtags: string[];
+  char_count: number;
+  title: string;
+  excerpt: string;
+}
+
+export interface TwitterOAuthStartResponse {
+  session_id: string;
+  state: string;
+  auth_url: string;
+}
+
+export interface TwitterStatusResponse {
+  connected: boolean;
+  session_id: string;
+  username?: string;
+  expires_at?: number;
+}
+
+export interface TwitterPublishRequest {
+  session_id: string;
+  tweet_text?: string;
+  content?: string;
+  draft_id?: string;
+  title?: string;
+  excerpt?: string;
+  blog_url?: string;
+}
+
+export interface TwitterPublishResponse {
+  session_id: string;
+  tweet_id: string;
+  text: string;
+  status_code: number;
+  composed: boolean;
+}
+
+export async function composeTwitterPost(
+  data: TwitterComposeRequest
+): Promise<TwitterComposeResponse> {
+  return json("/twitter/compose", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function startTwitterOAuth(
+  sessionId?: string
+): Promise<TwitterOAuthStartResponse> {
+  const suffix = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
+  return json(`/twitter/oauth/start${suffix}`);
+}
+
+export async function getTwitterStatus(sessionId: string): Promise<TwitterStatusResponse> {
+  return json(`/twitter/status?session_id=${encodeURIComponent(sessionId)}`);
+}
+
+export async function disconnectTwitter(sessionId: string): Promise<{ status: string; session_id: string }> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/twitter/disconnect?session_id=${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+    headers: auth,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function publishTwitterPost(
+  data: TwitterPublishRequest
+): Promise<TwitterPublishResponse> {
+  return json("/twitter/publish", { method: "POST", body: JSON.stringify(data) });
+}
+
+// ---------- Medium ----------
+
+export interface MediumConnectRequest {
+  integration_token: string;
+  session_id?: string;
+}
+
+export interface MediumConnectResponse {
+  session_id: string;
+  author_id: string;
+  username: string;
+  name: string;
+}
+
+export interface MediumStatusResponse {
+  connected: boolean;
+  session_id: string;
+  username?: string;
+  author_id?: string;
+}
+
+export interface MediumPublishRequest {
+  session_id: string;
+  content?: string;
+  draft_id?: string;
+  title?: string;
+  excerpt?: string;
+  tags?: string[];
+  blog_url?: string;
+  publish_status?: string;
+}
+
+export interface MediumPublishResponse {
+  session_id: string;
+  post_id: string;
+  url: string;
+  title: string;
+  publish_status: string;
+  status_code: number;
+}
+
+export async function connectMedium(
+  data: MediumConnectRequest
+): Promise<MediumConnectResponse> {
+  return json("/medium/connect", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function getMediumStatus(sessionId: string): Promise<MediumStatusResponse> {
+  return json(`/medium/status?session_id=${encodeURIComponent(sessionId)}`);
+}
+
+export async function disconnectMedium(sessionId: string): Promise<{ status: string; session_id: string }> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/medium/disconnect?session_id=${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+    headers: auth,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function publishMediumArticle(
+  data: MediumPublishRequest
+): Promise<MediumPublishResponse> {
+  return json("/medium/publish", { method: "POST", body: JSON.stringify(data) });
+}
+
 // ---------- Feeds ----------
 
 export async function listFeeds(): Promise<FeedSource[]> {

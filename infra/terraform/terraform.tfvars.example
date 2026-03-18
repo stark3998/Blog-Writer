@@ -23,12 +23,26 @@ container_app_env_vars = {
   COSMOS_DATABASE           = "blog-writer"
   GITHUB_REPO               = "owner/repo"
   LOG_LEVEL                 = "INFO"
-  LINKEDIN_CLIENT_ID        = "your-linkedin-client-id"
-  LINKEDIN_REDIRECT_URI     = "https://<your-app-fqdn>/api/linkedin/oauth/callback"
-  LINKEDIN_SCOPES           = "openid profile w_member_social"
+  BLOG_BASE_URL             = "https://<your-portfolio-fqdn>"
+
+  # LinkedIn
+  LINKEDIN_CLIENT_ID                = "your-linkedin-client-id"
+  LINKEDIN_REDIRECT_URI             = "https://<your-app-fqdn>/api/linkedin/oauth/callback"
+  LINKEDIN_SCOPES                   = "openid profile w_member_social"
   LINKEDIN_COSMOS_SESSION_CONTAINER = "linkedin-sessions"
   LINKEDIN_COSMOS_STATE_CONTAINER   = "linkedin-oauth-states"
   LINKEDIN_OAUTH_STATE_TTL_SECONDS  = "900"
+
+  # Twitter/X
+  TWITTER_CLIENT_ID                = "your-twitter-client-id"
+  TWITTER_REDIRECT_URI             = "https://<your-app-fqdn>/api/twitter/oauth/callback"
+  TWITTER_SCOPES                   = "tweet.read tweet.write users.read offline.access"
+  TWITTER_COSMOS_SESSION_CONTAINER = "twitter-sessions"
+  TWITTER_COSMOS_STATE_CONTAINER   = "twitter-oauth-states"
+  TWITTER_OAUTH_STATE_TTL_SECONDS  = "900"
+
+  # Medium
+  MEDIUM_COSMOS_SESSION_CONTAINER  = "medium-sessions"
 }
 
 container_app_secrets = {

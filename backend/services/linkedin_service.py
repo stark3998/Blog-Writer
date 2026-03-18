@@ -307,6 +307,16 @@ def compose_linkedin_post(
         logger.warning(f"Validation agent failed, falling back to regex fixup: {exc}")
         generated_post = _fixup_post_urls(generated_post, blog_url, source_url)
 
+    # Run humanizer agent to make the post sound authentically human
+    try:
+        from backend.services.humanizer_agent import humanize_post
+        humanized = humanize_post(generated_post, "linkedin_post", body)
+        if humanized.get("humanized_text") and humanized["humanized_text"] != generated_post:
+            logger.info(f"Humanizer applied: {humanized.get('changes_summary', '')}")
+            generated_post = humanized["humanized_text"]
+    except Exception as exc:
+        logger.warning(f"Humanizer agent failed, using original: {exc}")
+
     return {
         "format": post_format,
         "title": resolved_title,

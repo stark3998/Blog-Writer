@@ -66,7 +66,7 @@ app.add_middleware(
 )
 
 # Auth middleware — validate Entra ID tokens on /api/* routes (except health)
-AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/callback", "/api/twitter/oauth/callback"}
+AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/oauth/callback", "/api/twitter/oauth/callback"}
 
 
 @app.middleware("http")

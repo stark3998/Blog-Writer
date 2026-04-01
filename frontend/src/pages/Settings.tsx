@@ -172,7 +172,10 @@ export default function Settings() {
       ...prev,
       [feedId]: [...(prev[feedId] ?? []), entry],
     }));
-    setTimeout(() => crawlLogEndRef.current[feedId]?.scrollIntoView({ behavior: "smooth" }), 50);
+    setTimeout(() => {
+      const el = crawlLogEndRef.current[feedId]?.parentElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 50);
   };
 
   const handleCrawlNow = (feedId: string) => {
@@ -301,7 +304,10 @@ export default function Settings() {
       message,
     };
     setRunAllLog((prev) => [...prev, entry]);
-    setTimeout(() => runAllLogEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    setTimeout(() => {
+      const el = runAllLogEndRef.current?.parentElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 50);
   };
 
   const handleTestAllFeeds = () => {

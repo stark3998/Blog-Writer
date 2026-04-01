@@ -347,13 +347,17 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
         max_to_generate = source.get("maxArticlesToGenerate", 1)
         linkedin_candidates: list[dict[str, Any]] = []
 
-        # Phase 1: Classify all new articles
+        # Phase 1: Classify all new articles (fetch content for better AI classification)
+        from backend.services.relevance_classifier import fetch_article_content
+
         classified_articles: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for article in new_articles:
+            # Fetch article content for richer classification
+            article_content = fetch_article_content(article["url"], max_chars=5000)
             classification = classify_article(
                 title=article["title"],
                 summary=article.get("summary", ""),
-                content="",
+                content=article_content,
                 topics=topics,
             )
             classified_articles.append((article, classification))
@@ -370,6 +374,8 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                     "title": article["title"],
                     "isRelevant": False,
                     "relevanceScore": classification.get("relevance_score", 0),
+                    "technicalityScore": classification.get("technicality_score", 0),
+                    "keywordScore": classification.get("keyword_score", 0),
                     "matchedTopics": classification.get("matched_topics", []),
                     "matchedKeywords": classification.get("matched_keywords", []),
                     "draftId": "",
@@ -393,6 +399,7 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                         "summary": a.get("summary", ""),
                         "url": a["url"],
                         "relevance_score": c.get("relevance_score", 0),
+                        "technicality_score": c.get("technicality_score", 0),
                         "matched_topics": c.get("matched_topics", []),
                     }
                     for a, c in relevant_articles
@@ -419,6 +426,8 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                 "title": article["title"],
                 "isRelevant": True,
                 "relevanceScore": classification.get("relevance_score", 0),
+                "technicalityScore": classification.get("technicality_score", 0),
+                "keywordScore": classification.get("keyword_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
                 "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
@@ -438,6 +447,8 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                 "title": article["title"],
                 "isRelevant": True,
                 "relevanceScore": classification.get("relevance_score", 0),
+                "technicalityScore": classification.get("technicality_score", 0),
+                "keywordScore": classification.get("keyword_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
                 "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
@@ -598,7 +609,9 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
         max_to_generate = source.get("maxArticlesToGenerate", 1)
         linkedin_candidates: list[dict[str, Any]] = []
 
-        # Phase 1: Classify all new articles
+        # Phase 1: Classify all new articles (fetch content for better AI classification)
+        from backend.services.relevance_classifier import fetch_article_content
+
         classified_articles: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for i, article in enumerate(new_articles):
             yield {
@@ -606,10 +619,12 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 "data": {"index": i + 1, "total": len(new_articles), "title": article["title"][:100]},
             }
 
+            # Fetch article content for richer classification
+            article_content = fetch_article_content(article["url"], max_chars=5000)
             classification = classify_article(
                 title=article["title"],
                 summary=article.get("summary", ""),
-                content="",
+                content=article_content,
                 topics=topics,
             )
 
@@ -626,6 +641,9 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                     "is_relevant": is_relevant,
                     "matched_topics": matched_topics,
                     "relevance_score": score,
+                    "keyword_score": classification.get("keyword_score", 0),
+                    "technicality_score": classification.get("technicality_score", 0),
+                    "method": classification.get("method", ""),
                 },
             }
 
@@ -641,7 +659,10 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                     "title": article["title"],
                     "isRelevant": False,
                     "relevanceScore": score,
+                    "technicalityScore": classification.get("technicality_score", 0),
+                    "keywordScore": classification.get("keyword_score", 0),
                     "matchedTopics": matched_topics,
+                    "matchedKeywords": classification.get("matched_keywords", []),
                     "draftId": "",
                     "linkedinPostId": "",
                     "status": "skipped",
@@ -665,6 +686,7 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                         "summary": a.get("summary", ""),
                         "url": a["url"],
                         "relevance_score": c.get("relevance_score", 0),
+                        "technicality_score": c.get("technicality_score", 0),
                         "matched_topics": c.get("matched_topics", []),
                     }
                     for a, c in classified_articles
@@ -699,6 +721,8 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 "title": article["title"],
                 "isRelevant": True,
                 "relevanceScore": classification.get("relevance_score", 0),
+                "technicalityScore": classification.get("technicality_score", 0),
+                "keywordScore": classification.get("keyword_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
                 "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
@@ -728,6 +752,8 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 "title": article["title"],
                 "isRelevant": True,
                 "relevanceScore": classification.get("relevance_score", 0),
+                "technicalityScore": classification.get("technicality_score", 0),
+                "keywordScore": classification.get("keyword_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
                 "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",

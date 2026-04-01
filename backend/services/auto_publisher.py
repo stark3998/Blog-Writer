@@ -255,6 +255,8 @@ def rank_articles_by_technicality(
             "title": a["title"],
             "summary": a.get("summary", "")[:300],
             "url": a["url"],
+            "relevance_score": a.get("relevance_score", 0),
+            "technicality_score": a.get("technicality_score", 0),
             "matched_topics": a.get("matched_topics", []),
         }
         for i, a in enumerate(articles)
@@ -263,13 +265,14 @@ def rank_articles_by_technicality(
     topics_str = ", ".join(topics)
     system_prompt = (
         f"You are a technical content curator for topics: {topics_str}.\n"
-        "Rank the following articles by TECHNICAL DEPTH — prefer articles that:\n"
-        "1. Cover specific technical implementations, architectures, or deep analysis\n"
-        "2. Include code, configurations, or detailed how-to content\n"
-        "3. Address cutting-edge or advanced topics\n"
-        "4. Provide actionable technical insights (not just announcements or opinions)\n\n"
+        "Rank the following articles by overall value. Consider:\n"
+        "1. TECHNICAL DEPTH: implementations, architectures, code, deep analysis\n"
+        "2. AI & AGENT PRIORITY: Articles about AI agents, Microsoft AI Foundry, "
+        "Azure AI, Agent365, Copilot agents, and agentic frameworks should be ranked HIGHER\n"
+        "3. Relevance and technicality scores are pre-computed — use them as a baseline\n"
+        "4. Prefer actionable technical insights over announcements or opinions\n\n"
         "Return JSON: {\"ranked_indices\": [2, 0, 1, ...], \"reasoning\": \"brief explanation\"}\n"
-        "ranked_indices should list article indices from MOST to LEAST technical."
+        "ranked_indices should list article indices from MOST to LEAST valuable."
     )
 
     try:

@@ -4,7 +4,7 @@ param(
     [switch]$DryRun,
     [switch]$SkipHealthCheck = $true,
     [switch]$SkipInfraApply,
-    [switch]$SkipBuild = $true,
+    [switch]$SkipBuild = $false,
     [switch]$IncludePortfolio = $false
 )
 

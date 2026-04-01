@@ -572,6 +572,8 @@ export async function createFeed(data: {
   crawl_interval_minutes?: number;
   auto_publish_blog?: boolean;
   auto_publish_linkedin?: boolean;
+  max_article_age_days?: number;
+  max_articles_to_generate?: number;
 }): Promise<FeedSource> {
   return json<FeedSource>("/feeds", { method: "POST", body: JSON.stringify(data) });
 }
@@ -594,6 +596,8 @@ export async function updateFeed(
     crawl_interval_minutes: number;
     auto_publish_blog: boolean;
     auto_publish_linkedin: boolean;
+    max_article_age_days: number;
+    max_articles_to_generate: number;
     enabled: boolean;
   }>
 ): Promise<FeedSource> {
@@ -622,9 +626,11 @@ export interface CrawlSSEEvent {
 export interface CrawlSSECallbacks {
   onCrawlStarted?: (data: { source_name: string; feed_type: string }) => void;
   onFetchingArticles?: (data: { method: string }) => void;
-  onArticlesFetched?: (data: { total: number; new: number }) => void;
+  onArticlesFetched?: (data: { total: number; new: number; after_age_filter?: number; max_age_days?: number }) => void;
   onClassifying?: (data: { index: number; total: number; title: string }) => void;
   onClassified?: (data: { index: number; total: number; title: string; is_relevant: boolean; matched_topics: string[]; relevance_score: number }) => void;
+  onRanking?: (data: { relevant_count: number; max_to_generate: number }) => void;
+  onRanked?: (data: { top_count: number; skipped_count: number; top_titles: string[] }) => void;
   onGenerating?: (data: { index: number; total_relevant: number; title: string }) => void;
   onGenerated?: (data: { index: number; total_relevant: number; title: string; draft_id: string; status: string }) => void;
   onGenerateError?: (data: { title: string; error: string }) => void;
@@ -677,6 +683,8 @@ export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): Abort
                 case "articles_fetched": callbacks.onArticlesFetched?.(data); break;
                 case "classifying": callbacks.onClassifying?.(data); break;
                 case "classified": callbacks.onClassified?.(data); break;
+                case "ranking": callbacks.onRanking?.(data); break;
+                case "ranked": callbacks.onRanked?.(data); break;
                 case "generating": callbacks.onGenerating?.(data); break;
                 case "generated": callbacks.onGenerated?.(data); break;
                 case "generate_error": callbacks.onGenerateError?.(data); break;

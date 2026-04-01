@@ -36,6 +36,8 @@ class FeedSourceCreateRequest(BaseModel):
     crawl_interval_minutes: int = 60
     auto_publish_blog: bool = False
     auto_publish_linkedin: bool = False
+    max_article_age_days: int = 7
+    max_articles_to_generate: int = 1
 
 
 class FeedSourceUpdateRequest(BaseModel):
@@ -46,6 +48,8 @@ class FeedSourceUpdateRequest(BaseModel):
     crawl_interval_minutes: int | None = None
     auto_publish_blog: bool | None = None
     auto_publish_linkedin: bool | None = None
+    max_article_age_days: int | None = None
+    max_articles_to_generate: int | None = None
     enabled: bool | None = None
 
 
@@ -59,6 +63,8 @@ class FeedSourceResponse(BaseModel):
     auto_publish_blog: bool
     auto_publish_linkedin: bool
     crawl_interval_minutes: int
+    max_article_age_days: int = 7
+    max_articles_to_generate: int = 1
     enabled: bool
     last_crawled_at: str
     created_at: str
@@ -122,6 +128,8 @@ def _to_feed_response(item: dict) -> dict:
         "auto_publish_blog": item.get("autoPublishBlog", False),
         "auto_publish_linkedin": item.get("autoPublishLinkedIn", False),
         "crawl_interval_minutes": item.get("crawlIntervalMinutes", 60),
+        "max_article_age_days": item.get("maxArticleAgeDays", 7),
+        "max_articles_to_generate": item.get("maxArticlesToGenerate", 1),
         "enabled": item.get("enabled", True),
         "last_crawled_at": item.get("lastCrawledAt", ""),
         "created_at": item.get("createdAt", ""),
@@ -192,6 +200,8 @@ async def create_feed(request: FeedSourceCreateRequest):
         auto_publish_blog=request.auto_publish_blog,
         auto_publish_linkedin=request.auto_publish_linkedin,
         crawl_interval_minutes=request.crawl_interval_minutes,
+        max_article_age_days=request.max_article_age_days,
+        max_articles_to_generate=request.max_articles_to_generate,
     )
 
     # Schedule the new feed in APScheduler
@@ -280,6 +290,10 @@ async def update_feed(feed_id: str, request: FeedSourceUpdateRequest):
         updates["autoPublishBlog"] = request.auto_publish_blog
     if request.auto_publish_linkedin is not None:
         updates["autoPublishLinkedIn"] = request.auto_publish_linkedin
+    if request.max_article_age_days is not None:
+        updates["maxArticleAgeDays"] = request.max_article_age_days
+    if request.max_articles_to_generate is not None:
+        updates["maxArticlesToGenerate"] = request.max_articles_to_generate
     if request.enabled is not None:
         updates["enabled"] = request.enabled
 

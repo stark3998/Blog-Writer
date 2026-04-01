@@ -8,7 +8,7 @@ import logging
 import os
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from azure.cosmos import CosmosClient, PartitionKey
@@ -686,6 +686,8 @@ def create_feed_source(
     auto_publish_blog: bool = False,
     auto_publish_linkedin: bool = False,
     crawl_interval_minutes: int = 60,
+    max_article_age_days: int = 7,
+    max_articles_to_generate: int = 1,
 ) -> dict[str, Any]:
     """Create a new feed source configuration."""
     container = _get_feed_sources_container()
@@ -700,6 +702,8 @@ def create_feed_source(
         "autoPublishBlog": auto_publish_blog,
         "autoPublishLinkedIn": auto_publish_linkedin,
         "crawlIntervalMinutes": crawl_interval_minutes,
+        "maxArticleAgeDays": max_article_age_days,
+        "maxArticlesToGenerate": max_articles_to_generate,
         "enabled": True,
         "lastCrawledAt": "",
         "createdAt": now,
@@ -742,6 +746,7 @@ def update_feed_source(source_id: str, updates: dict[str, Any]) -> dict[str, Any
     allowed = {
         "name", "baseUrl", "feedUrl", "feedType", "topics",
         "autoPublishBlog", "autoPublishLinkedIn", "crawlIntervalMinutes",
+        "maxArticleAgeDays", "maxArticlesToGenerate",
         "enabled", "lastCrawledAt",
     }
     for key, value in updates.items():
@@ -816,6 +821,35 @@ def has_linkedin_post_today() -> bool:
     )
     count = results[0] if results else 0
     return count > 0
+
+
+def list_failed_crawled_articles(
+    feed_source_id: str, max_retries: int = 3, hours: int = 48
+) -> list[dict[str, Any]]:
+    """List failed crawled articles eligible for retry.
+
+    Returns articles with status 'error' and retryCount < max_retries
+    that were crawled within the last `hours` hours.
+    """
+    container = _get_crawled_articles_container()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    query = (
+        "SELECT * FROM c WHERE c.feedSourceId = @feedSourceId "
+        "AND c.status = 'error' "
+        "AND (NOT IS_DEFINED(c.retryCount) OR c.retryCount < @maxRetries) "
+        "AND c.crawledAt >= @cutoff "
+        "ORDER BY c.crawledAt DESC"
+    )
+    params = [
+        {"name": "@feedSourceId", "value": feed_source_id},
+        {"name": "@maxRetries", "value": max_retries},
+        {"name": "@cutoff", "value": cutoff},
+    ]
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
 
 
 def delete_crawled_article(article_id: str) -> bool:

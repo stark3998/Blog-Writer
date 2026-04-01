@@ -4,7 +4,7 @@ import hashlib
 import logging
 import re
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -17,12 +17,14 @@ from backend.db.cosmos_client import (
     get_crawled_article,
     get_feed_source,
     list_crawled_articles,
+    list_failed_crawled_articles,
     update_crawl_job,
     update_feed_source,
     upsert_crawled_article,
 )
 from backend.services.relevance_classifier import classify_article
 from backend.services.auto_publisher import process_relevant_article, publish_best_linkedin_post
+from backend.services.notification_service import notify
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +236,74 @@ def scrape_blog_listing(base_url: str) -> list[dict[str, Any]]:
     return articles
 
 
+def _filter_by_age(articles: list[dict[str, Any]], max_age_days: int) -> list[dict[str, Any]]:
+    """Filter articles to only those published within the last max_age_days.
+
+    Articles with no published date are included (benefit of the doubt).
+    """
+    if max_age_days <= 0:
+        return articles
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    filtered: list[dict[str, Any]] = []
+
+    for article in articles:
+        published = article.get("published", "")
+        if not published:
+            # No date available (e.g. HTML-scraped) — include it
+            filtered.append(article)
+            continue
+        try:
+            pub_dt = datetime.fromisoformat(published.replace("Z", "+00:00"))
+            if pub_dt.tzinfo is None:
+                pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+            if pub_dt >= cutoff:
+                filtered.append(article)
+        except (ValueError, TypeError):
+            # Unparseable date — include it
+            filtered.append(article)
+
+    logger.info(
+        f"Age filter ({max_age_days}d): {len(articles)} -> {len(filtered)} articles"
+    )
+    return filtered
+
+
+def _retry_failed_articles(source_id: str, source: dict[str, Any]) -> None:
+    """Re-process articles that failed in previous crawls.
+
+    Looks for articles with status 'error' and retryCount < 3 from the last 48 hours.
+    """
+    failed = list_failed_crawled_articles(source_id, max_retries=3, hours=48)
+    if not failed:
+        return
+
+    logger.info(f"Retrying {len(failed)} previously failed articles for {source.get('name', source_id)}")
+    for record in failed:
+        retry_count = record.get("retryCount", 0) + 1
+        article = {
+            "url": record.get("articleUrl", ""),
+            "title": record.get("title", ""),
+            "summary": "",
+            "published": "",
+        }
+        try:
+            result = process_relevant_article(article, source)
+            record["draftId"] = result.get("draft_id", "")
+            record["status"] = result.get("status", "drafted")
+            record["retryCount"] = retry_count
+            record["lastError"] = ""
+            logger.info(f"Retry succeeded for article: {article['title'][:60]}")
+        except Exception as exc:
+            record["status"] = "error"
+            record["retryCount"] = retry_count
+            record["lastError"] = str(exc)[:500]
+            logger.warning(
+                f"Retry {retry_count}/3 failed for article {article['url']}: {exc}"
+            )
+        upsert_crawled_article(record)
+
+
 def crawl_feed_source(source_id: str) -> dict[str, Any]:
     """Crawl a feed source: fetch articles, classify, and auto-generate content.
 
@@ -244,6 +314,10 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
         raise ValueError(f"Feed source not found: {source_id}")
 
     logger.info(f"Starting crawl for feed source: {source['name']} ({source_id})")
+
+    # Re-process previously failed articles before starting new crawl
+    _retry_failed_articles(source_id, source)
+
     job = create_crawl_job(source_id)
 
     try:
@@ -263,66 +337,139 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
             if not existing:
                 new_articles.append(article)
 
+        # Filter by article age
+        max_age_days = source.get("maxArticleAgeDays", 7)
+        new_articles = _filter_by_age(new_articles, max_age_days)
+
         relevant_count = 0
         processed_count = 0
         topics = source.get("topics", ["cloud security", "azure", "ai"])
+        max_to_generate = source.get("maxArticlesToGenerate", 1)
         linkedin_candidates: list[dict[str, Any]] = []
 
+        # Phase 1: Classify all new articles
+        classified_articles: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for article in new_articles:
-            aid = _article_id(article["url"])
-
-            # Classify relevance
             classification = classify_article(
                 title=article["title"],
                 summary=article.get("summary", ""),
-                content="",  # Full content fetched later if relevant
+                content="",
                 topics=topics,
             )
+            classified_articles.append((article, classification))
 
-            crawled_record: dict[str, Any] = {
+        # Separate relevant from irrelevant, save irrelevant immediately
+        relevant_articles: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        for article, classification in classified_articles:
+            aid = _article_id(article["url"])
+            if not classification["is_relevant"]:
+                crawled_record: dict[str, Any] = {
+                    "id": aid,
+                    "feedSourceId": source_id,
+                    "articleUrl": article["url"],
+                    "title": article["title"],
+                    "isRelevant": False,
+                    "relevanceScore": classification.get("relevance_score", 0),
+                    "matchedTopics": classification.get("matched_topics", []),
+                    "matchedKeywords": classification.get("matched_keywords", []),
+                    "draftId": "",
+                    "linkedinPostId": "",
+                    "status": "skipped",
+                    "crawledAt": datetime.now(timezone.utc).isoformat(),
+                }
+                upsert_crawled_article(crawled_record)
+            else:
+                relevant_count += 1
+                relevant_articles.append((article, classification))
+
+        # Phase 2: Rank relevant articles by technicality and pick top N
+        if relevant_articles and max_to_generate > 0:
+            from backend.services.auto_publisher import rank_articles_by_technicality
+
+            ranked = rank_articles_by_technicality(
+                [
+                    {
+                        "title": a["title"],
+                        "summary": a.get("summary", ""),
+                        "url": a["url"],
+                        "relevance_score": c.get("relevance_score", 0),
+                        "matched_topics": c.get("matched_topics", []),
+                    }
+                    for a, c in relevant_articles
+                ],
+                topics,
+            )
+
+            # Reorder relevant_articles by ranked order
+            index_map = {item["url"]: rank for rank, item in enumerate(ranked)}
+            relevant_articles.sort(key=lambda ac: index_map.get(ac[0]["url"], 999))
+            top_articles = relevant_articles[:max_to_generate]
+            skipped_articles = relevant_articles[max_to_generate:]
+        else:
+            top_articles = []
+            skipped_articles = relevant_articles
+
+        # Save skipped-by-rank articles as "skipped_rank"
+        for article, classification in skipped_articles:
+            aid = _article_id(article["url"])
+            crawled_record = {
                 "id": aid,
                 "feedSourceId": source_id,
                 "articleUrl": article["url"],
                 "title": article["title"],
-                "isRelevant": classification["is_relevant"],
+                "isRelevant": True,
                 "relevanceScore": classification.get("relevance_score", 0),
                 "matchedTopics": classification.get("matched_topics", []),
                 "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
                 "linkedinPostId": "",
-                "status": "skipped" if not classification["is_relevant"] else "pending",
+                "status": "skipped_rank",
                 "crawledAt": datetime.now(timezone.utc).isoformat(),
             }
+            upsert_crawled_article(crawled_record)
 
-            if classification["is_relevant"]:
-                relevant_count += 1
-                try:
-                    result = process_relevant_article(article, source)
-                    crawled_record["draftId"] = result.get("draft_id", "")
-                    crawled_record["status"] = result.get("status", "drafted")
-                    processed_count += 1
+        # Phase 3: Generate blogs for top N articles only
+        for article, classification in top_articles:
+            aid = _article_id(article["url"])
+            crawled_record = {
+                "id": aid,
+                "feedSourceId": source_id,
+                "articleUrl": article["url"],
+                "title": article["title"],
+                "isRelevant": True,
+                "relevanceScore": classification.get("relevance_score", 0),
+                "matchedTopics": classification.get("matched_topics", []),
+                "matchedKeywords": classification.get("matched_keywords", []),
+                "draftId": "",
+                "linkedinPostId": "",
+                "status": "pending",
+                "crawledAt": datetime.now(timezone.utc).isoformat(),
+            }
+            try:
+                result = process_relevant_article(article, source)
+                crawled_record["draftId"] = result.get("draft_id", "")
+                crawled_record["status"] = result.get("status", "drafted")
+                processed_count += 1
 
-                    # Collect LinkedIn candidate for deferred selection
-                    if result.get("linkedin_data"):
-                        linkedin_candidates.append({
-                            **result["linkedin_data"],
-                            "crawled_article_id": aid,
-                        })
-                except Exception as exc:
-                    logger.error(
-                        f"Failed to process article {article['url']}: {exc}"
-                    )
-                    crawled_record["status"] = "error"
-                    crawled_record["error"] = str(exc)[:500]
+                if result.get("linkedin_data"):
+                    linkedin_candidates.append({
+                        **result["linkedin_data"],
+                        "crawled_article_id": aid,
+                    })
+            except Exception as exc:
+                logger.error(f"Failed to process article {article['url']}: {exc}")
+                crawled_record["status"] = "error"
+                crawled_record["error"] = str(exc)[:500]
+                crawled_record["lastError"] = str(exc)[:500]
+                crawled_record["retryCount"] = 0
 
             upsert_crawled_article(crawled_record)
 
-        # Select and publish the best LinkedIn post (deferred from per-article)
+        # Phase 4: Select and publish the best LinkedIn post
         linkedin_result = None
         if linkedin_candidates:
             linkedin_result = publish_best_linkedin_post(linkedin_candidates, source)
             if linkedin_result and linkedin_result.get("post_id"):
-                # Update the winning article's crawled record
                 winner_aid = linkedin_candidates[linkedin_result["selected_index"]]["crawled_article_id"]
                 winner_record = get_crawled_article(winner_aid)
                 if winner_record:
@@ -350,16 +497,32 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
             f"relevant={relevant_count}, processed={processed_count}"
         )
 
-        return {
+        # Build summary with top article details for notifications
+        top_article_summaries = []
+        for article, classification in top_articles:
+            top_article_summaries.append({
+                "title": article["title"],
+                "url": article["url"],
+                "relevance_score": classification.get("relevance_score", 0),
+                "matched_topics": classification.get("matched_topics", []),
+            })
+
+        crawl_summary = {
             "job_id": job["id"],
             "feed_source_id": source_id,
+            "feed_source_name": source["name"],
             "articles_found": len(articles),
             "new_articles": len(new_articles),
             "articles_relevant": relevant_count,
             "articles_processed": processed_count,
+            "top_articles": top_article_summaries,
             "linkedin_published": linkedin_result.get("post_id", "") if linkedin_result else "",
             "status": "completed",
         }
+
+        notify("crawl_completed", crawl_summary)
+
+        return crawl_summary
 
     except Exception as exc:
         logger.error(f"Crawl failed for {source['name']}: {exc}")
@@ -367,6 +530,12 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
             "completedAt": datetime.now(timezone.utc).isoformat(),
             "status": "failed",
             "error": str(exc)[:500],
+        })
+        notify("pipeline_error", {
+            "feed_source_id": source_id,
+            "feed_source_name": source["name"],
+            "error": str(exc)[:500],
+            "stage": "crawl",
         })
         raise
 
@@ -407,20 +576,31 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
             if not existing:
                 new_articles.append(article)
 
+        # Filter by article age
+        max_age_days = source.get("maxArticleAgeDays", 7)
+        pre_filter_count = len(new_articles)
+        new_articles = _filter_by_age(new_articles, max_age_days)
+
         yield {
             "type": "articles_fetched",
-            "data": {"total": len(articles), "new": len(new_articles)},
+            "data": {
+                "total": len(articles),
+                "new": pre_filter_count,
+                "after_age_filter": len(new_articles),
+                "max_age_days": max_age_days,
+            },
         }
 
         job_updates: dict[str, Any] = {"articlesFound": len(articles)}
         relevant_count = 0
         processed_count = 0
         topics = source.get("topics", ["cloud security", "azure", "ai"])
+        max_to_generate = source.get("maxArticlesToGenerate", 1)
         linkedin_candidates: list[dict[str, Any]] = []
 
+        # Phase 1: Classify all new articles
+        classified_articles: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for i, article in enumerate(new_articles):
-            aid = _article_id(article["url"])
-
             yield {
                 "type": "classifying",
                 "data": {"index": i + 1, "total": len(new_articles), "title": article["title"][:100]},
@@ -449,71 +629,153 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 },
             }
 
-            crawled_record: dict[str, Any] = {
+            if is_relevant:
+                relevant_count += 1
+                classified_articles.append((article, classification))
+            else:
+                aid = _article_id(article["url"])
+                crawled_record: dict[str, Any] = {
+                    "id": aid,
+                    "feedSourceId": source_id,
+                    "articleUrl": article["url"],
+                    "title": article["title"],
+                    "isRelevant": False,
+                    "relevanceScore": score,
+                    "matchedTopics": matched_topics,
+                    "draftId": "",
+                    "linkedinPostId": "",
+                    "status": "skipped",
+                    "crawledAt": datetime.now(timezone.utc).isoformat(),
+                }
+                upsert_crawled_article(crawled_record)
+
+        # Phase 2: Rank relevant articles by technicality and pick top N
+        if classified_articles and max_to_generate > 0:
+            yield {
+                "type": "ranking",
+                "data": {"relevant_count": len(classified_articles), "max_to_generate": max_to_generate},
+            }
+
+            from backend.services.auto_publisher import rank_articles_by_technicality
+
+            ranked = rank_articles_by_technicality(
+                [
+                    {
+                        "title": a["title"],
+                        "summary": a.get("summary", ""),
+                        "url": a["url"],
+                        "relevance_score": c.get("relevance_score", 0),
+                        "matched_topics": c.get("matched_topics", []),
+                    }
+                    for a, c in classified_articles
+                ],
+                topics,
+            )
+
+            index_map = {item["url"]: rank for rank, item in enumerate(ranked)}
+            classified_articles.sort(key=lambda ac: index_map.get(ac[0]["url"], 999))
+            top_articles = classified_articles[:max_to_generate]
+            skipped_articles = classified_articles[max_to_generate:]
+
+            yield {
+                "type": "ranked",
+                "data": {
+                    "top_count": len(top_articles),
+                    "skipped_count": len(skipped_articles),
+                    "top_titles": [a["title"][:80] for a, _ in top_articles],
+                },
+            }
+        else:
+            top_articles = []
+            skipped_articles = classified_articles
+
+        # Save skipped-by-rank articles
+        for article, classification in skipped_articles:
+            aid = _article_id(article["url"])
+            crawled_record = {
                 "id": aid,
                 "feedSourceId": source_id,
                 "articleUrl": article["url"],
                 "title": article["title"],
-                "isRelevant": is_relevant,
-                "relevanceScore": score,
-                "matchedTopics": matched_topics,
+                "isRelevant": True,
+                "relevanceScore": classification.get("relevance_score", 0),
+                "matchedTopics": classification.get("matched_topics", []),
+                "matchedKeywords": classification.get("matched_keywords", []),
                 "draftId": "",
                 "linkedinPostId": "",
-                "status": "skipped" if not is_relevant else "pending",
+                "status": "skipped_rank",
+                "crawledAt": datetime.now(timezone.utc).isoformat(),
+            }
+            upsert_crawled_article(crawled_record)
+
+        # Phase 3: Generate blogs for top N articles only
+        for i, (article, classification) in enumerate(top_articles):
+            aid = _article_id(article["url"])
+
+            yield {
+                "type": "generating",
+                "data": {
+                    "index": i + 1,
+                    "total_relevant": len(top_articles),
+                    "title": article["title"][:100],
+                },
+            }
+
+            crawled_record = {
+                "id": aid,
+                "feedSourceId": source_id,
+                "articleUrl": article["url"],
+                "title": article["title"],
+                "isRelevant": True,
+                "relevanceScore": classification.get("relevance_score", 0),
+                "matchedTopics": classification.get("matched_topics", []),
+                "matchedKeywords": classification.get("matched_keywords", []),
+                "draftId": "",
+                "linkedinPostId": "",
+                "status": "pending",
                 "crawledAt": datetime.now(timezone.utc).isoformat(),
             }
 
-            if is_relevant:
-                relevant_count += 1
+            try:
+                result = process_relevant_article(article, source)
+                crawled_record["draftId"] = result.get("draft_id", "")
+                crawled_record["status"] = result.get("status", "drafted")
+                processed_count += 1
+
+                if result.get("linkedin_data"):
+                    linkedin_candidates.append({
+                        **result["linkedin_data"],
+                        "crawled_article_id": aid,
+                    })
 
                 yield {
-                    "type": "generating",
+                    "type": "generated",
                     "data": {
-                        "index": relevant_count,
-                        "total_relevant": relevant_count,
+                        "index": processed_count,
+                        "total_relevant": len(top_articles),
                         "title": article["title"][:100],
+                        "draft_id": result.get("draft_id", ""),
+                        "status": result.get("status", "drafted"),
+                    },
+                }
+            except Exception as exc:
+                logger.error(f"Failed to process article {article['url']}: {exc}")
+                crawled_record["status"] = "error"
+                crawled_record["error"] = str(exc)[:500]
+                crawled_record["lastError"] = str(exc)[:500]
+                crawled_record["retryCount"] = 0
+
+                yield {
+                    "type": "generate_error",
+                    "data": {
+                        "title": article["title"][:100],
+                        "error": str(exc)[:200],
                     },
                 }
 
-                try:
-                    result = process_relevant_article(article, source)
-                    crawled_record["draftId"] = result.get("draft_id", "")
-                    crawled_record["status"] = result.get("status", "drafted")
-                    processed_count += 1
-
-                    # Collect LinkedIn candidate for deferred selection
-                    if result.get("linkedin_data"):
-                        linkedin_candidates.append({
-                            **result["linkedin_data"],
-                            "crawled_article_id": aid,
-                        })
-
-                    yield {
-                        "type": "generated",
-                        "data": {
-                            "index": processed_count,
-                            "total_relevant": relevant_count,
-                            "title": article["title"][:100],
-                            "draft_id": result.get("draft_id", ""),
-                            "status": result.get("status", "drafted"),
-                        },
-                    }
-                except Exception as exc:
-                    logger.error(f"Failed to process article {article['url']}: {exc}")
-                    crawled_record["status"] = "error"
-                    crawled_record["error"] = str(exc)[:500]
-
-                    yield {
-                        "type": "generate_error",
-                        "data": {
-                            "title": article["title"][:100],
-                            "error": str(exc)[:200],
-                        },
-                    }
-
             upsert_crawled_article(crawled_record)
 
-        # Select and publish the best LinkedIn post (deferred from per-article)
+        # Phase 4: Select and publish the best LinkedIn post
         linkedin_result = None
         if linkedin_candidates:
             yield {

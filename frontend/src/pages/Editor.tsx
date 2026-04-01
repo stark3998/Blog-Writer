@@ -5,6 +5,8 @@ import MarkdownPreview from "../components/MarkdownPreview";
 import AIEditPanel from "../components/AIEditPanel";
 import ExportDropdown from "../components/ExportDropdown";
 import LinkedInButton from "../components/LinkedInButton";
+import TwitterButton from "../components/TwitterButton";
+import MediumButton from "../components/MediumButton";
 import { useBlogStore } from "../store/blogStore";
 import {
   getDraft,
@@ -219,6 +221,22 @@ export default function Editor() {
 
           {/* LinkedIn */}
           <LinkedInButton
+            content={content}
+            title={draft?.title}
+            excerpt={draft?.excerpt}
+            blogUrl={publishResult ?? undefined}
+          />
+
+          {/* Twitter/X */}
+          <TwitterButton
+            content={content}
+            title={draft?.title}
+            excerpt={draft?.excerpt}
+            blogUrl={publishResult ?? undefined}
+          />
+
+          {/* Medium */}
+          <MediumButton
             content={content}
             title={draft?.title}
             excerpt={draft?.excerpt}

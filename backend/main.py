@@ -43,7 +43,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import generate, edit, blogs, export, publish, linkedin, feeds, diagnostics, prompts, keywords, user
+from backend.routers import generate, edit, blogs, export, publish, linkedin, twitter, medium, feeds, diagnostics, prompts, keywords, user, dashboard
 
 # Create FastAPI app
 app = FastAPI(
@@ -66,7 +66,7 @@ app.add_middleware(
 )
 
 # Auth middleware — validate Entra ID tokens on /api/* routes (except health)
-AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/callback"}
+AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/callback", "/api/twitter/oauth/callback"}
 
 
 @app.middleware("http")
@@ -113,11 +113,14 @@ app.include_router(blogs.router)
 app.include_router(export.router)
 app.include_router(publish.router)
 app.include_router(linkedin.router)
+app.include_router(twitter.router)
+app.include_router(medium.router)
 app.include_router(feeds.router)
 app.include_router(diagnostics.router)
 app.include_router(prompts.router)
 app.include_router(keywords.router)
 app.include_router(user.router)
+app.include_router(dashboard.router)
 
 
 @app.on_event("startup")

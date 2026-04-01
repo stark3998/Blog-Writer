@@ -36,6 +36,8 @@ class FeedSourceCreateRequest(BaseModel):
     crawl_interval_minutes: int = 60
     auto_publish_blog: bool = False
     auto_publish_linkedin: bool = False
+    max_article_age_days: int = 7
+    max_articles_to_generate: int = 1
 
 
 class FeedSourceUpdateRequest(BaseModel):
@@ -46,6 +48,8 @@ class FeedSourceUpdateRequest(BaseModel):
     crawl_interval_minutes: int | None = None
     auto_publish_blog: bool | None = None
     auto_publish_linkedin: bool | None = None
+    max_article_age_days: int | None = None
+    max_articles_to_generate: int | None = None
     enabled: bool | None = None
 
 
@@ -59,6 +63,8 @@ class FeedSourceResponse(BaseModel):
     auto_publish_blog: bool
     auto_publish_linkedin: bool
     crawl_interval_minutes: int
+    max_article_age_days: int = 7
+    max_articles_to_generate: int = 1
     enabled: bool
     last_crawled_at: str
     created_at: str
@@ -122,6 +128,8 @@ def _to_feed_response(item: dict) -> dict:
         "auto_publish_blog": item.get("autoPublishBlog", False),
         "auto_publish_linkedin": item.get("autoPublishLinkedIn", False),
         "crawl_interval_minutes": item.get("crawlIntervalMinutes", 60),
+        "max_article_age_days": item.get("maxArticleAgeDays", 7),
+        "max_articles_to_generate": item.get("maxArticlesToGenerate", 1),
         "enabled": item.get("enabled", True),
         "last_crawled_at": item.get("lastCrawledAt", ""),
         "created_at": item.get("createdAt", ""),
@@ -192,6 +200,8 @@ async def create_feed(request: FeedSourceCreateRequest):
         auto_publish_blog=request.auto_publish_blog,
         auto_publish_linkedin=request.auto_publish_linkedin,
         crawl_interval_minutes=request.crawl_interval_minutes,
+        max_article_age_days=request.max_article_age_days,
+        max_articles_to_generate=request.max_articles_to_generate,
     )
 
     # Schedule the new feed in APScheduler
@@ -280,6 +290,10 @@ async def update_feed(feed_id: str, request: FeedSourceUpdateRequest):
         updates["autoPublishBlog"] = request.auto_publish_blog
     if request.auto_publish_linkedin is not None:
         updates["autoPublishLinkedIn"] = request.auto_publish_linkedin
+    if request.max_article_age_days is not None:
+        updates["maxArticleAgeDays"] = request.max_article_age_days
+    if request.max_articles_to_generate is not None:
+        updates["maxArticlesToGenerate"] = request.max_articles_to_generate
     if request.enabled is not None:
         updates["enabled"] = request.enabled
 
@@ -312,6 +326,94 @@ async def delete_feed(feed_id: str):
         pass
 
     return {"status": "deleted", "id": feed_id}
+
+
+@router.post("/crawl-all/stream")
+async def trigger_crawl_all_stream():
+    """Trigger crawl for ALL enabled feed sources, streamed via SSE.
+
+    Iterates enabled feeds sequentially. Emits per-feed start/complete events
+    plus all the regular per-article events from crawl_feed_source_stream.
+    """
+    sources = list_feed_sources()
+    enabled = [s for s in sources if s.get("enabled", True)]
+
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def _run_all() -> None:
+        def _produce() -> None:
+            total = len(enabled)
+            queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                "type": "run_started",
+                "data": {"total_feeds": total, "feed_names": [s["name"] for s in enabled]},
+            })
+
+            summary = {
+                "feeds_processed": 0,
+                "total_found": 0,
+                "total_relevant": 0,
+                "total_processed": 0,
+                "errors": [],
+            }
+
+            for i, src in enumerate(enabled):
+                queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                    "type": "feed_started",
+                    "data": {
+                        "index": i + 1,
+                        "total_feeds": total,
+                        "feed_id": src["id"],
+                        "feed_name": src["name"],
+                    },
+                })
+
+                try:
+                    for event in crawl_feed_source_stream(src["id"]):
+                        # Tag every event with the feed id/name for the frontend
+                        event["data"]["_feed_id"] = src["id"]
+                        event["data"]["_feed_name"] = src["name"]
+                        event["data"]["_feed_index"] = i + 1
+                        queue._loop.call_soon_threadsafe(queue.put_nowait, event)  # type: ignore[attr-defined]
+
+                        if event["type"] == "complete":
+                            summary["feeds_processed"] += 1
+                            summary["total_found"] += event["data"].get("articles_found", 0)
+                            summary["total_relevant"] += event["data"].get("articles_relevant", 0)
+                            summary["total_processed"] += event["data"].get("articles_processed", 0)
+                except Exception as exc:
+                    summary["errors"].append({"feed": src["name"], "error": str(exc)[:300]})
+                    queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                        "type": "feed_error",
+                        "data": {
+                            "feed_id": src["id"],
+                            "feed_name": src["name"],
+                            "error": str(exc)[:300],
+                        },
+                    })
+
+            queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                "type": "run_complete",
+                "data": summary,
+            })
+            queue._loop.call_soon_threadsafe(queue.put_nowait, None)  # type: ignore[attr-defined]
+
+        await asyncio.to_thread(_produce)
+
+    async def event_generator() -> AsyncGenerator[dict, None]:
+        task = asyncio.create_task(_run_all())
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield {
+                    "event": event["type"],
+                    "data": json.dumps(event["data"]),
+                }
+        finally:
+            task.cancel()
+
+    return EventSourceResponse(event_generator())
 
 
 @router.post("/{feed_id}/crawl", response_model=CrawlResultResponse)

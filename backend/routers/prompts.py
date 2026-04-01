@@ -35,6 +35,10 @@ PROMPT_REGISTRY: dict[str, tuple[Path, str]] = {
         PROMPT_DIR / "post_selector_prompt.md",
         "Post selector — picks the most technical LinkedIn post from crawl candidates",
     ),
+    "humanizer_prompt": (
+        PROMPT_DIR / "humanizer_prompt.md",
+        "Humanizer agent — rewrites AI-generated posts to sound authentically human with your persona",
+    ),
 }
 
 

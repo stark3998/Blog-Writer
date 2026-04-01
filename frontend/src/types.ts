@@ -33,6 +33,8 @@ export interface FeedSource {
   auto_publish_blog: boolean;
   auto_publish_linkedin: boolean;
   crawl_interval_minutes: number;
+  max_article_age_days: number;
+  max_articles_to_generate: number;
   enabled: boolean;
   last_crawled_at: string;
   created_at: string;

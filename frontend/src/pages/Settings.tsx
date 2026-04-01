@@ -13,6 +13,7 @@ import {
   deleteAllCrawledArticles,
   getCrawlLog,
   streamCrawl,
+  streamCrawlAll,
 } from "../services/api";
 import type { FeedSource, CrawledArticle, CrawlJob, FeedDiscoverResult } from "../types";
 import {
@@ -31,6 +32,8 @@ import {
   ExternalLink,
   Settings as SettingsIcon,
   AlertTriangle,
+  Play,
+  Square,
 } from "lucide-react";
 
 interface CrawlLogEntry {
@@ -68,6 +71,8 @@ export default function Settings() {
   const [newInterval, setNewInterval] = useState(60);
   const [newAutoPublishBlog, setNewAutoPublishBlog] = useState(false);
   const [newAutoPublishLinkedIn, setNewAutoPublishLinkedIn] = useState(false);
+  const [newMaxAgeDays, setNewMaxAgeDays] = useState(7);
+  const [newMaxArticles, setNewMaxArticles] = useState(1);
   const [discovering, setDiscovering] = useState(false);
   const [discoveryResult, setDiscoveryResult] = useState<FeedDiscoverResult | null>(null);
   const [adding, setAdding] = useState(false);
@@ -118,6 +123,8 @@ export default function Settings() {
         crawl_interval_minutes: newInterval,
         auto_publish_blog: newAutoPublishBlog,
         auto_publish_linkedin: newAutoPublishLinkedIn,
+        max_article_age_days: newMaxAgeDays,
+        max_articles_to_generate: newMaxArticles,
       });
       setFeeds((prev) => [created, ...prev]);
       setShowAddForm(false);
@@ -135,6 +142,8 @@ export default function Settings() {
     setNewInterval(60);
     setNewAutoPublishBlog(false);
     setNewAutoPublishLinkedIn(false);
+    setNewMaxAgeDays(7);
+    setNewMaxArticles(1);
     setDiscoveryResult(null);
     setError(null);
   };
@@ -174,7 +183,13 @@ export default function Settings() {
     streamCrawl(feedId, {
       onCrawlStarted: (d) => appendLog(feedId, "info", `Crawl started: ${d.source_name} (${d.feed_type})`),
       onFetchingArticles: (d) => appendLog(feedId, "info", `Fetching articles via ${d.method}...`),
-      onArticlesFetched: (d) => appendLog(feedId, "info", `Found ${d.total} articles (${d.new} new)`),
+      onArticlesFetched: (d) => {
+        let msg = `Found ${d.total} articles (${d.new} new)`;
+        if (d.after_age_filter !== undefined && d.after_age_filter < d.new) {
+          msg += ` \u2192 ${d.after_age_filter} within ${d.max_age_days}d window`;
+        }
+        appendLog(feedId, "info", msg);
+      },
       onClassifying: (d) => appendLog(feedId, "info", `[${d.index}/${d.total}] Classifying: ${d.title}`),
       onClassified: (d) => {
         if (d.is_relevant) {
@@ -182,6 +197,11 @@ export default function Settings() {
         } else {
           appendLog(feedId, "warn", `[${d.index}/${d.total}] Skipped (not relevant): ${d.title}`);
         }
+      },
+      onRanking: (d) => appendLog(feedId, "info", `Ranking ${d.relevant_count} relevant articles by technicality (picking top ${d.max_to_generate})...`),
+      onRanked: (d) => {
+        appendLog(feedId, "success", `Top ${d.top_count} selected${d.skipped_count > 0 ? ` (${d.skipped_count} skipped)` : ""}`);
+        d.top_titles.forEach((t, i) => appendLog(feedId, "info", `  #${i + 1}: ${t}`));
       },
       onGenerating: (d) => appendLog(feedId, "info", `Generating blog #${d.index}: ${d.title}`),
       onGenerated: (d) => appendLog(feedId, "success", `Blog ${d.status}: ${d.title} (draft: ${d.draft_id.slice(0, 8)}...)`),
@@ -238,6 +258,8 @@ export default function Settings() {
       auto_publish_blog: boolean;
       auto_publish_linkedin: boolean;
       crawl_interval_minutes: number;
+      max_article_age_days: number;
+      max_articles_to_generate: number;
       topics: string[];
     }>
   ) => {
@@ -263,6 +285,95 @@ export default function Settings() {
       await deleteAllFeedArticles(feedId);
       setFeedArticles((prev) => ({ ...prev, [feedId]: [] }));
     } catch {}
+  };
+
+  // Test All Feeds state
+  const [runningAll, setRunningAll] = useState(false);
+  const [runAllLog, setRunAllLog] = useState<CrawlLogEntry[]>([]);
+  const [showRunAllLog, setShowRunAllLog] = useState(false);
+  const runAllAbortRef = useRef<AbortController | null>(null);
+  const runAllLogEndRef = useRef<HTMLDivElement | null>(null);
+
+  const appendRunAllLog = (level: CrawlLogEntry["level"], message: string) => {
+    const entry: CrawlLogEntry = {
+      time: new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      level,
+      message,
+    };
+    setRunAllLog((prev) => [...prev, entry]);
+    setTimeout(() => runAllLogEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+
+  const handleTestAllFeeds = () => {
+    setRunningAll(true);
+    setRunAllLog([]);
+    setShowRunAllLog(true);
+
+    const controller = streamCrawlAll({
+      onRunStarted: (d) => appendRunAllLog("info", `Starting pipeline for ${d.total_feeds} feed(s): ${d.feed_names.join(", ")}`),
+      onFeedStarted: (d) => appendRunAllLog("info", `\n[${ d.index}/${d.total_feeds}] === ${d.feed_name} ===`),
+      onCrawlStarted: (d) => appendRunAllLog("info", `  Crawl started: ${d.source_name} (${d.feed_type})`),
+      onFetchingArticles: (d) => appendRunAllLog("info", `  Fetching articles via ${d.method}...`),
+      onArticlesFetched: (d) => {
+        let msg = `  Found ${d.total} articles (${d.new} new)`;
+        if (d.after_age_filter !== undefined && d.after_age_filter < d.new) {
+          msg += ` -> ${d.after_age_filter} within ${d.max_age_days}d window`;
+        }
+        appendRunAllLog("info", msg);
+      },
+      onClassifying: (d) => appendRunAllLog("info", `  [${d.index}/${d.total}] Classifying: ${d.title}`),
+      onClassified: (d) => {
+        if (d.is_relevant) {
+          appendRunAllLog("success", `  [${d.index}/${d.total}] Relevant (${d.relevance_score.toFixed(1)}): ${d.title}`);
+        } else {
+          appendRunAllLog("warn", `  [${d.index}/${d.total}] Skipped: ${d.title}`);
+        }
+      },
+      onRanking: (d) => appendRunAllLog("info", `  Ranking ${d.relevant_count} articles (picking top ${d.max_to_generate})...`),
+      onRanked: (d) => {
+        appendRunAllLog("success", `  Top ${d.top_count} selected${d.skipped_count > 0 ? ` (${d.skipped_count} skipped)` : ""}`);
+        d.top_titles.forEach((t, i) => appendRunAllLog("info", `    #${i + 1}: ${t}`));
+      },
+      onGenerating: (d) => appendRunAllLog("info", `  Generating blog #${d.index}: ${d.title}`),
+      onGenerated: (d) => appendRunAllLog("success", `  Blog ${d.status}: ${d.title}`),
+      onGenerateError: (d) => appendRunAllLog("error", `  Generation failed: "${d.title}" - ${d.error}`),
+      onSelectingBest: (d) => appendRunAllLog("info", `  Selecting best LinkedIn post from ${d.candidates} candidate(s)...`),
+      onBestSelected: (d) => {
+        if (d.skipped) {
+          const reasons: Record<string, string> = {
+            daily_limit: "Already posted today",
+            auto_publish_disabled: "Auto-publish disabled",
+            no_linkedin_session: "No active session",
+            publish_failed: "Publish failed",
+          };
+          appendRunAllLog("warn", `  LinkedIn skipped: ${reasons[d.reason ?? ""] ?? d.reason}`);
+        } else {
+          appendRunAllLog("success", `  LinkedIn published: ${d.title} (${d.post_id})`);
+        }
+      },
+      onComplete: (d) => appendRunAllLog("success", `  Feed done -- ${d.articles_found} found, ${d.articles_relevant} relevant, ${d.articles_processed} processed`),
+      onFeedError: (d) => appendRunAllLog("error", `  FEED ERROR (${d.feed_name}): ${d.error}`),
+      onRunComplete: (d) => {
+        appendRunAllLog("success", `\nAll done! ${d.feeds_processed} feeds | ${d.total_found} found | ${d.total_relevant} relevant | ${d.total_processed} processed`);
+        if (d.errors.length > 0) {
+          d.errors.forEach((e) => appendRunAllLog("error", `  Failed: ${e.feed} - ${e.error}`));
+        }
+        setRunningAll(false);
+        loadData();
+      },
+      onError: (err) => {
+        appendRunAllLog("error", `Error: ${err}`);
+        setRunningAll(false);
+      },
+    });
+
+    runAllAbortRef.current = controller;
+  };
+
+  const handleStopTestAll = () => {
+    runAllAbortRef.current?.abort();
+    setRunningAll(false);
+    appendRunAllLog("warn", "Pipeline aborted by user.");
   };
 
   const [deletingAllDrafts, setDeletingAllDrafts] = useState(false);
@@ -343,16 +454,37 @@ export default function Settings() {
               Configure blog URLs to crawl for new articles. Relevant articles are auto-drafted.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setShowAddForm(!showAddForm);
-              if (!showAddForm) resetAddForm();
-            }}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
-          >
-            <Plus className="w-4 h-4" />
-            Add Source
-          </button>
+          <div className="flex items-center gap-3">
+            {runningAll ? (
+              <button
+                onClick={handleStopTestAll}
+                className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-red-500/25"
+              >
+                <Square className="w-4 h-4" />
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleTestAllFeeds}
+                disabled={feeds.filter((f) => f.enabled).length === 0}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-emerald-500/25"
+                title="Run the full pipeline on all enabled feeds"
+              >
+                <Play className="w-4 h-4" />
+                Test All Feeds
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                if (!showAddForm) resetAddForm();
+              }}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
+            >
+              <Plus className="w-4 h-4" />
+              Add Source
+            </button>
+          </div>
         </div>
 
         {/* Add Feed Form */}
@@ -465,7 +597,7 @@ export default function Settings() {
             </div>
 
             {/* Auto-publish toggles */}
-            <div className="flex gap-6 mb-6">
+            <div className="flex gap-6 mb-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <button
                   onClick={() => setNewAutoPublishBlog(!newAutoPublishBlog)}
@@ -498,6 +630,34 @@ export default function Settings() {
               </label>
             </div>
 
+            {/* Article selection settings */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Max Article Age (days)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={newMaxAgeDays}
+                  onChange={(e) => setNewMaxAgeDays(Math.max(1, parseInt(e.target.value) || 7))}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200/80 text-gray-900 outline-none text-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Only process articles published within this window</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Max Articles to Generate</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={newMaxArticles}
+                  onChange={(e) => setNewMaxArticles(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200/80 text-gray-900 outline-none text-sm focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Generate blogs for the top N most technical articles per crawl</p>
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="flex gap-3">
               <button
@@ -517,6 +677,52 @@ export default function Settings() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Test All Feeds Log */}
+        {showRunAllLog && runAllLog.length > 0 && (
+          <div className="mb-8 p-5 rounded-2xl bg-white border border-gray-200/80 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Play className="w-4 h-4 text-emerald-500" />
+                Pipeline Test Run
+                {runningAll && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                )}
+              </h3>
+              {!runningAll && (
+                <button
+                  onClick={() => setShowRunAllLog(false)}
+                  className="p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="max-h-[400px] overflow-y-auto rounded-xl bg-gray-900 border border-gray-800 p-4 font-mono text-[11px] leading-relaxed">
+              {runAllLog.map((entry, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-gray-500 shrink-0">{entry.time}</span>
+                  <span
+                    className={
+                      entry.level === "success"
+                        ? "text-green-400"
+                        : entry.level === "error"
+                        ? "text-red-400"
+                        : entry.level === "warn"
+                        ? "text-amber-400"
+                        : "text-gray-400"
+                    }
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {entry.message}
+                  </span>
+                </div>
+              ))}
+              <div ref={runAllLogEndRef} />
             </div>
           </div>
         )}
@@ -596,6 +802,9 @@ export default function Settings() {
                           auto-linkedin
                         </span>
                       )}
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200/60">
+                        {feed.max_article_age_days}d / top {feed.max_articles_to_generate}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-4 shrink-0">
@@ -747,6 +956,42 @@ export default function Settings() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Max age:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={90}
+                          defaultValue={feed.max_article_age_days}
+                          onBlur={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 7);
+                            if (val !== feed.max_article_age_days) {
+                              handleUpdateFeed(feed.id, { max_article_age_days: val });
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="w-14 px-2 py-1 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-600 outline-none"
+                        />
+                        <span className="text-xs text-gray-400">days</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Top N:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={10}
+                          defaultValue={feed.max_articles_to_generate}
+                          onBlur={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            if (val !== feed.max_articles_to_generate) {
+                              handleUpdateFeed(feed.id, { max_articles_to_generate: val });
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="w-14 px-2 py-1 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-600 outline-none"
+                        />
+                        <span className="text-xs text-gray-400">articles</span>
                       </div>
                     </div>
 

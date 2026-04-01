@@ -12,6 +12,7 @@ import Prompts from "./pages/Prompts";
 import Diagnostics from "./pages/Diagnostics";
 import Keywords from "./pages/Keywords";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:id" element={<Editor />} />
             <Route path="/blog/:slug" element={<BlogView />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/prompts" element={<Prompts />} />
             <Route path="/keywords" element={<Keywords />} />

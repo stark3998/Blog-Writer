@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useBlogStore } from "../store/blogStore";
 import {
   generateBlogStream,
@@ -23,11 +23,9 @@ import {
   Github,
   ArrowRight,
   Rss,
-  Activity,
   Tag,
   User,
   TrendingUp,
-  Settings,
   Clock,
   BarChart3,
   Newspaper,
@@ -152,60 +150,7 @@ export default function Home() {
   }, [drafts, originFilter, tagFilter]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
-      {/* Decorative background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] right-[-10%] w-[800px] h-[800px] bg-indigo-200/30 rounded-full blur-[140px] animate-float" />
-        <div className="absolute bottom-[-20%] left-[-5%] w-[600px] h-[600px] bg-violet-200/20 rounded-full blur-[120px] animate-float" style={{ animationDelay: "3s" }} />
-      </div>
-
-      {/* Navigation */}
-      <nav className="relative glass-strong border-b border-indigo-100/60 animate-fade-in-down sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold tracking-tight text-gray-900">Blog Writer</span>
-              <span className="text-[10px] font-semibold text-indigo-500 tracking-widest uppercase">AI</span>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate("/dashboard")} className="p-2.5 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200" title="Pipeline Dashboard">
-              <BarChart3 className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/settings")} className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Feed Settings">
-              <Rss className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/prompts")} className="p-2.5 rounded-xl text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200" title="Prompt Editor">
-              <FileText className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/keywords")} className="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200" title="Keyword Manager">
-              <Tag className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/settings")} className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Settings">
-              <Settings className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/diagnostics")} className="p-2.5 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200" title="Diagnostics">
-              <Activity className="w-4.5 h-4.5" />
-            </button>
-            <button onClick={() => navigate("/profile")} className="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200" title="Profile">
-              <User className="w-4.5 h-4.5" />
-            </button>
-            <div className="w-px h-6 bg-gray-200 mx-1" />
-            <button
-              onClick={() => { setContent(""); setDraft(null); navigate("/editor"); }}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all duration-200 flex items-center gap-2"
-            >
-              <PenLine className="w-3.5 h-3.5" />
-              New Draft
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="relative max-w-7xl mx-auto px-6 pt-8 pb-12">
+      <div className="max-w-7xl mx-auto px-6 pt-8 pb-12">
         {/* Dashboard Header — URL Input */}
         <section className="mb-8 animate-fade-in-up">
           <div className="flex items-center justify-between mb-6">
@@ -646,7 +591,6 @@ export default function Home() {
             Built with Azure OpenAI GPT-4o &middot; FastAPI &middot; React
           </p>
         </footer>
-      </main>
-    </div>
+      </div>
   );
 }

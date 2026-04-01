@@ -151,7 +151,7 @@ export default function Editor() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--bg-base)]">
+    <div className="h-[calc(100vh-3.25rem)] flex flex-col">
       {/* Toolbar */}
       <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200/80 glass-strong shrink-0 animate-fade-in-down overflow-visible z-50 relative">
         <div className="flex items-center gap-3">

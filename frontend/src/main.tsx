@@ -4,14 +4,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import { AppAuthProvider } from "./auth/AuthProvider";
 import AuthGuard from "./auth/AuthGuard";
+import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import BlogView from "./pages/BlogView";
 import Settings from "./pages/Settings";
-import Prompts from "./pages/Prompts";
-import Diagnostics from "./pages/Diagnostics";
-import Keywords from "./pages/Keywords";
-import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 
 createRoot(document.getElementById("root")!).render(
@@ -19,18 +16,16 @@ createRoot(document.getElementById("root")!).render(
     <AppAuthProvider>
       <BrowserRouter>
         <AuthGuard>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/editor" element={<Editor />} />
-            <Route path="/editor/:id" element={<Editor />} />
-            <Route path="/blog/:slug" element={<BlogView />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/prompts" element={<Prompts />} />
-            <Route path="/keywords" element={<Keywords />} />
-            <Route path="/diagnostics" element={<Diagnostics />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/editor" element={<Editor />} />
+              <Route path="/editor/:id" element={<Editor />} />
+              <Route path="/blog/:slug" element={<BlogView />} />
+              <Route path="/analytics" element={<Dashboard />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Layout>
         </AuthGuard>
       </BrowserRouter>
     </AppAuthProvider>

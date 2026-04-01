@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getPublishedBlog } from "../services/api";
-import { ArrowLeft, Loader2, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink } from "lucide-react";
 
 interface BlogData {
   title: string;
@@ -31,7 +31,7 @@ export default function BlogView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
       </div>
     );
@@ -39,7 +39,7 @@ export default function BlogView() {
 
   if (error || !blog) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-base)] gap-4">
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-lg text-gray-500">{error ?? "Blog not found"}</p>
         <Link to="/" className="text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1.5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Home
@@ -51,25 +51,6 @@ export default function BlogView() {
   const displayDate = blog.date || blog.published_at;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
-      {/* Nav */}
-      <nav className="glass-strong border-b border-indigo-100/60 sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-indigo-600 font-medium transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back
-          </Link>
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="text-sm font-bold text-gray-900">Blog Writer</span>
-          </Link>
-        </div>
-      </nav>
-
       <div className="max-w-3xl mx-auto px-6 py-12">
         {/* Meta bar */}
         <div className="flex flex-wrap items-center gap-3 mb-6 text-sm text-gray-400">
@@ -134,6 +115,5 @@ export default function BlogView() {
           </div>
         )}
       </div>
-    </div>
   );
 }

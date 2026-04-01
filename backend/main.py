@@ -43,7 +43,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import generate, edit, blogs, export, publish, linkedin, twitter, medium, feeds, diagnostics, prompts, keywords, user
+from backend.routers import generate, edit, blogs, export, publish, linkedin, twitter, medium, feeds, diagnostics, prompts, keywords, user, dashboard
 
 # Create FastAPI app
 app = FastAPI(
@@ -120,6 +120,7 @@ app.include_router(diagnostics.router)
 app.include_router(prompts.router)
 app.include_router(keywords.router)
 app.include_router(user.router)
+app.include_router(dashboard.router)
 
 
 @app.on_event("startup")

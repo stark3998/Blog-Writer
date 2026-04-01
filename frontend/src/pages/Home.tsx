@@ -172,6 +172,9 @@ export default function Home() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/dashboard")} className="p-2.5 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200" title="Pipeline Dashboard">
+              <BarChart3 className="w-4.5 h-4.5" />
+            </button>
             <button onClick={() => navigate("/settings")} className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Feed Settings">
               <Rss className="w-4.5 h-4.5" />
             </button>

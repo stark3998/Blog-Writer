@@ -709,6 +709,89 @@ export function streamCrawl(feedId: string, callbacks: CrawlSSECallbacks): Abort
   return controller;
 }
 
+// ---------- Crawl All Feeds SSE Streaming ----------
+
+export interface CrawlAllSSECallbacks extends CrawlSSECallbacks {
+  onRunStarted?: (data: { total_feeds: number; feed_names: string[] }) => void;
+  onFeedStarted?: (data: { index: number; total_feeds: number; feed_id: string; feed_name: string }) => void;
+  onFeedError?: (data: { feed_id: string; feed_name: string; error: string }) => void;
+  onRunComplete?: (data: { feeds_processed: number; total_found: number; total_relevant: number; total_processed: number; errors: Array<{ feed: string; error: string }> }) => void;
+}
+
+export function streamCrawlAll(callbacks: CrawlAllSSECallbacks): AbortController {
+  const controller = new AbortController();
+
+  authHeaders().then((auth) => {
+  fetch(`${API_BASE}/feeds/crawl-all/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...auth },
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        callbacks.onError?.(errBody.detail ?? `HTTP ${res.status}`);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "message";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              switch (currentEvent) {
+                case "run_started": callbacks.onRunStarted?.(data); break;
+                case "feed_started": callbacks.onFeedStarted?.(data); break;
+                case "feed_error": callbacks.onFeedError?.(data); break;
+                case "run_complete": callbacks.onRunComplete?.(data); break;
+                // Delegate per-feed events to the standard crawl callbacks
+                case "crawl_started": callbacks.onCrawlStarted?.(data); break;
+                case "fetching_articles": callbacks.onFetchingArticles?.(data); break;
+                case "articles_fetched": callbacks.onArticlesFetched?.(data); break;
+                case "classifying": callbacks.onClassifying?.(data); break;
+                case "classified": callbacks.onClassified?.(data); break;
+                case "ranking": callbacks.onRanking?.(data); break;
+                case "ranked": callbacks.onRanked?.(data); break;
+                case "generating": callbacks.onGenerating?.(data); break;
+                case "generated": callbacks.onGenerated?.(data); break;
+                case "generate_error": callbacks.onGenerateError?.(data); break;
+                case "selecting_best": callbacks.onSelectingBest?.(data); break;
+                case "best_selected": callbacks.onBestSelected?.(data); break;
+                case "complete": callbacks.onComplete?.(data); break;
+                case "error": callbacks.onError?.(data.error); break;
+              }
+            } catch { /* ignore malformed JSON */ }
+            currentEvent = "message";
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        callbacks.onError?.(err.message);
+      }
+    });
+  });
+
+  return controller;
+}
+
 export async function deleteFeedArticle(feedId: string, articleId: string): Promise<void> {
   const auth = await authHeaders();
   const res = await fetch(`${API_BASE}/feeds/${feedId}/articles/${articleId}`, { method: "DELETE", headers: auth });
@@ -735,6 +818,83 @@ export async function listRelevantArticles(limit = 30): Promise<CrawledArticle[]
 
 export async function getCrawlLog(limit = 50): Promise<CrawlJob[]> {
   return json<CrawlJob[]>(`/feeds/crawl-log?limit=${limit}`);
+}
+
+// ---------- Dashboard ----------
+
+export interface PipelineStats {
+  total_articles: number;
+  relevant_articles: number;
+  irrelevant_articles: number;
+  drafted: number;
+  published: number;
+  errors: number;
+  skipped_rank: number;
+  linkedin_posts: number;
+  relevance_rate: number;
+  success_rate: number;
+  feeds_active: number;
+  feeds_total: number;
+  crawl_jobs_total: number;
+  crawl_jobs_failed: number;
+  avg_relevance_score: number;
+  top_topics: Array<{ topic: string; count: number }>;
+  daily_activity: Array<{ date: string; total: number; relevant: number; processed: number }>;
+}
+
+export interface DashboardArticle {
+  id: string;
+  feed_source_id: string;
+  feed_name: string;
+  article_url: string;
+  title: string;
+  is_relevant: boolean;
+  relevance_score: number;
+  matched_topics: string[];
+  matched_keywords: string[];
+  draft_id: string;
+  linkedin_post_id: string;
+  status: string;
+  crawled_at: string;
+  hero_image_url: string;
+  retry_count: number;
+  last_error: string;
+}
+
+export interface ArticleActionResult {
+  article_id: string;
+  status: string;
+  message: string;
+  draft_id?: string;
+  linkedin_post_id?: string;
+}
+
+export async function getDashboardStats(days = 7): Promise<PipelineStats> {
+  return json<PipelineStats>(`/dashboard/stats?days=${days}`);
+}
+
+export async function getDashboardArticles(params: {
+  days?: number;
+  status?: string;
+  feed_id?: string;
+  relevant_only?: boolean;
+  limit?: number;
+} = {}): Promise<DashboardArticle[]> {
+  const qs = new URLSearchParams();
+  if (params.days !== undefined) qs.set("days", String(params.days));
+  if (params.status) qs.set("status", params.status);
+  if (params.feed_id) qs.set("feed_id", params.feed_id);
+  if (params.relevant_only) qs.set("relevant_only", "true");
+  if (params.limit !== undefined) qs.set("limit", String(params.limit));
+  return json<DashboardArticle[]>(`/dashboard/articles?${qs.toString()}`);
+}
+
+export async function regenerateArticle(articleId: string): Promise<ArticleActionResult> {
+  return json<ArticleActionResult>(`/dashboard/articles/${articleId}/regenerate`, { method: "POST" });
+}
+
+export async function promoteToLinkedIn(articleId: string): Promise<ArticleActionResult> {
+  return json<ArticleActionResult>(`/dashboard/articles/${articleId}/linkedin`, { method: "POST" });
 }
 
 // ---------- Diagnostics ----------

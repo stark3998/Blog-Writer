@@ -328,6 +328,94 @@ async def delete_feed(feed_id: str):
     return {"status": "deleted", "id": feed_id}
 
 
+@router.post("/crawl-all/stream")
+async def trigger_crawl_all_stream():
+    """Trigger crawl for ALL enabled feed sources, streamed via SSE.
+
+    Iterates enabled feeds sequentially. Emits per-feed start/complete events
+    plus all the regular per-article events from crawl_feed_source_stream.
+    """
+    sources = list_feed_sources()
+    enabled = [s for s in sources if s.get("enabled", True)]
+
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def _run_all() -> None:
+        def _produce() -> None:
+            total = len(enabled)
+            queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                "type": "run_started",
+                "data": {"total_feeds": total, "feed_names": [s["name"] for s in enabled]},
+            })
+
+            summary = {
+                "feeds_processed": 0,
+                "total_found": 0,
+                "total_relevant": 0,
+                "total_processed": 0,
+                "errors": [],
+            }
+
+            for i, src in enumerate(enabled):
+                queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                    "type": "feed_started",
+                    "data": {
+                        "index": i + 1,
+                        "total_feeds": total,
+                        "feed_id": src["id"],
+                        "feed_name": src["name"],
+                    },
+                })
+
+                try:
+                    for event in crawl_feed_source_stream(src["id"]):
+                        # Tag every event with the feed id/name for the frontend
+                        event["data"]["_feed_id"] = src["id"]
+                        event["data"]["_feed_name"] = src["name"]
+                        event["data"]["_feed_index"] = i + 1
+                        queue._loop.call_soon_threadsafe(queue.put_nowait, event)  # type: ignore[attr-defined]
+
+                        if event["type"] == "complete":
+                            summary["feeds_processed"] += 1
+                            summary["total_found"] += event["data"].get("articles_found", 0)
+                            summary["total_relevant"] += event["data"].get("articles_relevant", 0)
+                            summary["total_processed"] += event["data"].get("articles_processed", 0)
+                except Exception as exc:
+                    summary["errors"].append({"feed": src["name"], "error": str(exc)[:300]})
+                    queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                        "type": "feed_error",
+                        "data": {
+                            "feed_id": src["id"],
+                            "feed_name": src["name"],
+                            "error": str(exc)[:300],
+                        },
+                    })
+
+            queue._loop.call_soon_threadsafe(queue.put_nowait, {  # type: ignore[attr-defined]
+                "type": "run_complete",
+                "data": summary,
+            })
+            queue._loop.call_soon_threadsafe(queue.put_nowait, None)  # type: ignore[attr-defined]
+
+        await asyncio.to_thread(_produce)
+
+    async def event_generator() -> AsyncGenerator[dict, None]:
+        task = asyncio.create_task(_run_all())
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield {
+                    "event": event["type"],
+                    "data": json.dumps(event["data"]),
+                }
+        finally:
+            task.cancel()
+
+    return EventSourceResponse(event_generator())
+
+
 @router.post("/{feed_id}/crawl", response_model=CrawlResultResponse)
 async def trigger_crawl(feed_id: str):
     """Trigger an immediate crawl for a feed source."""

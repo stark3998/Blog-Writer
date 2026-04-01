@@ -13,6 +13,7 @@ import {
   deleteAllCrawledArticles,
   getCrawlLog,
   streamCrawl,
+  streamCrawlAll,
 } from "../services/api";
 import type { FeedSource, CrawledArticle, CrawlJob, FeedDiscoverResult } from "../types";
 import {
@@ -31,6 +32,8 @@ import {
   ExternalLink,
   Settings as SettingsIcon,
   AlertTriangle,
+  Play,
+  Square,
 } from "lucide-react";
 
 interface CrawlLogEntry {
@@ -284,6 +287,95 @@ export default function Settings() {
     } catch {}
   };
 
+  // Test All Feeds state
+  const [runningAll, setRunningAll] = useState(false);
+  const [runAllLog, setRunAllLog] = useState<CrawlLogEntry[]>([]);
+  const [showRunAllLog, setShowRunAllLog] = useState(false);
+  const runAllAbortRef = useRef<AbortController | null>(null);
+  const runAllLogEndRef = useRef<HTMLDivElement | null>(null);
+
+  const appendRunAllLog = (level: CrawlLogEntry["level"], message: string) => {
+    const entry: CrawlLogEntry = {
+      time: new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      level,
+      message,
+    };
+    setRunAllLog((prev) => [...prev, entry]);
+    setTimeout(() => runAllLogEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+
+  const handleTestAllFeeds = () => {
+    setRunningAll(true);
+    setRunAllLog([]);
+    setShowRunAllLog(true);
+
+    const controller = streamCrawlAll({
+      onRunStarted: (d) => appendRunAllLog("info", `Starting pipeline for ${d.total_feeds} feed(s): ${d.feed_names.join(", ")}`),
+      onFeedStarted: (d) => appendRunAllLog("info", `\n[${ d.index}/${d.total_feeds}] === ${d.feed_name} ===`),
+      onCrawlStarted: (d) => appendRunAllLog("info", `  Crawl started: ${d.source_name} (${d.feed_type})`),
+      onFetchingArticles: (d) => appendRunAllLog("info", `  Fetching articles via ${d.method}...`),
+      onArticlesFetched: (d) => {
+        let msg = `  Found ${d.total} articles (${d.new} new)`;
+        if (d.after_age_filter !== undefined && d.after_age_filter < d.new) {
+          msg += ` -> ${d.after_age_filter} within ${d.max_age_days}d window`;
+        }
+        appendRunAllLog("info", msg);
+      },
+      onClassifying: (d) => appendRunAllLog("info", `  [${d.index}/${d.total}] Classifying: ${d.title}`),
+      onClassified: (d) => {
+        if (d.is_relevant) {
+          appendRunAllLog("success", `  [${d.index}/${d.total}] Relevant (${d.relevance_score.toFixed(1)}): ${d.title}`);
+        } else {
+          appendRunAllLog("warn", `  [${d.index}/${d.total}] Skipped: ${d.title}`);
+        }
+      },
+      onRanking: (d) => appendRunAllLog("info", `  Ranking ${d.relevant_count} articles (picking top ${d.max_to_generate})...`),
+      onRanked: (d) => {
+        appendRunAllLog("success", `  Top ${d.top_count} selected${d.skipped_count > 0 ? ` (${d.skipped_count} skipped)` : ""}`);
+        d.top_titles.forEach((t, i) => appendRunAllLog("info", `    #${i + 1}: ${t}`));
+      },
+      onGenerating: (d) => appendRunAllLog("info", `  Generating blog #${d.index}: ${d.title}`),
+      onGenerated: (d) => appendRunAllLog("success", `  Blog ${d.status}: ${d.title}`),
+      onGenerateError: (d) => appendRunAllLog("error", `  Generation failed: "${d.title}" - ${d.error}`),
+      onSelectingBest: (d) => appendRunAllLog("info", `  Selecting best LinkedIn post from ${d.candidates} candidate(s)...`),
+      onBestSelected: (d) => {
+        if (d.skipped) {
+          const reasons: Record<string, string> = {
+            daily_limit: "Already posted today",
+            auto_publish_disabled: "Auto-publish disabled",
+            no_linkedin_session: "No active session",
+            publish_failed: "Publish failed",
+          };
+          appendRunAllLog("warn", `  LinkedIn skipped: ${reasons[d.reason ?? ""] ?? d.reason}`);
+        } else {
+          appendRunAllLog("success", `  LinkedIn published: ${d.title} (${d.post_id})`);
+        }
+      },
+      onComplete: (d) => appendRunAllLog("success", `  Feed done -- ${d.articles_found} found, ${d.articles_relevant} relevant, ${d.articles_processed} processed`),
+      onFeedError: (d) => appendRunAllLog("error", `  FEED ERROR (${d.feed_name}): ${d.error}`),
+      onRunComplete: (d) => {
+        appendRunAllLog("success", `\nAll done! ${d.feeds_processed} feeds | ${d.total_found} found | ${d.total_relevant} relevant | ${d.total_processed} processed`);
+        if (d.errors.length > 0) {
+          d.errors.forEach((e) => appendRunAllLog("error", `  Failed: ${e.feed} - ${e.error}`));
+        }
+        setRunningAll(false);
+        loadData();
+      },
+      onError: (err) => {
+        appendRunAllLog("error", `Error: ${err}`);
+        setRunningAll(false);
+      },
+    });
+
+    runAllAbortRef.current = controller;
+  };
+
+  const handleStopTestAll = () => {
+    runAllAbortRef.current?.abort();
+    setRunningAll(false);
+    appendRunAllLog("warn", "Pipeline aborted by user.");
+  };
+
   const [deletingAllDrafts, setDeletingAllDrafts] = useState(false);
   const [deletingAllArticles, setDeletingAllArticles] = useState(false);
 
@@ -362,16 +454,37 @@ export default function Settings() {
               Configure blog URLs to crawl for new articles. Relevant articles are auto-drafted.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setShowAddForm(!showAddForm);
-              if (!showAddForm) resetAddForm();
-            }}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
-          >
-            <Plus className="w-4 h-4" />
-            Add Source
-          </button>
+          <div className="flex items-center gap-3">
+            {runningAll ? (
+              <button
+                onClick={handleStopTestAll}
+                className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-red-500/25"
+              >
+                <Square className="w-4 h-4" />
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleTestAllFeeds}
+                disabled={feeds.filter((f) => f.enabled).length === 0}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-emerald-500/25"
+                title="Run the full pipeline on all enabled feeds"
+              >
+                <Play className="w-4 h-4" />
+                Test All Feeds
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                if (!showAddForm) resetAddForm();
+              }}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
+            >
+              <Plus className="w-4 h-4" />
+              Add Source
+            </button>
+          </div>
         </div>
 
         {/* Add Feed Form */}
@@ -564,6 +677,52 @@ export default function Settings() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Test All Feeds Log */}
+        {showRunAllLog && runAllLog.length > 0 && (
+          <div className="mb-8 p-5 rounded-2xl bg-white border border-gray-200/80 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Play className="w-4 h-4 text-emerald-500" />
+                Pipeline Test Run
+                {runningAll && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                )}
+              </h3>
+              {!runningAll && (
+                <button
+                  onClick={() => setShowRunAllLog(false)}
+                  className="p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="max-h-[400px] overflow-y-auto rounded-xl bg-gray-900 border border-gray-800 p-4 font-mono text-[11px] leading-relaxed">
+              {runAllLog.map((entry, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-gray-500 shrink-0">{entry.time}</span>
+                  <span
+                    className={
+                      entry.level === "success"
+                        ? "text-green-400"
+                        : entry.level === "error"
+                        ? "text-red-400"
+                        : entry.level === "warn"
+                        ? "text-amber-400"
+                        : "text-gray-400"
+                    }
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {entry.message}
+                  </span>
+                </div>
+              ))}
+              <div ref={runAllLogEndRef} />
             </div>
           </div>
         )}

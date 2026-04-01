@@ -218,22 +218,67 @@ def process_relevant_article(
 def rank_articles_by_technicality(
     articles: list[dict[str, Any]], topics: list[str]
 ) -> list[dict[str, Any]]:
-    """Rank articles by technical depth before blog generation.
+    """Rank articles using pre-computed scores + GPT tiebreaker for top candidates.
 
-    Uses a single GPT-4o call to rank all articles by how technical,
-    in-depth, and relevant they are. This runs BEFORE expensive blog
-    generation to ensure only the best articles get processed.
+    Two-phase ranking:
+    1. Score-based sort using weighted combination of relevance, technicality, and keyword scores
+       (with AI topic priority boost)
+    2. GPT tiebreaker for the top 10 candidates only (reliable with small lists)
 
     Args:
-        articles: List of dicts with keys: title, summary, url, relevance_score, matched_topics.
+        articles: List of dicts with keys: title, summary, url, relevance_score,
+                  technicality_score, matched_topics.
         topics: The feed source's configured topic list.
 
     Returns:
-        The same articles list, reordered from most to least technical.
+        The same articles list, reordered from most to least valuable.
     """
     if len(articles) <= 1:
         return articles
 
+    from backend.services.relevance_classifier import PRIORITY_TOPICS
+
+    # Phase 1: Composite score ranking
+    # Score = 40% relevance + 40% technicality + 20% keyword match density
+    # Priority topics get a boost
+    def composite_score(a: dict[str, Any]) -> float:
+        rel = a.get("relevance_score", 0)
+        tech = a.get("technicality_score", 0)
+        kw = a.get("keyword_score", 0) if "keyword_score" in a else 0
+
+        base = rel * 0.4 + tech * 0.4 + kw * 0.2
+
+        # Boost for AI/priority topic matches
+        matched = [t.lower() for t in a.get("matched_topics", [])]
+        priority_boost = 0
+        for topic, mult in PRIORITY_TOPICS.items():
+            if any(topic in m for m in matched):
+                priority_boost = max(priority_boost, (mult - 1.0) * 0.15)
+        return base + priority_boost
+
+    # Sort all articles by composite score
+    scored = [(composite_score(a), i, a) for i, a in enumerate(articles)]
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Log the top candidates
+    top_titles = [(s, a["title"][:60]) for s, _, a in scored[:5]]
+    logger.info(f"Score-based ranking top 5: {top_titles}")
+
+    # Phase 2: GPT tiebreaker for top 10 only
+    top_10 = scored[:min(10, len(scored))]
+    if len(top_10) > 1:
+        top_10 = _gpt_rerank_top(top_10, topics)
+
+    # Reconstruct full list: reranked top 10 + remaining in score order
+    result = [a for _, _, a in top_10] + [a for _, _, a in scored[len(top_10):]]
+    return result
+
+
+def _gpt_rerank_top(
+    scored_articles: list[tuple[float, int, dict[str, Any]]],
+    topics: list[str],
+) -> list[tuple[float, int, dict[str, Any]]]:
+    """Use GPT to rerank the top candidates for final selection."""
     from azure.identity import DefaultAzureCredential, get_bearer_token_provider
     from openai import AzureOpenAI
 
@@ -254,25 +299,22 @@ def rank_articles_by_technicality(
             "index": i,
             "title": a["title"],
             "summary": a.get("summary", "")[:300],
-            "url": a["url"],
-            "relevance_score": a.get("relevance_score", 0),
-            "technicality_score": a.get("technicality_score", 0),
+            "composite_score": round(score, 3),
             "matched_topics": a.get("matched_topics", []),
         }
-        for i, a in enumerate(articles)
+        for i, (score, _, a) in enumerate(scored_articles)
     ]
 
     topics_str = ", ".join(topics)
     system_prompt = (
         f"You are a technical content curator for topics: {topics_str}.\n"
-        "Rank the following articles by overall value. Consider:\n"
-        "1. TECHNICAL DEPTH: implementations, architectures, code, deep analysis\n"
-        "2. AI & AGENT PRIORITY: Articles about AI agents, Microsoft AI Foundry, "
-        "Azure AI, Agent365, Copilot agents, and agentic frameworks should be ranked HIGHER\n"
-        "3. Relevance and technicality scores are pre-computed — use them as a baseline\n"
-        "4. Prefer actionable technical insights over announcements or opinions\n\n"
+        "These are the TOP candidates already sorted by relevance+technicality scores.\n"
+        "Rerank them considering:\n"
+        "1. AI, agents, Microsoft AI Foundry, Copilot agents = HIGHEST priority\n"
+        "2. Deep technical content (implementations, code, architecture) over announcements\n"
+        "3. The pre-computed composite_score as a baseline\n\n"
         "Return JSON: {\"ranked_indices\": [2, 0, 1, ...], \"reasoning\": \"brief explanation\"}\n"
-        "ranked_indices should list article indices from MOST to LEAST valuable."
+        "ranked_indices lists article indices from BEST to WORST."
     )
 
     try:
@@ -283,32 +325,31 @@ def rank_articles_by_technicality(
                 {"role": "user", "content": json.dumps(payload)},
             ],
             temperature=0.2,
-            max_completion_tokens=500,
+            max_completion_tokens=300,
         )
         raw = response.choices[0].message.content or "{}"
         raw = raw.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         result = json.loads(raw)
-        ranked_indices = result.get("ranked_indices", list(range(len(articles))))
+        ranked_indices = result.get("ranked_indices", list(range(len(scored_articles))))
         reasoning = result.get("reasoning", "")
-        logger.info(f"Articles ranked by technicality: {ranked_indices}, reasoning={reasoning}")
+        logger.info(f"GPT reranked top {len(scored_articles)}: {ranked_indices}, reasoning={reasoning}")
 
-        # Reorder articles by ranked indices, handling out-of-range gracefully
-        ranked = []
+        # Reorder by GPT ranking
+        reranked = []
         seen = set()
         for idx in ranked_indices:
-            if isinstance(idx, int) and 0 <= idx < len(articles) and idx not in seen:
-                ranked.append(articles[idx])
+            if isinstance(idx, int) and 0 <= idx < len(scored_articles) and idx not in seen:
+                reranked.append(scored_articles[idx])
                 seen.add(idx)
-        # Append any articles not in the ranking (shouldn't happen, but be safe)
-        for i, a in enumerate(articles):
+        for i, item in enumerate(scored_articles):
             if i not in seen:
-                ranked.append(a)
-        return ranked
+                reranked.append(item)
+        return reranked
     except Exception as exc:
-        logger.error(f"Article ranking failed: {exc}, returning original order")
-        return articles
+        logger.error(f"GPT reranking failed: {exc}, keeping score-based order")
+        return scored_articles
 
 
 def select_best_post(candidates: list[dict[str, Any]]) -> int:

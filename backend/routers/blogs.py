@@ -14,6 +14,9 @@ from backend.db.cosmos_client import (
     update_draft,
     delete_draft,
     delete_all_drafts,
+    save_draft_version,
+    list_draft_versions,
+    get_draft_version,
 )
 from backend.models.user import UserInfo
 
@@ -140,6 +143,90 @@ async def delete_existing_draft(draft_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete draft: {str(e)}")
+
+
+# ---------- Version History ----------
+
+
+class VersionSummary(BaseModel):
+    id: str
+    draftId: str
+    title: str = ""
+    contentLength: int = 0
+    trigger: str = ""
+    createdAt: str = ""
+
+
+class VersionFull(VersionSummary):
+    content: str = ""
+
+
+@router.get("/{draft_id}/versions", response_model=list[VersionSummary])
+async def list_versions(draft_id: str, limit: int = 20):
+    """List version history for a draft."""
+    try:
+        versions = list_draft_versions(draft_id, limit=limit)
+        return versions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list versions: {str(e)}")
+
+
+@router.get("/{draft_id}/versions/{version_id}", response_model=VersionFull)
+async def get_version(draft_id: str, version_id: str):
+    """Get a specific version with full content."""
+    try:
+        version = get_draft_version(version_id)
+        if version is None or version.get("draftId") != draft_id:
+            raise HTTPException(status_code=404, detail="Version not found")
+        return version
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get version: {str(e)}")
+
+
+@router.post("/{draft_id}/versions", response_model=VersionSummary, status_code=201)
+async def create_version(draft_id: str):
+    """Manually save a version snapshot of the current draft state."""
+    draft = get_draft(draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    try:
+        version = save_draft_version(
+            draft_id=draft_id,
+            content=draft.get("content", ""),
+            title=draft.get("title", ""),
+            trigger="manual",
+        )
+        return version
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save version: {str(e)}")
+
+
+@router.post("/{draft_id}/versions/{version_id}/restore", response_model=DraftFull)
+async def restore_version(draft_id: str, version_id: str):
+    """Restore a draft to a previous version."""
+    version = get_draft_version(version_id)
+    if version is None or version.get("draftId") != draft_id:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    # Save current state as a version first
+    draft = get_draft(draft_id)
+    if draft:
+        try:
+            save_draft_version(
+                draft_id=draft_id,
+                content=draft.get("content", ""),
+                title=draft.get("title", ""),
+                trigger="pre_restore",
+            )
+        except Exception:
+            pass
+
+    updated = update_draft(draft_id, {"content": version.get("content", "")})
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return updated
 
 
 class TestReadinessRequest(BaseModel):

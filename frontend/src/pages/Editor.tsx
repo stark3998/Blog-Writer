@@ -16,6 +16,10 @@ import {
   testDraftReadiness,
 } from "../services/api";
 import type { TestReadinessResponse } from "../services/api";
+import SEOPanel from "../components/SEOPanel";
+import VersionHistoryPanel from "../components/VersionHistoryPanel";
+import DistributeDropdown from "../components/DistributeDropdown";
+import { toast } from "../store/toastStore";
 import {
   ArrowLeft,
   Save,
@@ -30,6 +34,8 @@ import {
   FlaskConical,
   X,
   Copy,
+  Search,
+  History,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -50,6 +56,8 @@ export default function Editor() {
   const [testResult, setTestResult] = useState<TestReadinessResponse | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [copiedPost, setCopiedPost] = useState(false);
+  const [showSEO, setShowSEO] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -85,9 +93,11 @@ export default function Editor() {
         navigate(`/editor/${saved.id}`, { replace: true });
       }
       setSaveStatus("saved");
+      toast.success("Draft saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
       setSaveStatus("error");
+      toast.error("Save failed");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {
       setSaving(false);
@@ -122,8 +132,11 @@ export default function Editor() {
         source_type: draft?.sourceType ?? "",
       });
       setPublishResult(result.blog_url);
+      toast.success("Blog published!", result.blog_url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Publish failed");
+      const msg = err instanceof Error ? err.message : "Publish failed";
+      setError(msg);
+      toast.error("Publish failed", msg);
     } finally {
       setPublishing(false);
     }
@@ -219,29 +232,53 @@ export default function Editor() {
           {/* Export */}
           <ExportDropdown content={content} />
 
-          {/* LinkedIn */}
-          <LinkedInButton
-            content={content}
-            title={draft?.title}
-            excerpt={draft?.excerpt}
-            blogUrl={publishResult ?? undefined}
-          />
+          {/* Distribute (LinkedIn, Twitter, Medium) */}
+          <DistributeDropdown>
+            <LinkedInButton
+              content={content}
+              title={draft?.title}
+              excerpt={draft?.excerpt}
+              blogUrl={publishResult ?? undefined}
+            />
+            <TwitterButton
+              content={content}
+              title={draft?.title}
+              excerpt={draft?.excerpt}
+              blogUrl={publishResult ?? undefined}
+            />
+            <MediumButton
+              content={content}
+              title={draft?.title}
+              excerpt={draft?.excerpt}
+              blogUrl={publishResult ?? undefined}
+            />
+          </DistributeDropdown>
 
-          {/* Twitter/X */}
-          <TwitterButton
-            content={content}
-            title={draft?.title}
-            excerpt={draft?.excerpt}
-            blogUrl={publishResult ?? undefined}
-          />
+          {/* SEO Score */}
+          <button
+            onClick={() => { setShowSEO(!showSEO); if (showSEO) return; setShowAI(false); setShowTest(false); setShowHistory(false); }}
+            className={`p-2 rounded-xl transition-all duration-200 ${
+              showSEO
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent"
+            }`}
+            title="SEO Score"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
-          {/* Medium */}
-          <MediumButton
-            content={content}
-            title={draft?.title}
-            excerpt={draft?.excerpt}
-            blogUrl={publishResult ?? undefined}
-          />
+          {/* Version History */}
+          <button
+            onClick={() => { setShowHistory(!showHistory); if (showHistory) return; setShowAI(false); setShowTest(false); setShowSEO(false); }}
+            className={`p-2 rounded-xl transition-all duration-200 ${
+              showHistory
+                ? "bg-violet-50 text-violet-600 border border-violet-200/60"
+                : "text-gray-400 hover:text-violet-600 hover:bg-violet-50 border border-transparent"
+            }`}
+            title="Version History"
+          >
+            <History className="w-4 h-4" />
+          </button>
 
           {/* Test Readiness */}
           <button
@@ -349,6 +386,39 @@ export default function Editor() {
           {showAI && (
             <div className="w-80 h-full animate-slide-in-right">
               <AIEditPanel onClose={() => setShowAI(false)} />
+            </div>
+          )}
+        </div>
+
+        {/* SEO Panel */}
+        <div
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showSEO ? "w-72 opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showSEO && (
+            <div className="animate-slide-in-right">
+              <SEOPanel content={content} onClose={() => setShowSEO(false)} />
+            </div>
+          )}
+        </div>
+
+        {/* Version History Panel */}
+        <div
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showHistory ? "w-80 opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showHistory && draft?.id && (
+            <VersionHistoryPanel
+              draftId={draft.id}
+              onRestore={(restoredContent) => { setContent(restoredContent); setShowHistory(false); }}
+              onClose={() => setShowHistory(false)}
+            />
+          )}
+          {showHistory && !draft?.id && (
+            <div className="w-80 h-full flex items-center justify-center p-4">
+              <p className="text-sm text-gray-400 text-center">Save the draft first to see version history.</p>
             </div>
           )}
         </div>

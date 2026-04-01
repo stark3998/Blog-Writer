@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Rss, FileText, Tag, Activity } from "lucide-react";
+import { Rss, FileText, Tag, Activity, Clock } from "lucide-react";
 import FeedsSettings from "./settings/FeedsSettings";
 import PromptsSettings from "./settings/PromptsSettings";
 import KeywordsSettings from "./settings/KeywordsSettings";
 import DiagnosticsSettings from "./settings/DiagnosticsSettings";
+import SchedulerSettings from "./settings/SchedulerSettings";
 
 const TABS = [
   { id: "feeds", label: "Feeds", icon: Rss },
+  { id: "scheduler", label: "Scheduler", icon: Clock },
   { id: "prompts", label: "Prompts", icon: FileText },
   { id: "keywords", label: "Keywords", icon: Tag },
   { id: "diagnostics", label: "Diagnostics", icon: Activity },
@@ -57,6 +59,7 @@ export default function Settings() {
 
       {/* Tab content */}
       {activeTab === "feeds" && <FeedsSettings />}
+      {activeTab === "scheduler" && <SchedulerSettings />}
       {activeTab === "prompts" && <PromptsSettings />}
       {activeTab === "keywords" && <KeywordsSettings />}
       {activeTab === "diagnostics" && <DiagnosticsSettings />}

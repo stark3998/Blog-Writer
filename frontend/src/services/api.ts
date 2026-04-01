@@ -897,6 +897,100 @@ export async function promoteToLinkedIn(articleId: string): Promise<ArticleActio
   return json<ArticleActionResult>(`/dashboard/articles/${articleId}/linkedin`, { method: "POST" });
 }
 
+// ---------- Version History ----------
+
+export interface VersionSummary {
+  id: string;
+  draftId: string;
+  title: string;
+  contentLength: number;
+  trigger: string;
+  createdAt: string;
+}
+
+export interface VersionFull extends VersionSummary {
+  content: string;
+}
+
+export async function listDraftVersions(draftId: string, limit = 20): Promise<VersionSummary[]> {
+  return json<VersionSummary[]>(`/blogs/${draftId}/versions?limit=${limit}`);
+}
+
+export async function getDraftVersion(draftId: string, versionId: string): Promise<VersionFull> {
+  return json<VersionFull>(`/blogs/${draftId}/versions/${versionId}`);
+}
+
+export async function createDraftVersion(draftId: string): Promise<VersionSummary> {
+  return json<VersionSummary>(`/blogs/${draftId}/versions`, { method: "POST" });
+}
+
+export async function restoreDraftVersion(draftId: string, versionId: string): Promise<BlogDraft> {
+  return json<BlogDraft>(`/blogs/${draftId}/versions/${versionId}/restore`, { method: "POST" });
+}
+
+// ---------- Scheduler Status ----------
+
+export interface ScheduledJob {
+  id: string;
+  feed_name: string;
+  feed_id: string;
+  interval_minutes: number;
+  next_run: string;
+  enabled: boolean;
+}
+
+export interface SchedulerStatus {
+  running: boolean;
+  jobs: ScheduledJob[];
+}
+
+export async function getSchedulerStatus(): Promise<SchedulerStatus> {
+  return json<SchedulerStatus>("/dashboard/scheduler");
+}
+
+// ---------- Feed Health ----------
+
+export interface FeedHealthItem {
+  feed_id: string;
+  feed_name: string;
+  enabled: boolean;
+  last_crawled_at: string;
+  total_articles: number;
+  relevant_articles: number;
+  error_articles: number;
+  relevance_rate: number;
+  last_error: string;
+  crawl_success_rate: number;
+  avg_articles_per_crawl: number;
+}
+
+export async function getFeedHealth(): Promise<FeedHealthItem[]> {
+  return json<FeedHealthItem[]>("/dashboard/feed-health");
+}
+
+// ---------- Bulk Actions ----------
+
+export interface BulkActionResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: ArticleActionResult[];
+}
+
+export async function bulkGenerateArticles(articleIds: string[]): Promise<BulkActionResult> {
+  return json<BulkActionResult>("/dashboard/articles/bulk-generate", {
+    method: "POST",
+    body: JSON.stringify({ article_ids: articleIds }),
+  });
+}
+
+export async function bulkLinkedInArticles(articleIds: string[]): Promise<BulkActionResult> {
+  return json<BulkActionResult>("/dashboard/articles/bulk-linkedin", {
+    method: "POST",
+    body: JSON.stringify({ article_ids: articleIds }),
+  });
+}
+
 // ---------- Diagnostics ----------
 
 export async function listDiagnosticsChecks(apiKey: string): Promise<DiagnosticsChecksResponse> {

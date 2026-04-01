@@ -31,6 +31,7 @@ _crawl_jobs_container = None
 _prompts_container = None
 _keywords_container = None
 _user_profiles_container = None
+_version_history_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -535,11 +536,23 @@ def update_draft(draft_id: str, updates: dict[str, Any]) -> dict[str, Any] | Non
 
     existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
+    # Auto-save version before overwriting
+    if "content" in updates:
+        try:
+            save_draft_version(
+                draft_id=draft_id,
+                content=existing.get("content", ""),
+                title=existing.get("title", ""),
+                trigger="auto_save",
+            )
+        except Exception as ver_exc:
+            logger.warning(f"Failed to save version history for {draft_id}: {ver_exc}")
+
     container.replace_item(item=draft_id, body=existing)
-    
+
     elapsed = time.time() - start_time
     logger.info(f"Draft updated in {elapsed:.3f}s: {draft_id}")
-    
+
     return dict(existing)
 
 
@@ -1204,3 +1217,56 @@ def update_user_profile(user_id: str, updates: dict[str, Any]) -> dict[str, Any]
     existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
     container.replace_item(item=user_id, body=existing)
     return dict(existing)
+
+
+# ---------- Version History ----------
+
+
+def _get_version_history_container():
+    """Get or create the version history container."""
+    global _version_history_container
+    if _version_history_container is not None:
+        return _version_history_container
+    _version_history_container = _create_container_if_not_exists("version-history")
+    return _version_history_container
+
+
+def save_draft_version(draft_id: str, content: str, title: str = "", trigger: str = "manual") -> dict[str, Any]:
+    """Save a version snapshot for a draft."""
+    container = _get_version_history_container()
+    now = datetime.now(timezone.utc).isoformat()
+    version = {
+        "id": str(uuid.uuid4()),
+        "draftId": draft_id,
+        "title": title,
+        "content": content,
+        "contentLength": len(content),
+        "trigger": trigger,
+        "createdAt": now,
+    }
+    container.create_item(body=version)
+    return version
+
+
+def list_draft_versions(draft_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """List version history for a draft, newest first."""
+    container = _get_version_history_container()
+    query = "SELECT c.id, c.draftId, c.title, c.contentLength, c.trigger, c.createdAt FROM c WHERE c.draftId = @draftId ORDER BY c.createdAt DESC OFFSET 0 LIMIT @limit"
+    items = list(container.query_items(
+        query=query,
+        parameters=[
+            {"name": "@draftId", "value": draft_id},
+            {"name": "@limit", "value": limit},
+        ],
+        enable_cross_partition_query=True,
+    ))
+    return items
+
+
+def get_draft_version(version_id: str) -> dict[str, Any] | None:
+    """Get a specific version snapshot with full content."""
+    container = _get_version_history_container()
+    try:
+        return dict(container.read_item(item=version_id, partition_key=version_id))
+    except CosmosResourceNotFoundError:
+        return None

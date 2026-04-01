@@ -5,10 +5,13 @@ import {
   getDashboardArticles,
   regenerateArticle,
   promoteToLinkedIn,
+  bulkGenerateArticles,
+  bulkLinkedInArticles,
   listFeeds,
 } from "../services/api";
 import type { FeedSource } from "../types";
 import type { PipelineStats, DashboardArticle } from "../services/api";
+import { toast } from "../store/toastStore";
 import {
   BarChart3,
   TrendingUp,
@@ -26,6 +29,8 @@ import {
   Zap,
   Eye,
   RotateCw,
+  Square,
+  CheckSquare,
 } from "lucide-react";
 
 const TIME_RANGES = [
@@ -175,6 +180,8 @@ export default function Dashboard() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -233,8 +240,9 @@ export default function Dashboard() {
           a.id === id ? { ...a, status: result.status, draft_id: result.draft_id ?? a.draft_id } : a
         )
       );
-    } catch {
-      // handled
+      toast.success("Blog generated", result.message);
+    } catch (err) {
+      toast.error("Generation failed", err instanceof Error ? err.message : "Unknown error");
     }
     setActionLoading((prev) => { const n = { ...prev }; delete n[id]; return n; });
   };
@@ -250,10 +258,59 @@ export default function Dashboard() {
             : a
         )
       );
-    } catch {
-      // handled
+      toast.success("LinkedIn post published", result.message);
+    } catch (err) {
+      toast.error("LinkedIn publish failed", err instanceof Error ? err.message : "Unknown error");
     }
     setActionLoading((prev) => { const n = { ...prev }; delete n[id]; return n; });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === sortedArticles.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(sortedArticles.map((a) => a.id)));
+    }
+  };
+
+  const handleBulkGenerate = async () => {
+    const ids = [...selected].filter((id) => {
+      const a = articles.find((x) => x.id === id);
+      return a && !a.draft_id && (a.status === "skipped" || a.status === "skipped_rank" || a.status === "error");
+    });
+    if (!ids.length) { toast.warning("No eligible articles", "Select skipped/error articles without drafts"); return; }
+    setBulkLoading(true);
+    try {
+      const result = await bulkGenerateArticles(ids);
+      toast.success(`Generated ${result.succeeded} blogs`, result.failed > 0 ? `${result.failed} failed` : undefined);
+      loadData();
+      setSelected(new Set());
+    } catch { toast.error("Bulk generate failed"); }
+    setBulkLoading(false);
+  };
+
+  const handleBulkLinkedIn = async () => {
+    const ids = [...selected].filter((id) => {
+      const a = articles.find((x) => x.id === id);
+      return a && a.draft_id && !a.linkedin_post_id;
+    });
+    if (!ids.length) { toast.warning("No eligible articles", "Select articles with drafts but no LinkedIn post"); return; }
+    setBulkLoading(true);
+    try {
+      const result = await bulkLinkedInArticles(ids);
+      toast.success(`Posted ${result.succeeded} to LinkedIn`, result.failed > 0 ? `${result.failed} failed` : undefined);
+      loadData();
+      setSelected(new Set());
+    } catch { toast.error("Bulk LinkedIn failed"); }
+    setBulkLoading(false);
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -443,6 +500,35 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Bulk Action Bar */}
+            {selected.size > 0 && (
+              <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-50 border border-indigo-200/60 animate-fade-in-down">
+                <span className="text-sm font-semibold text-indigo-700">{selected.size} selected</span>
+                <button
+                  onClick={handleBulkGenerate}
+                  disabled={bulkLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200/60 transition-all disabled:opacity-40"
+                >
+                  {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />}
+                  Generate Blogs
+                </button>
+                <button
+                  onClick={handleBulkLinkedIn}
+                  disabled={bulkLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 transition-all disabled:opacity-40"
+                >
+                  {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Linkedin className="w-3.5 h-3.5" />}
+                  Post to LinkedIn
+                </button>
+                <button
+                  onClick={() => setSelected(new Set())}
+                  className="ml-auto text-xs font-medium text-indigo-500 hover:text-indigo-700 transition-colors"
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+
             {/* Articles Table */}
             <div className="rounded-2xl bg-white border border-gray-200/60 shadow-sm overflow-hidden">
               {/* Table Header / Filters */}
@@ -508,6 +594,15 @@ export default function Dashboard() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50/80 text-gray-500 uppercase tracking-wide text-[10px]">
+                      <th className="px-2 py-2.5 w-8">
+                        <button onClick={toggleSelectAll} className="text-gray-400 hover:text-indigo-500 transition-colors">
+                          {selected.size === sortedArticles.length && sortedArticles.length > 0 ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-500" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
                       <th className="px-4 py-2.5 text-left font-semibold w-[340px]">
                         <button className="flex items-center gap-1" onClick={() => handleSort("title")}>
                           Article <SortIcon field="title" />
@@ -540,7 +635,7 @@ export default function Dashboard() {
                   <tbody className="divide-y divide-gray-50">
                     {sortedArticles.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                        <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
                           No articles found for the selected filters.
                         </td>
                       </tr>
@@ -552,6 +647,18 @@ export default function Dashboard() {
                             className="hover:bg-indigo-50/30 transition-colors cursor-pointer group"
                             onClick={() => setExpandedArticle(expandedArticle === a.id ? null : a.id)}
                           >
+                            <td className="px-2 py-3">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleSelect(a.id); }}
+                                className="text-gray-400 hover:text-indigo-500 transition-colors"
+                              >
+                                {selected.has(a.id) ? (
+                                  <CheckSquare className="w-4 h-4 text-indigo-500" />
+                                ) : (
+                                  <Square className="w-4 h-4" />
+                                )}
+                              </button>
+                            </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <span
@@ -679,7 +786,7 @@ export default function Dashboard() {
                           {/* Expanded row */}
                           {expandedArticle === a.id && (
                             <tr key={`${a.id}-detail`}>
-                              <td colSpan={7} className="px-6 py-3 bg-gray-50/50 border-b border-gray-100">
+                              <td colSpan={8} className="px-6 py-3 bg-gray-50/50 border-b border-gray-100">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[11px]">
                                   <div>
                                     <span className="text-gray-400 font-semibold uppercase tracking-wide block mb-0.5">Article URL</span>

@@ -15,6 +15,7 @@ from backend.db.cosmos_client import (
     list_feed_sources,
     upsert_crawled_article,
 )
+from backend.services.scheduler import get_scheduler
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -339,3 +340,275 @@ async def promote_to_linkedin(article_id: str):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"LinkedIn publish failed: {exc}")
+
+
+# ---------- Scheduler Status ----------
+
+
+class ScheduledJob(BaseModel):
+    id: str
+    feed_name: str
+    feed_id: str
+    interval_minutes: int
+    next_run: str
+    enabled: bool
+
+
+class SchedulerStatusResponse(BaseModel):
+    running: bool
+    jobs: list[ScheduledJob]
+
+
+@router.get("/scheduler", response_model=SchedulerStatusResponse)
+async def get_scheduler_status():
+    """Get the scheduler status and all scheduled jobs."""
+    scheduler = get_scheduler()
+    sources = list_feed_sources()
+    source_map = {s["id"]: s for s in sources}
+
+    jobs = []
+    for job in scheduler.get_jobs():
+        feed_id = job.id.replace("crawl_", "", 1) if job.id.startswith("crawl_") else ""
+        source = source_map.get(feed_id, {})
+        next_run = ""
+        if job.next_run_time:
+            next_run = job.next_run_time.isoformat()
+        jobs.append(ScheduledJob(
+            id=job.id,
+            feed_name=source.get("name", job.name),
+            feed_id=feed_id,
+            interval_minutes=source.get("crawlIntervalMinutes", 60),
+            next_run=next_run,
+            enabled=source.get("enabled", True),
+        ))
+
+    return SchedulerStatusResponse(
+        running=scheduler.running,
+        jobs=sorted(jobs, key=lambda j: j.next_run or ""),
+    )
+
+
+# ---------- Feed Health ----------
+
+
+class FeedHealthItem(BaseModel):
+    feed_id: str
+    feed_name: str
+    enabled: bool
+    last_crawled_at: str
+    total_articles: int
+    relevant_articles: int
+    error_articles: int
+    relevance_rate: float
+    last_error: str
+    crawl_success_rate: float
+    avg_articles_per_crawl: float
+
+
+@router.get("/feed-health", response_model=list[FeedHealthItem])
+async def get_feed_health():
+    """Get health metrics for each feed source."""
+    sources = list_feed_sources()
+    all_articles = list_crawled_articles(limit=5000)
+    jobs = list_crawl_jobs(limit=500)
+
+    # Group articles by feed
+    feed_articles: dict[str, list] = {}
+    for a in all_articles:
+        fid = a.get("feedSourceId", "")
+        feed_articles.setdefault(fid, []).append(a)
+
+    # Group jobs by feed
+    feed_jobs: dict[str, list] = {}
+    for j in jobs:
+        fid = j.get("feedSourceId", "")
+        feed_jobs.setdefault(fid, []).append(j)
+
+    result = []
+    for s in sources:
+        sid = s["id"]
+        articles = feed_articles.get(sid, [])
+        source_jobs = feed_jobs.get(sid, [])
+
+        total = len(articles)
+        relevant = sum(1 for a in articles if a.get("isRelevant"))
+        errors = sum(1 for a in articles if a.get("status") == "error")
+        rel_rate = round(relevant / total, 3) if total else 0
+
+        successful_jobs = sum(1 for j in source_jobs if j.get("status") == "completed")
+        crawl_rate = round(successful_jobs / len(source_jobs), 3) if source_jobs else 1.0
+
+        last_error = ""
+        error_articles_sorted = sorted(
+            [a for a in articles if a.get("lastError")],
+            key=lambda a: a.get("crawledAt", ""),
+            reverse=True,
+        )
+        if error_articles_sorted:
+            last_error = error_articles_sorted[0].get("lastError", "")[:200]
+
+        avg_per_crawl = round(total / len(source_jobs), 1) if source_jobs else 0
+
+        result.append(FeedHealthItem(
+            feed_id=sid,
+            feed_name=s.get("name", sid),
+            enabled=s.get("enabled", True),
+            last_crawled_at=s.get("lastCrawledAt", ""),
+            total_articles=total,
+            relevant_articles=relevant,
+            error_articles=errors,
+            relevance_rate=rel_rate,
+            last_error=last_error,
+            crawl_success_rate=crawl_rate,
+            avg_articles_per_crawl=avg_per_crawl,
+        ))
+
+    return result
+
+
+# ---------- Bulk Actions ----------
+
+
+class BulkActionRequest(BaseModel):
+    article_ids: list[str]
+
+
+class BulkActionResponse(BaseModel):
+    total: int
+    succeeded: int
+    failed: int
+    results: list[ArticleActionResponse]
+
+
+@router.post("/articles/bulk-generate", response_model=BulkActionResponse)
+async def bulk_generate(request: BulkActionRequest):
+    """Generate blogs for multiple articles."""
+    results = []
+    succeeded = 0
+    failed = 0
+
+    for article_id in request.article_ids:
+        try:
+            record = get_crawled_article(article_id)
+            if not record:
+                results.append(ArticleActionResponse(article_id=article_id, status="error", message="Not found"))
+                failed += 1
+                continue
+
+            source = get_feed_source(record.get("feedSourceId", ""))
+            if not source:
+                results.append(ArticleActionResponse(article_id=article_id, status="error", message="Feed source not found"))
+                failed += 1
+                continue
+
+            article = {
+                "url": record.get("articleUrl", ""),
+                "title": record.get("title", ""),
+                "summary": "",
+                "published": "",
+            }
+
+            from backend.services.auto_publisher import process_relevant_article
+            result = await asyncio.to_thread(process_relevant_article, article, source)
+            record["draftId"] = result.get("draft_id", "")
+            record["status"] = result.get("status", "drafted")
+            record["lastError"] = ""
+            upsert_crawled_article(record)
+
+            results.append(ArticleActionResponse(
+                article_id=article_id,
+                status=record["status"],
+                message=f"Generated: {result.get('draft_id', '')}",
+                draft_id=result.get("draft_id", ""),
+            ))
+            succeeded += 1
+        except Exception as exc:
+            results.append(ArticleActionResponse(
+                article_id=article_id, status="error", message=str(exc)[:200]
+            ))
+            failed += 1
+
+    return BulkActionResponse(
+        total=len(request.article_ids),
+        succeeded=succeeded,
+        failed=failed,
+        results=results,
+    )
+
+
+@router.post("/articles/bulk-linkedin", response_model=BulkActionResponse)
+async def bulk_linkedin(request: BulkActionRequest):
+    """Publish LinkedIn posts for multiple articles."""
+    results = []
+    succeeded = 0
+    failed = 0
+
+    from backend.services.auto_publisher import _get_active_linkedin_session_id, _retry_with_backoff
+    from backend.services.linkedin_service import compose_linkedin_post
+    from backend.tools.linkedin_publisher import publish_member_post
+    from backend.db.cosmos_client import get_draft as get_draft_fn
+    import os
+
+    session_id = _get_active_linkedin_session_id()
+    if not session_id:
+        raise HTTPException(status_code=400, detail="No active LinkedIn session")
+
+    for article_id in request.article_ids:
+        try:
+            record = get_crawled_article(article_id)
+            if not record or not record.get("draftId"):
+                results.append(ArticleActionResponse(article_id=article_id, status="error", message="No draft"))
+                failed += 1
+                continue
+
+            draft = get_draft_fn(record["draftId"])
+            if not draft:
+                results.append(ArticleActionResponse(article_id=article_id, status="error", message="Draft not found"))
+                failed += 1
+                continue
+
+            blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+            blog_url = f"{blog_base}/blog/{draft.get('slug', '')}" if blog_base else ""
+
+            linkedin_data = await asyncio.to_thread(
+                compose_linkedin_post,
+                blog_content=draft.get("content", ""),
+                title=draft.get("title", ""),
+                excerpt=draft.get("excerpt", ""),
+                blog_url=blog_url,
+                source_url=record.get("articleUrl", ""),
+            )
+
+            li_result = await asyncio.to_thread(
+                _retry_with_backoff,
+                publish_member_post,
+                session_id=session_id,
+                post_text=linkedin_data.get("post_text", ""),
+                visibility="PUBLIC",
+                image_url=linkedin_data.get("image_url", ""),
+            )
+
+            post_id = li_result.get("post_id", "")
+            record["linkedinPostId"] = post_id
+            record["status"] = "published"
+            upsert_crawled_article(record)
+
+            results.append(ArticleActionResponse(
+                article_id=article_id,
+                status="published",
+                message=f"LinkedIn: {post_id}",
+                linkedin_post_id=post_id,
+            ))
+            succeeded += 1
+        except Exception as exc:
+            results.append(ArticleActionResponse(
+                article_id=article_id, status="error", message=str(exc)[:200]
+            ))
+            failed += 1
+
+    return BulkActionResponse(
+        total=len(request.article_ids),
+        succeeded=succeeded,
+        failed=failed,
+        results=results,
+    )

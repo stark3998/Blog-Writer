@@ -1,12 +1,15 @@
 import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Sparkles, PenLine, Home, BarChart3, Settings } from "lucide-react";
+import { Sparkles, PenLine, Home, BarChart3, Settings, Moon, Sun, Calendar } from "lucide-react";
 import ProfileDropdown from "./ProfileDropdown";
+import ToastContainer from "./ToastContainer";
 import { useBlogStore } from "../store/blogStore";
+import { useThemeStore } from "../store/themeStore";
 
 const NAV_LINKS = [
   { to: "/", label: "Home", icon: Home },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -14,6 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { setContent, setDraft } = useBlogStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -21,7 +25,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] transition-colors duration-300">
       {/* Decorative background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-30%] right-[-10%] w-[800px] h-[800px] bg-indigo-200/30 rounded-full blur-[140px] animate-float" />
@@ -77,7 +81,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               <PenLine className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">New Draft</span>
             </button>
-            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 transition-all duration-200"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
             <ProfileDropdown />
           </div>
         </div>
@@ -85,6 +96,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Page content */}
       <main className="relative">{children}</main>
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }

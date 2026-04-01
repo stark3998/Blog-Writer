@@ -26,6 +26,24 @@
   --accent-medium: rgba(99, 102, 241, 0.15);
 }
 
+/* Dark mode variables */
+.dark {
+  --bg-base: #0f1117;
+  --bg-surface: #1a1d27;
+  --bg-elevated: #1f2231;
+  --bg-inset: #161822;
+  --border-subtle: rgba(99, 102, 241, 0.1);
+  --border-default: rgba(99, 102, 241, 0.15);
+  --border-strong: rgba(99, 102, 241, 0.25);
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --accent: #818cf8;
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --accent-medium: rgba(99, 102, 241, 0.2);
+  color-scheme: dark;
+}
+
 /* ── Base ────────────────────────────────────────────────────── */
 
 body {
@@ -162,4 +180,45 @@ body {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+}
+
+.dark .glass {
+  background: rgba(26, 29, 39, 0.7);
+}
+
+.dark .glass-strong {
+  background: rgba(26, 29, 39, 0.9);
+}
+
+/* Dark mode overrides for common Tailwind colors */
+.dark .bg-white { background-color: var(--bg-surface); }
+.dark .bg-gray-50 { background-color: var(--bg-elevated); }
+.dark .bg-gray-50\/50 { background-color: rgba(31, 34, 49, 0.5); }
+.dark .bg-gray-50\/80 { background-color: rgba(31, 34, 49, 0.8); }
+.dark .bg-gray-100 { background-color: var(--bg-inset); }
+.dark .text-gray-900 { color: var(--text-primary); }
+.dark .text-gray-800 { color: #d1d5db; }
+.dark .text-gray-700 { color: #9ca3af; }
+.dark .text-gray-600 { color: #9ca3af; }
+.dark .text-gray-500 { color: var(--text-tertiary); }
+.dark .text-gray-400 { color: #6b7280; }
+.dark .text-gray-300 { color: #4b5563; }
+.dark .border-gray-200\/80 { border-color: rgba(99, 102, 241, 0.12); }
+.dark .border-gray-200\/60 { border-color: rgba(99, 102, 241, 0.1); }
+.dark .border-gray-200 { border-color: rgba(99, 102, 241, 0.12); }
+.dark .border-gray-100 { border-color: rgba(99, 102, 241, 0.08); }
+.dark .border-gray-50 { border-color: rgba(99, 102, 241, 0.06); }
+.dark .border-indigo-100\/60 { border-color: rgba(99, 102, 241, 0.15); }
+.dark .divide-gray-50 > :not(:last-child) { border-color: rgba(99, 102, 241, 0.06); }
+.dark .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); }
+.dark .hover\:bg-gray-50:hover { background-color: var(--bg-elevated); }
+.dark .hover\:bg-indigo-50:hover { background-color: rgba(99, 102, 241, 0.15); }
+
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.35);
 }

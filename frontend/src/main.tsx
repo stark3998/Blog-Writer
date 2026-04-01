@@ -10,6 +10,7 @@ import Editor from "./pages/Editor";
 import BlogView from "./pages/BlogView";
 import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
+import Calendar from "./pages/Calendar";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/editor/:id" element={<Editor />} />
               <Route path="/blog/:slug" element={<BlogView />} />
               <Route path="/analytics" element={<Dashboard />} />
+              <Route path="/calendar" element={<Calendar />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </Layout>

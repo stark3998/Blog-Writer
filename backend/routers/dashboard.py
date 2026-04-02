@@ -16,6 +16,7 @@ from backend.db.cosmos_client import (
     upsert_crawled_article,
 )
 from backend.services.scheduler import get_scheduler
+from backend.services.config import get_blog_base_url
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -314,7 +315,7 @@ async def promote_to_linkedin(article_id: str):
         if not draft:
             raise HTTPException(status_code=404, detail="Draft not found")
 
-        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        blog_base = get_blog_base_url()
         blog_url = f"{blog_base}/blog/{draft.get('slug', '')}" if blog_base else ""
 
         linkedin_data = await asyncio.to_thread(
@@ -577,7 +578,7 @@ async def bulk_linkedin(request: BulkActionRequest):
                 failed += 1
                 continue
 
-            blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+            blog_base = get_blog_base_url()
             blog_url = f"{blog_base}/blog/{draft.get('slug', '')}" if blog_base else ""
 
             linkedin_data = await asyncio.to_thread(

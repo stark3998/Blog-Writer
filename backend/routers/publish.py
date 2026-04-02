@@ -1,19 +1,18 @@
 """Publish Router — Publish blog posts to Cosmos DB and serve them publicly."""
 
-import os
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from backend.db.cosmos_client import get_published_blog, publish_blog, record_post_event, update_draft
+from backend.services.config import get_blog_base_url
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
 
 router = APIRouter(tags=["publish"])
 
 
 def _blog_base_url() -> str:
-    return os.environ.get("BLOG_BASE_URL", "http://localhost:8080").rstrip("/")
+    return get_blog_base_url()
 
 
 class PublishRequest(BaseModel):

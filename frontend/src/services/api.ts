@@ -1033,6 +1033,31 @@ export async function bulkLinkedInArticles(articleIds: string[]): Promise<BulkAc
 
 // ---------- Diagnostics ----------
 
+export interface EnvVar {
+  name: string;
+  value: string;
+  is_set: boolean;
+  is_secret: boolean;
+}
+
+export interface EnvGroup {
+  category: string;
+  vars: EnvVar[];
+}
+
+export interface EnvConfigResponse {
+  groups: EnvGroup[];
+}
+
+export async function getEnvConfig(apiKey: string): Promise<EnvConfigResponse> {
+  return json<EnvConfigResponse>("/diagnostics/env", {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Diagnostics-Key": apiKey,
+    },
+  });
+}
+
 export async function listDiagnosticsChecks(apiKey: string): Promise<DiagnosticsChecksResponse> {
   return json<DiagnosticsChecksResponse>("/diagnostics/checks", {
     headers: {
@@ -1165,6 +1190,7 @@ export async function addTopicKeywords(
 
 export interface UserSettings {
   image_handling: "store_image" | "regenerate_on_share";
+  blog_base_url: string;
 }
 
 export interface UserProfile {

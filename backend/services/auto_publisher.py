@@ -18,6 +18,7 @@ from backend.services.export_service import _convert_to_html, _strip_frontmatter
 from backend.services.image_generator import ensure_hero_image
 from backend.services.linkedin_service import compose_linkedin_post
 from backend.services.notification_service import notify
+from backend.services.config import get_blog_base_url
 from backend.tools.linkedin_publisher import publish_member_post
 
 logger = logging.getLogger(__name__)
@@ -164,7 +165,7 @@ def process_relevant_article(
             )
             result["status"] = "published"
             logger.info(f"Blog auto-published: {blog_data['slug']}")
-            blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+            blog_base = get_blog_base_url()
             notify("blog_published", {
                 "title": blog_data["title"],
                 "excerpt": blog_data["excerpt"],
@@ -180,7 +181,7 @@ def process_relevant_article(
             # Draft was already saved, so continue
 
     # Step 4: Compose LinkedIn post (promote our blog, attribute the source)
-    blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+    blog_base = get_blog_base_url()
     blog_url = f"{blog_base}/blog/{blog_data['slug']}" if blog_base else ""
 
     try:

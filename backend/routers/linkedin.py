@@ -12,6 +12,7 @@ from backend.db.cosmos_client import get_draft, get_user_profile
 from backend.models.user import UserInfo
 from backend.services.hashtag_agent import generate_hashtags
 from backend.services.linkedin_service import compose_linkedin_post
+from backend.services.config import get_blog_base_url
 from backend.tools.linkedin_publisher import (
     disconnect_session,
     get_connection_status,
@@ -232,7 +233,7 @@ async def compose_post(request: LinkedInComposeRequest, user: UserInfo = Depends
     # Auto-populate blog_url from BLOG_BASE_URL + slug if not provided
     blog_url = request.blog_url
     if not blog_url:
-        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        blog_base = get_blog_base_url()
         if blog_base:
             slug = ""
             if request.draft_id and draft:

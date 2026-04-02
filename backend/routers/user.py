@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/user", tags=["user"])
 # Default settings for new users
 DEFAULT_SETTINGS = {
     "image_handling": "regenerate_on_share",  # "store_image" | "regenerate_on_share"
+    "blog_base_url": "",  # Override for BLOG_BASE_URL env var; empty = use env var
 }
 
 
@@ -27,6 +28,7 @@ class UserProfileResponse(BaseModel):
 
 class UserSettingsUpdate(BaseModel):
     image_handling: str | None = None
+    blog_base_url: str | None = None
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -71,6 +73,10 @@ async def update_settings(request: UserSettingsUpdate, user: UserInfo = Depends(
     # Validate image_handling value
     if "image_handling" in updates and updates["image_handling"] not in ("store_image", "regenerate_on_share"):
         raise HTTPException(status_code=400, detail="image_handling must be 'store_image' or 'regenerate_on_share'")
+
+    # Normalize blog_base_url — strip trailing slash
+    if "blog_base_url" in updates:
+        updates["blog_base_url"] = (updates["blog_base_url"] or "").strip().rstrip("/")
 
     current_settings.update(updates)
     updated = update_user_profile(user.user_id, {"settings": current_settings})

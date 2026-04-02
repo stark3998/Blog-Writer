@@ -9,6 +9,7 @@ from typing import Any
 import requests
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
+from backend.services.config import get_blog_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ def compose_linkedin_post(
 
     # Auto-populate blog_url from BLOG_BASE_URL + slug if not provided
     if not blog_url:
-        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        blog_base = get_blog_base_url()
         if blog_base:
             slug = _extract_frontmatter_value(blog_content, "slug")
             if slug:

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getUserSettings, updateUserSettings } from "../../services/api";
 import type { UserSettings } from "../../services/api";
 import { toast } from "../../store/toastStore";
-import { Loader2, ImageIcon, RefreshCw, HardDrive } from "lucide-react";
+import { Loader2, ImageIcon, RefreshCw, HardDrive, Globe } from "lucide-react";
 
 const IMAGE_OPTIONS = [
   {
@@ -23,10 +23,15 @@ export default function GeneralSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [blogBaseUrl, setBlogBaseUrl] = useState("");
+  const [savingUrl, setSavingUrl] = useState(false);
 
   useEffect(() => {
     getUserSettings()
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        setBlogBaseUrl(s.blog_base_url || "");
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -45,6 +50,22 @@ export default function GeneralSettings() {
     }
   };
 
+  const handleBlogBaseUrlSave = async () => {
+    const trimmed = blogBaseUrl.trim().replace(/\/+$/, "");
+    if (trimmed === (settings?.blog_base_url || "")) return;
+    setSavingUrl(true);
+    try {
+      const updated = await updateUserSettings({ blog_base_url: trimmed });
+      setSettings(updated);
+      setBlogBaseUrl(updated.blog_base_url || "");
+      toast.success("Blog base URL saved");
+    } catch {
+      toast.error("Failed to save blog base URL");
+    } finally {
+      setSavingUrl(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -55,6 +76,39 @@ export default function GeneralSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Blog Base URL */}
+      <div className="p-5 rounded-2xl bg-white border border-gray-200/60">
+        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-1">
+          <Globe className="w-4 h-4 text-indigo-500" />
+          Blog Base URL
+        </h3>
+        <p className="text-xs text-gray-400 mb-4">
+          The public base URL where your blog is hosted. Used for Open Graph meta tags, social sharing links, and LinkedIn/Twitter posts.
+        </p>
+
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={blogBaseUrl}
+            onChange={(e) => setBlogBaseUrl(e.target.value)}
+            placeholder="https://yourblog.example.com"
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300"
+          />
+          <button
+            onClick={handleBlogBaseUrlSave}
+            disabled={savingUrl || blogBaseUrl.trim().replace(/\/+$/, "") === (settings?.blog_base_url || "")}
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {savingUrl ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+          </button>
+        </div>
+        {settings?.blog_base_url && (
+          <p className="text-xs text-gray-400 mt-2">
+            Current: <span className="font-mono text-gray-500">{settings.blog_base_url}</span>
+          </p>
+        )}
+      </div>
+
       {/* Image Handling */}
       <div className="p-5 rounded-2xl bg-white border border-gray-200/60">
         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-1">

@@ -373,3 +373,86 @@ async def run_diagnostics(request: DiagnosticsRunRequest):
         summary=summary,
         checks=results,
     )
+
+
+# ---------- Environment Config ----------
+
+# Variables considered secret — their values will be masked.
+_SECRET_VARS = {
+    "PROJECT_API_KEY", "COSMOS_KEY", "GITHUB_TOKEN",
+    "LINKEDIN_CLIENT_SECRET", "DIAGNOSTICS_API_KEY",
+}
+
+# Ordered list of env vars to expose, grouped by category.
+_ENV_GROUPS: list[dict[str, Any]] = [
+    {
+        "category": "Azure OpenAI / AI",
+        "vars": [
+            "PROJECT_ENDPOINT", "PROJECT_API_KEY", "API_VERSION",
+            "MODEL_DEPLOYMENT_NAME", "IMAGE_MODEL_DEPLOYMENT_NAME",
+            "HASHTAG_MODEL", "HUMANIZER_MODEL", "LINKEDIN_POST_MODEL",
+            "TWITTER_POST_MODEL", "VALIDATION_MODEL",
+        ],
+    },
+    {
+        "category": "Cosmos DB",
+        "vars": [
+            "COSMOS_ENDPOINT", "COSMOS_KEY", "COSMOS_DATABASE", "COSMOS_THROUGHPUT",
+        ],
+    },
+    {
+        "category": "Auth / Entra ID",
+        "vars": ["ENTRA_CLIENT_ID", "ENTRA_TENANT_ID"],
+    },
+    {
+        "category": "LinkedIn",
+        "vars": [
+            "LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET",
+            "LINKEDIN_REDIRECT_URI", "LINKEDIN_SCOPES",
+            "LINKEDIN_AUTO_SESSION_ID",
+        ],
+    },
+    {
+        "category": "Twitter / X",
+        "vars": [
+            "TWITTER_CLIENT_ID", "TWITTER_REDIRECT_URI", "TWITTER_SCOPES",
+            "TWITTER_AUTO_SESSION_ID",
+        ],
+    },
+    {
+        "category": "GitHub",
+        "vars": ["GITHUB_TOKEN", "GITHUB_REPO"],
+    },
+    {
+        "category": "Blog / App",
+        "vars": [
+            "BLOG_BASE_URL", "PORT", "LOG_LEVEL",
+            "WEBHOOK_URL", "DIAGNOSTICS_API_KEY",
+        ],
+    },
+]
+
+
+def _mask(value: str) -> str:
+    """Show first 4 and last 4 characters of a secret, mask the rest."""
+    if len(value) <= 10:
+        return "*" * len(value)
+    return value[:4] + "*" * (len(value) - 8) + value[-4:]
+
+
+@router.get("/env", dependencies=[Depends(_require_diagnostics_key)])
+async def get_env_config():
+    """Return current environment variable settings (secrets masked)."""
+    groups = []
+    for group in _ENV_GROUPS:
+        items = []
+        for name in group["vars"]:
+            raw = os.environ.get(name, "")
+            items.append({
+                "name": name,
+                "value": _mask(raw) if (raw and name in _SECRET_VARS) else raw,
+                "is_set": bool(raw),
+                "is_secret": name in _SECRET_VARS,
+            })
+        groups.append({"category": group["category"], "vars": items})
+    return {"groups": groups}

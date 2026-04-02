@@ -9,6 +9,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from backend.services.config import get_blog_base_url
+
 from backend.db.cosmos_client import (
     get_draft,
     get_due_scheduled_publishes,
@@ -84,7 +86,7 @@ def _publish_to_linkedin(draft: dict[str, Any]) -> dict[str, Any]:
     title = draft.get("title", "")
     excerpt = draft.get("excerpt", "")
     source_url = draft.get("sourceUrl", "")
-    blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+    blog_base = get_blog_base_url()
     slug = draft.get("slug", draft["id"])
     blog_url = f"{blog_base}/blog/{slug}" if blog_base else ""
 
@@ -128,7 +130,7 @@ def _publish_to_twitter(draft: dict[str, Any]) -> dict[str, Any]:
     title = draft.get("title", "")
     excerpt = draft.get("excerpt", "")
     source_url = draft.get("sourceUrl", "")
-    blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+    blog_base = get_blog_base_url()
     slug = draft.get("slug", draft["id"])
     blog_url = f"{blog_base}/blog/{slug}" if blog_base else ""
 
@@ -169,7 +171,7 @@ def _publish_to_medium(draft: dict[str, Any]) -> dict[str, Any]:
     content = draft.get("content", "")
     title = draft.get("title", "")
     excerpt = draft.get("excerpt", "")
-    blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+    blog_base = get_blog_base_url()
     slug = draft.get("slug", draft["id"])
     blog_url = f"{blog_base}/blog/{slug}" if blog_base else ""
 

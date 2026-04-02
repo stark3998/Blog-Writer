@@ -158,6 +158,57 @@ async def delete_existing_draft(draft_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to delete draft: {str(e)}")
 
 
+# ---------- Raw Cosmos Data ----------
+
+COSMOS_SYSTEM_KEYS = {"_rid", "_self", "_etag", "_attachments", "_ts"}
+
+
+@router.get("/{draft_id}/raw")
+async def get_draft_raw(draft_id: str):
+    """Return the full raw Cosmos DB document for a draft."""
+    try:
+        doc = get_draft(draft_id)
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        return doc
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get raw draft: {str(e)}")
+
+
+@router.put("/{draft_id}/raw")
+async def update_draft_raw(draft_id: str, body: dict[str, Any]):
+    """Replace the Cosmos DB document with the provided JSON.
+
+    The id and partition key are preserved; Cosmos system fields (_rid, _etag, etc.) are stripped.
+    """
+    from backend.db.cosmos_client import _get_container
+
+    try:
+        container = _get_container()
+
+        # Read existing to verify it exists
+        try:
+            existing = container.read_item(item=draft_id, partition_key=draft_id)
+        except Exception:
+            raise HTTPException(status_code=404, detail="Draft not found")
+
+        # Strip system keys from incoming body
+        cleaned = {k: v for k, v in body.items() if k not in COSMOS_SYSTEM_KEYS}
+
+        # Force id to stay consistent
+        cleaned["id"] = draft_id
+
+        result = container.replace_item(item=draft_id, body=cleaned)
+        return dict(result)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update raw draft: {str(e)}")
+
+
 # ---------- Version History ----------
 
 

@@ -189,6 +189,16 @@ export async function updateDraft(
   return json<BlogDraft>(`/blogs/${id}`, { method: "PUT", body: JSON.stringify(updates) });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getDraftRaw(id: string): Promise<Record<string, any>> {
+  return json<Record<string, any>>(`/blogs/${id}/raw`);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateDraftRaw(id: string, body: Record<string, any>): Promise<Record<string, any>> {
+  return json<Record<string, any>>(`/blogs/${id}/raw`, { method: "PUT", body: JSON.stringify(body) });
+}
+
 export interface RelevanceResult {
   is_relevant: boolean;
   relevance_score: number;

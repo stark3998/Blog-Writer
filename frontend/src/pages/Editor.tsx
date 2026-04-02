@@ -23,6 +23,7 @@ import CommentsPanel from "../components/CommentsPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import DistributeDropdown from "../components/DistributeDropdown";
 import NewsletterButton from "../components/NewsletterButton";
+import CosmosDataPanel from "../components/CosmosDataPanel";
 import { toast } from "../store/toastStore";
 import {
   ArrowLeft,
@@ -43,6 +44,7 @@ import {
   MessageSquare,
   Clock,
   MoreHorizontal,
+  Database,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -69,6 +71,7 @@ export default function Editor() {
   const [showHistory, setShowHistory] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showCosmos, setShowCosmos] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -370,6 +373,21 @@ export default function Editor() {
               <MessageSquare className="w-4 h-4" />
             </button>
 
+            {/* Cosmos DB Data */}
+            {draft?.id && (
+              <button
+                onClick={() => { setShowCosmos(!showCosmos); if (showCosmos) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowHistory(false); setShowComments(false); }}
+                className={`p-2 rounded-xl transition-all duration-200 ${
+                  showCosmos
+                    ? "bg-cyan-50 text-cyan-600 border border-cyan-200/60"
+                    : "text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 border border-transparent"
+                }`}
+                title="Cosmos DB Data"
+              >
+                <Database className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Schedule */}
             {draft?.id && (
               <button
@@ -433,6 +451,14 @@ export default function Editor() {
                 >
                   <FlaskConical className="w-3.5 h-3.5" /> Test Readiness
                 </button>
+                {draft?.id && (
+                  <button
+                    onClick={() => { setShowCosmos(!showCosmos); setShowMobileMore(false); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    <Database className="w-3.5 h-3.5" /> Cosmos Data
+                  </button>
+                )}
                 <div className="border-t border-gray-100 my-1" />
                 <div className="px-4 py-2">
                   <ExportDropdown content={content} />
@@ -774,6 +800,24 @@ export default function Editor() {
                   </p>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Cosmos DB Data Panel */}
+        <div
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showCosmos ? "w-[480px] opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showCosmos && draft?.id && (
+            <div className="animate-slide-in-right h-full">
+              <CosmosDataPanel draftId={draft.id} onClose={() => setShowCosmos(false)} />
+            </div>
+          )}
+          {showCosmos && !draft?.id && (
+            <div className="w-[480px] h-full flex items-center justify-center p-4">
+              <p className="text-sm text-gray-400 text-center">Save the draft first to view Cosmos data.</p>
             </div>
           )}
         </div>

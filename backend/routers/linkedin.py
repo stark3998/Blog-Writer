@@ -96,6 +96,16 @@ class LinkedInPublishResponse(BaseModel):
     image_failed: bool = False
 
 
+class GenerateImageRequest(BaseModel):
+    title: str = ""
+    excerpt: str = ""
+    topics: list[str] = []
+
+
+class GenerateImageResponse(BaseModel):
+    image_url: str
+
+
 class HashtagRequest(BaseModel):
     content: str = ""
     title: str = ""
@@ -106,6 +116,23 @@ class HashtagResponse(BaseModel):
     topics: list[str]
     hashtags: list[dict]
     final_tags: list[str]
+
+
+@router.post("/generate-image", response_model=GenerateImageResponse)
+async def generate_image(request: GenerateImageRequest, user: UserInfo = Depends(get_current_user)):
+    """Generate a hero image for a LinkedIn post using AI."""
+    if not request.title.strip():
+        raise HTTPException(status_code=400, detail="Title is required to generate an image")
+    try:
+        from backend.services.image_generator import generate_hero_image
+        image_url = generate_hero_image(
+            title=request.title,
+            excerpt=request.excerpt,
+            topics=request.topics or ["technology"],
+        )
+        return GenerateImageResponse(image_url=image_url)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(exc)}")
 
 
 @router.post("/hashtags", response_model=HashtagResponse)

@@ -6,8 +6,9 @@ import {
   startLinkedInOAuth,
   getLinkedInStatus,
   regenerateHashtags,
+  generateLinkedInImage,
 } from "../services/api";
-import { Loader2, Linkedin, X, Send, RefreshCw, Hash } from "lucide-react";
+import { Loader2, Linkedin, X, Send, RefreshCw, Hash, ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "../store/toastStore";
 
 interface Props {
@@ -44,6 +45,7 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
   const [publishing, setPublishing] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [hashtagLoading, setHashtagLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [preview, setPreview] = useState<PreviewData | null>(null);
 
@@ -253,6 +255,32 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
     }
   };
 
+  const handleGenerateImage = async () => {
+    if (!preview) return;
+    setImageLoading(true);
+    try {
+      const result = await generateLinkedInImage({
+        title: title || "Blog Post",
+        excerpt: excerpt,
+        topics: [],
+      });
+      if (result.image_url) {
+        setPreview({ ...preview, imageUrl: result.image_url });
+        toast.success("Image generated");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Image generation failed";
+      toast.error("Image failed", message);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    if (!preview) return;
+    setPreview({ ...preview, imageUrl: "" });
+  };
+
   return (
     <>
       <div className="relative">
@@ -319,14 +347,51 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
             {preview && (
               <>
                 <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-auto">
-                  {preview.imageUrl && (
-                    <div className="rounded-xl overflow-hidden border border-gray-200/60">
+                  {/* Image section */}
+                  {preview.imageUrl ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200/60 group">
                       <img
                         src={preview.imageUrl}
                         alt="Post image"
                         className="w-full h-40 object-cover"
                       />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <button
+                          onClick={handleGenerateImage}
+                          disabled={imageLoading}
+                          className="px-3 py-1.5 rounded-lg bg-white/90 text-xs font-semibold text-gray-700 hover:bg-white flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          {imageLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                          Regenerate
+                        </button>
+                        <button
+                          onClick={handleRemoveImage}
+                          className="px-3 py-1.5 rounded-lg bg-white/90 text-xs font-semibold text-red-600 hover:bg-white flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerateImage}
+                      disabled={imageLoading}
+                      className="w-full py-6 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center gap-2 text-gray-400 hover:text-indigo-500"
+                    >
+                      {imageLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-xs font-medium">Generating image...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="w-5 h-5" />
+                          <span className="text-xs font-medium">Generate Image</span>
+                          <span className="text-[10px] text-gray-400">AI-generated hero image for your post</span>
+                        </>
+                      )}
+                    </button>
                   )}
 
                   <textarea

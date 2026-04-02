@@ -369,6 +369,14 @@ export async function composeLinkedInPost(
   return json("/linkedin/compose", { method: "POST", body: JSON.stringify(data) });
 }
 
+export async function generateLinkedInImage(data: {
+  title: string;
+  excerpt?: string;
+  topics?: string[];
+}): Promise<{ image_url: string }> {
+  return json("/linkedin/generate-image", { method: "POST", body: JSON.stringify(data) });
+}
+
 export interface HashtagResult {
   topics: string[];
   hashtags: { tag: string; category: string; reason: string }[];

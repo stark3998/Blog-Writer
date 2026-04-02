@@ -17,6 +17,7 @@ from backend.db.cosmos_client import (
     save_draft_version,
     list_draft_versions,
     get_draft_version,
+    list_published_blogs,
 )
 from backend.models.user import UserInfo
 
@@ -74,6 +75,12 @@ async def list_all_drafts(limit: int = 50, user: UserInfo = Depends(get_current_
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list drafts: {str(e)}")
+
+
+@router.get("/published")
+async def list_published(limit: int = 50):
+    """List all published blogs (metadata only)."""
+    return list_published_blogs(limit=limit)
 
 
 @router.delete("/all")

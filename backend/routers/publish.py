@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from backend.db.cosmos_client import get_published_blog, list_published_blogs, publish_blog, record_post_event, update_draft
+from backend.db.cosmos_client import get_published_blog, publish_blog, record_post_event, update_draft
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
 
 router = APIRouter(tags=["publish"])
@@ -114,12 +114,6 @@ async def get_blog_json(slug: str):
         date=blog.get("date", ""),
         published_at=blog.get("publishedAt", ""),
     )
-
-
-@router.get("/api/blogs/published")
-async def list_blogs(limit: int = 50):
-    """List all published blogs (metadata only)."""
-    return list_published_blogs(limit=limit)
 
 
 @router.get("/blog/{slug}", response_class=HTMLResponse)

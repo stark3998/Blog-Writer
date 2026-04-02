@@ -281,19 +281,19 @@ export default function Editor() {
               content={content}
               title={draft?.title}
               excerpt={draft?.excerpt}
-              blogUrl={publishResult ?? undefined}
+              blogUrl={publishedUrl || undefined}
             />
             <TwitterButton
               content={content}
               title={draft?.title}
               excerpt={draft?.excerpt}
-              blogUrl={publishResult ?? undefined}
+              blogUrl={publishedUrl || undefined}
             />
             <MediumButton
               content={content}
               title={draft?.title}
               excerpt={draft?.excerpt}
-              blogUrl={publishResult ?? undefined}
+              blogUrl={publishedUrl || undefined}
             />
           </DistributeDropdown>
 

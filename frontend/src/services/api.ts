@@ -257,6 +257,7 @@ export async function publishBlog(data: {
   excerpt: string;
   source_url?: string;
   source_type?: string;
+  draft_id?: string;
 }): Promise<{ blog_url: string; slug: string; title: string }> {
   return json("/publish", { method: "POST", body: JSON.stringify(data) });
 }

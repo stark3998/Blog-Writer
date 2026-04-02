@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from backend.db.cosmos_client import get_published_blog, list_published_blogs, publish_blog
+from backend.db.cosmos_client import get_published_blog, list_published_blogs, publish_blog, update_draft
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
 
 router = APIRouter(tags=["publish"])
@@ -24,6 +24,7 @@ class PublishRequest(BaseModel):
     source_url: str = ""
     source_type: str = ""
     tags: list[str] = []
+    draft_id: str = ""
 
 
 class PublishResponse(BaseModel):
@@ -79,6 +80,15 @@ async def publish_blog_post(request: PublishRequest):
         )
 
         blog_url = f"{_blog_base_url()}/blog/{result['slug']}"
+
+        # Store publish info back on the draft so the editor knows it's published
+        if request.draft_id:
+            update_draft(request.draft_id, {
+                "publishedSlug": result["slug"],
+                "publishedAt": result.get("publishedAt", ""),
+                "publishedUrl": blog_url,
+            })
+
         return PublishResponse(blog_url=blog_url, slug=result["slug"], title=title)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")

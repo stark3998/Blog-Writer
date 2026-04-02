@@ -7,6 +7,7 @@ import {
   getLinkedInStatus,
 } from "../services/api";
 import { Loader2, Linkedin, X, Send } from "lucide-react";
+import { toast } from "../store/toastStore";
 
 interface Props {
   content: string;
@@ -120,8 +121,10 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
       });
       setStatus("");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Something went wrong");
-      setTimeout(() => setStatus(""), 3000);
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setStatus(message);
+      toast.error("LinkedIn error", message);
+      setTimeout(() => setStatus(""), 5000);
     } finally {
       setBusy(false);
     }
@@ -141,18 +144,24 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
         image_url: preview.imageUrl,
       });
 
+      setPreview(null);
+      toast.success("Published to LinkedIn!");
+
       if (result.post_id) {
-        const activityId = result.post_id.replace("urn:li:share:", "");
+        const postUrn = result.post_id;
+        // Handle both urn:li:share:XXX and urn:li:ugcPost:XXX formats
+        const activityId = postUrn.replace(/^urn:li:(share|ugcPost):/, "");
         window.open(
           `https://www.linkedin.com/feed/update/urn:li:share:${activityId}/`,
           "_blank",
           "noopener,noreferrer"
         );
       }
-      setPreview(null);
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Publish failed");
-      setTimeout(() => setStatus(""), 3000);
+      const message = err instanceof Error ? err.message : "Publish failed";
+      setStatus(message);
+      toast.error("LinkedIn publish failed", message);
+      setTimeout(() => setStatus(""), 5000);
     } finally {
       setPublishing(false);
     }

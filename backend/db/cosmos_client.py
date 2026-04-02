@@ -529,7 +529,7 @@ def update_draft(draft_id: str, updates: dict[str, Any]) -> dict[str, Any] | Non
         return None
 
     # Apply updates
-    allowed_fields = {"title", "slug", "excerpt", "content"}
+    allowed_fields = {"title", "slug", "excerpt", "content", "publishedSlug", "publishedAt", "publishedUrl"}
     for key, value in updates.items():
         if key in allowed_fields:
             existing[key] = value

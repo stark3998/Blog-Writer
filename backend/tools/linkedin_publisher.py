@@ -1,5 +1,6 @@
 """LinkedIn Publisher Tool — OAuth and publish transport for LinkedIn member posts."""
 
+import logging
 import os
 import secrets
 import time
@@ -8,6 +9,8 @@ from typing import Any
 from urllib.parse import urlencode
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 from backend.db.cosmos_client import (
     consume_linkedin_oauth_state,
@@ -295,20 +298,24 @@ def publish_member_post(
         },
     }
 
+    logger.info("Publishing to LinkedIn for person_urn=%s", person_urn)
     response = requests.post(
         LINKEDIN_POST_URL,
         json=payload,
         headers=_linkedin_headers(access_token),
         timeout=30,
     )
+    logger.info("LinkedIn API response: status=%s body=%s", response.status_code, response.text[:500] if response.text else "")
 
     if response.status_code >= 400:
-        raise RuntimeError(f"LinkedIn publish failed: {response.text}")
+        raise RuntimeError(f"LinkedIn publish failed ({response.status_code}): {response.text}")
 
     data = response.json() if response.text else {}
+    # LinkedIn may return post ID in body or X-RestLi-Id header
+    post_id = data.get("id", "") or response.headers.get("X-RestLi-Id", "")
     return {
         "session_id": session_id,
-        "post_id": data.get("id", ""),
+        "post_id": post_id,
         "visibility": visibility,
         "status_code": response.status_code,
     }

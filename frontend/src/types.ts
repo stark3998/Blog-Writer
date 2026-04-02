@@ -10,6 +10,9 @@ export interface BlogDraft {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  publishedSlug?: string;
+  publishedAt?: string;
+  publishedUrl?: string;
 }
 
 export interface GenerateResult {

@@ -115,6 +115,9 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
+  const isPublished = !!(draft?.publishedSlug || publishResult);
+  const publishedUrl = publishResult || draft?.publishedUrl || "";
+
   const handlePublish = async () => {
     setPublishing(true);
     setPublishResult(null);
@@ -125,14 +128,26 @@ export default function Editor() {
 
       const result = await publishBlog({
         content,
-        slug: slugMatch?.[1] ?? `blog-${Date.now()}`,
+        slug: draft?.publishedSlug || slugMatch?.[1] || `blog-${Date.now()}`,
         title: titleMatch?.[1] ?? "Untitled",
         excerpt: excerptMatch?.[1] ?? "",
         source_url: draft?.sourceUrl ?? "",
         source_type: draft?.sourceType ?? "",
+        draft_id: draft?.id,
       });
       setPublishResult(result.blog_url);
-      toast.success("Blog published!", result.blog_url);
+
+      // Update draft state with publish info so the editor stays aware
+      if (draft) {
+        setDraft({
+          ...draft,
+          publishedSlug: result.slug,
+          publishedAt: new Date().toISOString(),
+          publishedUrl: result.blog_url,
+        });
+      }
+
+      toast.success(isPublished ? "Blog updated!" : "Blog published!", result.blog_url);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Publish failed";
       setError(msg);
@@ -315,18 +330,22 @@ export default function Editor() {
             {saveStatus === "saved" ? "Saved" : "Save"}
           </button>
 
-          {/* Publish */}
+          {/* Publish / Update */}
           <button
             onClick={handlePublish}
             disabled={publishing || !content.trim()}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:shadow-none"
+            className={`px-3.5 py-1.5 rounded-xl bg-gradient-to-r ${
+              isPublished
+                ? "from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-500/20 hover:shadow-emerald-500/30"
+                : "from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/20 hover:shadow-indigo-500/30"
+            } disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm disabled:shadow-none`}
           >
             {publishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Upload className="w-3.5 h-3.5" />
             )}
-            Publish
+            {isPublished ? "Update" : "Publish"}
           </button>
         </div>
       </header>
@@ -340,17 +359,27 @@ export default function Editor() {
           </button>
         </div>
       )}
-      {publishResult && (
+      {publishedUrl && (
         <div className="px-4 py-2.5 bg-emerald-50 text-emerald-700 text-sm border-b border-emerald-200/60 flex items-center animate-fade-in-down">
-          <span className="flex-1">
-            Published!{" "}
-            <a href={publishResult} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-semibold hover:text-emerald-800 transition-colors">
+          <span className="flex-1 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              PUBLISHED
+            </span>
+            <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 font-semibold hover:text-emerald-800 transition-colors">
               View Blog
             </a>
+            {draft?.publishedAt && (
+              <span className="text-xs text-emerald-500">
+                · Last published {new Date(draft.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
           </span>
-          <button onClick={() => setPublishResult(null)} className="text-emerald-500 hover:text-emerald-700 text-xs font-semibold ml-4 underline underline-offset-2 transition-colors">
-            dismiss
-          </button>
+          {publishResult && (
+            <button onClick={() => setPublishResult(null)} className="text-emerald-500 hover:text-emerald-700 text-xs font-semibold ml-4 underline underline-offset-2 transition-colors">
+              dismiss
+            </button>
+          )}
         </div>
       )}
 

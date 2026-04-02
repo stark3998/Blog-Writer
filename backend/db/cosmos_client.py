@@ -33,6 +33,12 @@ _keywords_container = None
 _user_profiles_container = None
 _version_history_container = None
 _images_container = None
+_voice_profiles_container = None
+_templates_container = None
+_scheduled_publishes_container = None
+_post_analytics_container = None
+_seo_tracking_container = None
+_comments_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -738,7 +744,7 @@ def create_feed_source(
     topics: list[str] | None = None,
     auto_publish_blog: bool = False,
     auto_publish_linkedin: bool = False,
-    crawl_interval_minutes: int = 60,
+    crawl_interval_minutes: int = 1440,
     max_article_age_days: int = 7,
     max_articles_to_generate: int = 1,
 ) -> dict[str, Any]:
@@ -1310,3 +1316,551 @@ def get_draft_version(version_id: str) -> dict[str, Any] | None:
         return dict(container.read_item(item=version_id, partition_key=version_id))
     except CosmosResourceNotFoundError:
         return None
+
+
+# ---------- Voice Profiles ----------
+
+
+def _get_voice_profiles_container():
+    """Get or create the voice profiles container."""
+    global _voice_profiles_container
+    if _voice_profiles_container is not None:
+        return _voice_profiles_container
+    _voice_profiles_container = _create_container_if_not_exists("voice-profiles")
+    return _voice_profiles_container
+
+
+def create_voice_profile(
+    user_id: str,
+    name: str,
+    description: str,
+    tone: str,
+    style_notes: str,
+    sample_text: str,
+    is_default: bool = False,
+) -> dict[str, Any]:
+    """Create a new voice profile for a user."""
+    container = _get_voice_profiles_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "userId": user_id,
+        "name": name,
+        "description": description,
+        "tone": tone,
+        "styleNotes": style_notes,
+        "sampleText": sample_text,
+        "isDefault": is_default,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    container.create_item(body=item)
+    logger.info(f"Voice profile created: {item['id']} ({name}) for user {user_id}")
+    return item
+
+
+def list_voice_profiles(user_id: str) -> list[dict[str, Any]]:
+    """List all voice profiles for a user."""
+    container = _get_voice_profiles_container()
+    query = (
+        "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC"
+    )
+    params = [{"name": "@userId", "value": user_id}]
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+
+
+def get_voice_profile(profile_id: str) -> dict[str, Any] | None:
+    """Get a voice profile by ID."""
+    container = _get_voice_profiles_container()
+    try:
+        return dict(container.read_item(item=profile_id, partition_key=profile_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def update_voice_profile(profile_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update an existing voice profile."""
+    container = _get_voice_profiles_container()
+    try:
+        existing = container.read_item(item=profile_id, partition_key=profile_id)
+    except CosmosResourceNotFoundError:
+        return None
+
+    allowed = {"name", "description", "tone", "styleNotes", "sampleText", "isDefault"}
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    container.replace_item(item=profile_id, body=existing)
+    logger.info(f"Voice profile updated: {profile_id}")
+    return dict(existing)
+
+
+def delete_voice_profile(profile_id: str) -> bool:
+    """Delete a voice profile by ID."""
+    container = _get_voice_profiles_container()
+    try:
+        container.delete_item(item=profile_id, partition_key=profile_id)
+        logger.info(f"Voice profile deleted: {profile_id}")
+        return True
+    except CosmosResourceNotFoundError:
+        return False
+
+
+def get_default_voice_profile(user_id: str) -> dict[str, Any] | None:
+    """Get the default voice profile for a user."""
+    container = _get_voice_profiles_container()
+    query = (
+        "SELECT * FROM c WHERE c.userId = @userId AND c.isDefault = true"
+    )
+    params = [{"name": "@userId", "value": user_id}]
+    results = list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+    return dict(results[0]) if results else None
+
+
+# ---------- Templates ----------
+
+
+def _get_templates_container():
+    """Get or create the templates container."""
+    global _templates_container
+    if _templates_container is not None:
+        return _templates_container
+    _templates_container = _create_container_if_not_exists("templates")
+    return _templates_container
+
+
+def create_template(
+    name: str,
+    description: str,
+    category: str,
+    content: str,
+    tags: list[str] | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
+    """Create a new content template."""
+    container = _get_templates_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "description": description,
+        "category": category,
+        "content": content,
+        "tags": tags or [],
+        "isBuiltIn": False,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    if user_id:
+        item["userId"] = user_id
+    container.create_item(body=item)
+    logger.info(f"Template created: {item['id']} ({name})")
+    return item
+
+
+def list_templates(
+    category: str | None = None, user_id: str | None = None
+) -> list[dict[str, Any]]:
+    """List templates, optionally filtered by category and/or user."""
+    container = _get_templates_container()
+    conditions: list[str] = []
+    params: list[dict[str, Any]] = []
+
+    if category:
+        conditions.append("c.category = @category")
+        params.append({"name": "@category", "value": category})
+
+    if user_id:
+        # Return built-in templates plus user's own templates
+        conditions.append("(c.isBuiltIn = true OR c.userId = @userId)")
+        params.append({"name": "@userId", "value": user_id})
+
+    where_clause = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    query = f"SELECT * FROM c{where_clause} ORDER BY c.createdAt DESC"
+
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+
+
+def get_template(template_id: str) -> dict[str, Any] | None:
+    """Get a template by ID."""
+    container = _get_templates_container()
+    try:
+        return dict(container.read_item(item=template_id, partition_key=template_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def update_template(template_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update an existing template."""
+    container = _get_templates_container()
+    try:
+        existing = container.read_item(item=template_id, partition_key=template_id)
+    except CosmosResourceNotFoundError:
+        return None
+
+    allowed = {"name", "description", "category", "content", "tags"}
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    container.replace_item(item=template_id, body=existing)
+    logger.info(f"Template updated: {template_id}")
+    return dict(existing)
+
+
+def delete_template(template_id: str) -> bool:
+    """Delete a template by ID. Only non-built-in templates can be deleted."""
+    container = _get_templates_container()
+    try:
+        existing = container.read_item(item=template_id, partition_key=template_id)
+    except CosmosResourceNotFoundError:
+        return False
+
+    if existing.get("isBuiltIn", False):
+        return False
+
+    container.delete_item(item=template_id, partition_key=template_id)
+    logger.info(f"Template deleted: {template_id}")
+    return True
+
+
+# ---------- Scheduled Publishes ----------
+
+
+def _get_scheduled_publishes_container():
+    """Get or create the scheduled publishes container."""
+    global _scheduled_publishes_container
+    if _scheduled_publishes_container is not None:
+        return _scheduled_publishes_container
+    _scheduled_publishes_container = _create_container_if_not_exists("scheduled-publishes")
+    return _scheduled_publishes_container
+
+
+def create_scheduled_publish(
+    draft_id: str,
+    scheduled_at: str,
+    platforms: list[str],
+    user_id: str | None = None,
+) -> dict[str, Any]:
+    """Create a scheduled publish record.
+
+    Args:
+        draft_id: ID of the draft to publish.
+        scheduled_at: ISO 8601 datetime string for when to publish.
+        platforms: List of platforms (e.g. ["blog", "linkedin", "twitter", "medium"]).
+        user_id: Optional user ID who created the schedule.
+
+    Returns:
+        The created schedule record.
+    """
+    container = _get_scheduled_publishes_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "draftId": draft_id,
+        "scheduledAt": scheduled_at,
+        "platforms": platforms,
+        "status": "pending",
+        "createdAt": now,
+        "completedAt": "",
+        "error": "",
+    }
+    if user_id:
+        item["userId"] = user_id
+    container.create_item(body=item)
+    logger.info(f"Scheduled publish created: {item['id']} for draft {draft_id} at {scheduled_at}")
+    return item
+
+
+def list_scheduled_publishes(
+    status: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """List scheduled publishes, optionally filtered by status."""
+    container = _get_scheduled_publishes_container()
+    params: list[dict[str, Any]] = [{"name": "@limit", "value": limit}]
+
+    if status:
+        query = (
+            "SELECT * FROM c WHERE c.status = @status "
+            "ORDER BY c.scheduledAt DESC OFFSET 0 LIMIT @limit"
+        )
+        params.append({"name": "@status", "value": status})
+    else:
+        query = "SELECT * FROM c ORDER BY c.scheduledAt DESC OFFSET 0 LIMIT @limit"
+
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+
+
+def get_scheduled_publish(schedule_id: str) -> dict[str, Any] | None:
+    """Get a scheduled publish by ID."""
+    container = _get_scheduled_publishes_container()
+    try:
+        return dict(container.read_item(item=schedule_id, partition_key=schedule_id))
+    except CosmosResourceNotFoundError:
+        return None
+
+
+def update_scheduled_publish(
+    schedule_id: str, updates: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Update a scheduled publish record (status, completedAt, error, etc.)."""
+    container = _get_scheduled_publishes_container()
+    try:
+        existing = container.read_item(item=schedule_id, partition_key=schedule_id)
+    except CosmosResourceNotFoundError:
+        return None
+
+    allowed = {"status", "completedAt", "error"}
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    container.replace_item(item=schedule_id, body=existing)
+    logger.info(f"Scheduled publish updated: {schedule_id}")
+    return dict(existing)
+
+
+def cancel_scheduled_publish(schedule_id: str) -> dict[str, Any] | None:
+    """Cancel a scheduled publish by setting status to 'cancelled'."""
+    return update_scheduled_publish(schedule_id, {"status": "cancelled"})
+
+
+def get_due_scheduled_publishes() -> list[dict[str, Any]]:
+    """Query for pending scheduled publishes whose scheduledAt is in the past (due now)."""
+    container = _get_scheduled_publishes_container()
+    now = datetime.now(timezone.utc).isoformat()
+    query = (
+        "SELECT * FROM c WHERE c.status = 'pending' AND c.scheduledAt <= @now "
+        "ORDER BY c.scheduledAt ASC"
+    )
+    params = [{"name": "@now", "value": now}]
+    return list(
+        container.query_items(
+            query=query, parameters=params, enable_cross_partition_query=True
+        )
+    )
+
+
+# ---------- Post Analytics ----------
+
+
+def _get_post_analytics_container():
+    """Get or create the post analytics container."""
+    global _post_analytics_container
+    if _post_analytics_container is not None:
+        return _post_analytics_container
+    _post_analytics_container = _create_container_if_not_exists("post-analytics")
+    return _post_analytics_container
+
+
+def record_post_event(
+    slug: str,
+    event_type: str,
+    platform: str = "blog",
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Record an analytics event for a published post.
+
+    event_type: 'view', 'share', 'linkedin_click', 'twitter_click', etc.
+    """
+    container = _get_post_analytics_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "slug": slug,
+        "eventType": event_type,
+        "platform": platform,
+        "metadata": metadata or {},
+        "createdAt": now,
+    }
+    container.create_item(body=item)
+    return item
+
+
+def get_post_analytics(slug: str, days: int = 30) -> dict[str, Any]:
+    """Get aggregated analytics for a published post."""
+    container = _get_post_analytics_container()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    query = (
+        "SELECT c.eventType, COUNT(1) as count FROM c "
+        "WHERE c.slug = @slug AND c.createdAt >= @cutoff "
+        "GROUP BY c.eventType"
+    )
+    params = [
+        {"name": "@slug", "value": slug},
+        {"name": "@cutoff", "value": cutoff},
+    ]
+    results = list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
+    analytics = {r["eventType"]: r["count"] for r in results}
+    return {"slug": slug, "days": days, "events": analytics}
+
+
+def get_analytics_overview(days: int = 30) -> list[dict[str, Any]]:
+    """Get analytics overview across all posts."""
+    container = _get_post_analytics_container()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    query = (
+        "SELECT c.slug, c.eventType, COUNT(1) as count FROM c "
+        "WHERE c.createdAt >= @cutoff "
+        "GROUP BY c.slug, c.eventType"
+    )
+    params = [{"name": "@cutoff", "value": cutoff}]
+    results = list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
+
+    by_slug: dict[str, dict[str, int]] = {}
+    for r in results:
+        slug = r["slug"]
+        if slug not in by_slug:
+            by_slug[slug] = {}
+        by_slug[slug][r["eventType"]] = r["count"]
+
+    return [{"slug": slug, "events": events} for slug, events in by_slug.items()]
+
+
+# ---------- SEO Tracking ----------
+
+
+def _get_seo_tracking_container():
+    """Get or create the SEO tracking container."""
+    global _seo_tracking_container
+    if _seo_tracking_container is not None:
+        return _seo_tracking_container
+    _seo_tracking_container = _create_container_if_not_exists("seo-tracking")
+    return _seo_tracking_container
+
+
+def record_seo_snapshot(
+    slug: str,
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """Record an SEO snapshot for a published post."""
+    container = _get_seo_tracking_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "slug": slug,
+        "data": data,
+        "createdAt": now,
+    }
+    container.create_item(body=item)
+    logger.info(f"SEO snapshot recorded for {slug}")
+    return item
+
+
+def get_seo_history(slug: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Get SEO tracking history for a post."""
+    container = _get_seo_tracking_container()
+    query = (
+        "SELECT * FROM c WHERE c.slug = @slug "
+        "ORDER BY c.createdAt DESC OFFSET 0 LIMIT @limit"
+    )
+    params = [
+        {"name": "@slug", "value": slug},
+        {"name": "@limit", "value": limit},
+    ]
+    return list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
+
+
+def get_latest_seo_snapshots() -> list[dict[str, Any]]:
+    """Get the latest SEO snapshot for each published post."""
+    container = _get_seo_tracking_container()
+    query = "SELECT * FROM c ORDER BY c.createdAt DESC"
+    all_snapshots = list(container.query_items(query=query, enable_cross_partition_query=True))
+    seen: set[str] = set()
+    latest: list[dict[str, Any]] = []
+    for snap in all_snapshots:
+        slug = snap.get("slug", "")
+        if slug not in seen:
+            seen.add(slug)
+            latest.append(snap)
+    return latest
+
+
+# ---------- Comments (Collaborative Editing) ----------
+
+
+def _get_comments_container():
+    """Get or create the comments container."""
+    global _comments_container
+    if _comments_container is not None:
+        return _comments_container
+    _comments_container = _create_container_if_not_exists("comments")
+    return _comments_container
+
+
+def create_comment(
+    draft_id: str,
+    user_id: str,
+    user_name: str,
+    content: str,
+    line_number: int | None = None,
+    parent_id: str | None = None,
+) -> dict[str, Any]:
+    """Create a comment on a draft."""
+    container = _get_comments_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": str(uuid.uuid4()),
+        "draftId": draft_id,
+        "userId": user_id,
+        "userName": user_name,
+        "content": content,
+        "lineNumber": line_number,
+        "parentId": parent_id or "",
+        "resolved": False,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    container.create_item(body=item)
+    logger.info(f"Comment created: {item['id']} on draft {draft_id}")
+    return item
+
+
+def list_comments(draft_id: str) -> list[dict[str, Any]]:
+    """List all comments for a draft."""
+    container = _get_comments_container()
+    query = "SELECT * FROM c WHERE c.draftId = @draftId ORDER BY c.createdAt ASC"
+    params = [{"name": "@draftId", "value": draft_id}]
+    return list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
+
+
+def update_comment(comment_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    """Update a comment."""
+    container = _get_comments_container()
+    try:
+        existing = container.read_item(item=comment_id, partition_key=comment_id)
+    except CosmosResourceNotFoundError:
+        return None
+    allowed = {"content", "resolved"}
+    for key, value in updates.items():
+        if key in allowed:
+            existing[key] = value
+    existing["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    container.replace_item(item=comment_id, body=existing)
+    return dict(existing)
+
+
+def delete_comment(comment_id: str) -> bool:
+    """Delete a comment."""
+    container = _get_comments_container()
+    try:
+        container.delete_item(item=comment_id, partition_key=comment_id)
+        return True
+    except CosmosResourceNotFoundError:
+        return False

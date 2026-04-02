@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from backend.db.cosmos_client import get_published_blog, list_published_blogs, publish_blog, update_draft
+from backend.db.cosmos_client import get_published_blog, list_published_blogs, publish_blog, record_post_event, update_draft
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
 
 router = APIRouter(tags=["publish"])
@@ -128,6 +128,12 @@ async def serve_blog_html(slug: str):
     blog = get_published_blog(slug)
     if not blog:
         raise HTTPException(status_code=404, detail="Blog not found")
+
+    # Track page view
+    try:
+        record_post_event(slug=slug, event_type="view", platform="blog")
+    except Exception:
+        pass  # Don't fail the page render on analytics errors
 
     title = blog.get("title", "Blog Post")
     excerpt = blog.get("excerpt", "")

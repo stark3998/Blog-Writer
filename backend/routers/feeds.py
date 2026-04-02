@@ -33,7 +33,7 @@ class FeedSourceCreateRequest(BaseModel):
     base_url: str
     name: str = ""
     topics: list[str] = ["cloud security", "azure", "ai"]
-    crawl_interval_minutes: int = 60
+    crawl_interval_minutes: int = 1440
     auto_publish_blog: bool = False
     auto_publish_linkedin: bool = False
     max_article_age_days: int = 7
@@ -127,7 +127,7 @@ def _to_feed_response(item: dict) -> dict:
         "topics": item.get("topics", []),
         "auto_publish_blog": item.get("autoPublishBlog", False),
         "auto_publish_linkedin": item.get("autoPublishLinkedIn", False),
-        "crawl_interval_minutes": item.get("crawlIntervalMinutes", 60),
+        "crawl_interval_minutes": item.get("crawlIntervalMinutes", 1440),
         "max_article_age_days": item.get("maxArticleAgeDays", 7),
         "max_articles_to_generate": item.get("maxArticlesToGenerate", 1),
         "enabled": item.get("enabled", True),

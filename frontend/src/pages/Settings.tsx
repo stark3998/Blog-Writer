@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Rss, FileText, Tag, Activity, Clock, Settings2 } from "lucide-react";
+import { Rss, FileText, Tag, Activity, Clock, Settings2, Mic, FileCode } from "lucide-react";
 import GeneralSettings from "./settings/GeneralSettings";
 import FeedsSettings from "./settings/FeedsSettings";
 import PromptsSettings from "./settings/PromptsSettings";
 import KeywordsSettings from "./settings/KeywordsSettings";
 import DiagnosticsSettings from "./settings/DiagnosticsSettings";
 import SchedulerSettings from "./settings/SchedulerSettings";
+import VoiceProfilesSettings from "./settings/VoiceProfilesSettings";
+import TemplatesSettings from "./settings/TemplatesSettings";
 
 const TABS = [
   { id: "general", label: "General", icon: Settings2 },
@@ -14,6 +16,8 @@ const TABS = [
   { id: "scheduler", label: "Scheduler", icon: Clock },
   { id: "prompts", label: "Prompts", icon: FileText },
   { id: "keywords", label: "Keywords", icon: Tag },
+  { id: "voice", label: "Voice", icon: Mic },
+  { id: "templates", label: "Templates", icon: FileCode },
   { id: "diagnostics", label: "Diagnostics", icon: Activity },
 ] as const;
 
@@ -65,6 +69,8 @@ export default function Settings() {
       {activeTab === "scheduler" && <SchedulerSettings />}
       {activeTab === "prompts" && <PromptsSettings />}
       {activeTab === "keywords" && <KeywordsSettings />}
+      {activeTab === "voice" && <VoiceProfilesSettings />}
+      {activeTab === "templates" && <TemplatesSettings />}
       {activeTab === "diagnostics" && <DiagnosticsSettings />}
     </div>
   );

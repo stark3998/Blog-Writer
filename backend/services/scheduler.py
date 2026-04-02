@@ -26,6 +26,18 @@ def _run_crawl(source_id: str) -> None:
         logger.error(f"Scheduled crawl failed for {source_id}: {exc}")
 
 
+def _run_scheduled_publishes() -> None:
+    """Synchronous wrapper for execute_due_schedules, called by APScheduler."""
+    from backend.services.schedule_executor import execute_due_schedules
+
+    try:
+        count = execute_due_schedules()
+        if count > 0:
+            logger.info(f"Scheduled publish executor processed {count} item(s)")
+    except Exception as exc:
+        logger.error(f"Scheduled publish executor failed: {exc}")
+
+
 def get_scheduler() -> AsyncIOScheduler:
     """Get or create the global scheduler instance."""
     global _scheduler
@@ -48,9 +60,20 @@ def start_scheduler() -> None:
         sources = list_feed_sources(enabled_only=True)
         for source in sources:
             schedule_feed(source)
+
+        # Add job to check for due scheduled publishes every 60 seconds
+        scheduler.add_job(
+            _run_scheduled_publishes,
+            trigger=IntervalTrigger(seconds=60),
+            id="scheduled_publishes_executor",
+            name="Scheduled Publishes Executor",
+            replace_existing=True,
+        )
+
         scheduler.start()
         logger.info(
-            f"Scheduler started with {len(sources)} feed source(s) scheduled"
+            f"Scheduler started with {len(sources)} feed source(s) scheduled "
+            "and scheduled-publish executor enabled (60s interval)"
         )
     except Exception as exc:
         logger.error(f"Failed to start scheduler: {exc}")
@@ -69,7 +92,7 @@ def schedule_feed(source: dict[str, Any]) -> None:
     """Add or update a scheduled crawl job for a feed source."""
     scheduler = get_scheduler()
     job_id = _job_id(source["id"])
-    interval = max(source.get("crawlIntervalMinutes", 60), 5)  # min 5 minutes
+    interval = max(source.get("crawlIntervalMinutes", 1440), 5)  # min 5 minutes
 
     if not source.get("enabled", True):
         unschedule_feed(source["id"])

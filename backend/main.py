@@ -44,6 +44,14 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.routers import generate, edit, blogs, export, publish, linkedin, twitter, medium, feeds, diagnostics, prompts, keywords, user, dashboard
+from backend.routers.import_export import router as import_router
+from backend.routers.newsletter import router as newsletter_router
+from backend.routers.voice_profiles import router as voice_profiles_router
+from backend.routers.templates import router as templates_router
+from backend.routers.schedule import router as schedule_router
+from backend.routers.analytics import router as analytics_router
+from backend.routers.seo import router as seo_router
+from backend.routers.comments import router as comments_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -121,6 +129,14 @@ app.include_router(prompts.router)
 app.include_router(keywords.router)
 app.include_router(user.router)
 app.include_router(dashboard.router)
+app.include_router(import_router)
+app.include_router(newsletter_router)
+app.include_router(voice_profiles_router)
+app.include_router(templates_router)
+app.include_router(schedule_router)
+app.include_router(analytics_router)
+app.include_router(seo_router)
+app.include_router(comments_router)
 
 
 @app.on_event("startup")

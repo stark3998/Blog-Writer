@@ -33,7 +33,9 @@ import {
   Linkedin,
   CheckCircle2,
   BookOpen,
+  Upload,
 } from "lucide-react";
+import ImportModal from "../components/ImportModal";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -127,6 +129,7 @@ export default function Home() {
 
   const busy = phase === "analyzing" || phase === "generating";
 
+  const [showImport, setShowImport] = useState(false);
   const [originFilter, setOriginFilter] = useState<"all" | "user" | "rss_crawl">("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
 
@@ -250,13 +253,22 @@ export default function Home() {
                       {drafts.length}
                     </span>
                   </h3>
-                  <button
-                    onClick={() => { setContent(""); setDraft(null); navigate("/editor"); }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all duration-200"
-                  >
-                    <Plus className="w-3 h-3" />
-                    New
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowImport(true)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 bg-white hover:bg-gray-50 border border-gray-200/60 transition-all duration-200"
+                    >
+                      <Upload className="w-3 h-3" />
+                      Import
+                    </button>
+                    <button
+                      onClick={() => { setContent(""); setDraft(null); navigate("/editor"); }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all duration-200"
+                    >
+                      <Plus className="w-3 h-3" />
+                      New
+                    </button>
+                  </div>
                 </div>
 
                 {/* Filter Tabs */}
@@ -591,6 +603,14 @@ export default function Home() {
             Built with Azure OpenAI GPT-4o &middot; FastAPI &middot; React
           </p>
         </footer>
+
+        {/* Import Modal */}
+        {showImport && (
+          <ImportModal
+            onClose={() => setShowImport(false)}
+            onImported={() => listDrafts().then(setDrafts).catch(() => {})}
+          />
+        )}
       </div>
   );
 }

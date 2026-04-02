@@ -377,7 +377,7 @@ async def get_scheduler_status():
             id=job.id,
             feed_name=source.get("name", job.name),
             feed_id=feed_id,
-            interval_minutes=source.get("crawlIntervalMinutes", 60),
+            interval_minutes=source.get("crawlIntervalMinutes", 1440),
             next_run=next_run,
             enabled=source.get("enabled", True),
         ))

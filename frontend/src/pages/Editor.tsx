@@ -19,7 +19,10 @@ import {
 import type { TestReadinessResponse } from "../services/api";
 import SEOPanel from "../components/SEOPanel";
 import VersionHistoryPanel from "../components/VersionHistoryPanel";
+import CommentsPanel from "../components/CommentsPanel";
+import ScheduleModal from "../components/ScheduleModal";
 import DistributeDropdown from "../components/DistributeDropdown";
+import NewsletterButton from "../components/NewsletterButton";
 import { toast } from "../store/toastStore";
 import {
   ArrowLeft,
@@ -37,6 +40,8 @@ import {
   Copy,
   Search,
   History,
+  MessageSquare,
+  Clock,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -59,6 +64,8 @@ export default function Editor() {
   const [copiedPost, setCopiedPost] = useState(false);
   const [showSEO, setShowSEO] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -316,6 +323,7 @@ export default function Editor() {
               excerpt={draft?.excerpt}
               blogUrl={publishedUrl || undefined}
             />
+            <NewsletterButton draftId={draft?.id} />
           </DistributeDropdown>
 
           {/* SEO Score */}
@@ -333,7 +341,7 @@ export default function Editor() {
 
           {/* Version History */}
           <button
-            onClick={() => { setShowHistory(!showHistory); if (showHistory) return; setShowAI(false); setShowTest(false); setShowSEO(false); }}
+            onClick={() => { setShowHistory(!showHistory); if (showHistory) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowComments(false); }}
             className={`p-2 rounded-xl transition-all duration-200 ${
               showHistory
                 ? "bg-violet-50 text-violet-600 border border-violet-200/60"
@@ -343,6 +351,30 @@ export default function Editor() {
           >
             <History className="w-4 h-4" />
           </button>
+
+          {/* Comments */}
+          <button
+            onClick={() => { setShowComments(!showComments); if (showComments) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowHistory(false); }}
+            className={`p-2 rounded-xl transition-all duration-200 ${
+              showComments
+                ? "bg-amber-50 text-amber-600 border border-amber-200/60"
+                : "text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent"
+            }`}
+            title="Comments"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+
+          {/* Schedule */}
+          {draft?.id && (
+            <button
+              onClick={() => setShowSchedule(true)}
+              className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent transition-all duration-200"
+              title="Schedule Publish"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Test Readiness */}
           <button
@@ -497,6 +529,24 @@ export default function Editor() {
           {showHistory && !draft?.id && (
             <div className="w-80 h-full flex items-center justify-center p-4">
               <p className="text-sm text-gray-400 text-center">Save the draft first to see version history.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Comments Panel */}
+        <div
+          className={`shrink-0 border-l border-gray-200/60 glass-strong overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            showComments ? "w-80 opacity-100" : "w-0 opacity-0"
+          }`}
+        >
+          {showComments && draft?.id && (
+            <div className="animate-slide-in-right">
+              <CommentsPanel draftId={draft.id} onClose={() => setShowComments(false)} />
+            </div>
+          )}
+          {showComments && !draft?.id && (
+            <div className="w-80 h-full flex items-center justify-center p-4">
+              <p className="text-sm text-gray-400 text-center">Save the draft first to add comments.</p>
             </div>
           )}
         </div>
@@ -671,6 +721,15 @@ export default function Editor() {
           )}
         </div>
       </div>
+
+      {/* Schedule Modal */}
+      {showSchedule && draft?.id && (
+        <ScheduleModal
+          draftId={draft.id}
+          draftTitle={draft.title ?? "Untitled"}
+          onClose={() => setShowSchedule(false)}
+        />
+      )}
     </div>
   );
 }

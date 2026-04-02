@@ -1165,3 +1165,262 @@ export async function getUserSettings(): Promise<UserSettings> {
 export async function updateUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
   return json<UserSettings>("/user/settings", { method: "PUT", body: JSON.stringify(settings) });
 }
+
+// ---------- Content Scheduling ----------
+
+export interface ScheduledPublish {
+  id: string;
+  draftId: string;
+  scheduledAt: string;
+  platforms: string[];
+  status: "pending" | "completed" | "failed" | "cancelled";
+  createdAt: string;
+  completedAt: string;
+  error: string;
+}
+
+export async function createScheduledPublish(data: {
+  draft_id: string;
+  scheduled_at: string;
+  platforms: string[];
+}): Promise<ScheduledPublish> {
+  return json("/schedule", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function listScheduledPublishes(status?: string): Promise<ScheduledPublish[]> {
+  const qs = status ? `?status=${status}` : "";
+  return json<ScheduledPublish[]>(`/schedule${qs}`);
+}
+
+export async function cancelScheduledPublish(id: string): Promise<{ status: string }> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/schedule/${id}`, { method: "DELETE", headers: auth });
+  if (!res.ok) throw new Error(`Cancel failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+// ---------- Voice Profiles ----------
+
+export interface VoiceProfile {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  tone: string;
+  styleNotes: string;
+  sampleText: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listVoiceProfiles(): Promise<VoiceProfile[]> {
+  return json<VoiceProfile[]>("/voice-profiles");
+}
+
+export async function createVoiceProfile(data: {
+  name: string;
+  description: string;
+  tone: string;
+  style_notes: string;
+  sample_text: string;
+  is_default?: boolean;
+}): Promise<VoiceProfile> {
+  return json("/voice-profiles", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateVoiceProfile(
+  id: string,
+  updates: Partial<{ name: string; description: string; tone: string; style_notes: string; sample_text: string }>
+): Promise<VoiceProfile> {
+  return json(`/voice-profiles/${id}`, { method: "PUT", body: JSON.stringify(updates) });
+}
+
+export async function deleteVoiceProfile(id: string): Promise<void> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/voice-profiles/${id}`, { method: "DELETE", headers: auth });
+  if (!res.ok) throw new Error(`Delete failed: HTTP ${res.status}`);
+}
+
+export async function setDefaultVoiceProfile(id: string): Promise<VoiceProfile> {
+  return json(`/voice-profiles/${id}/default`, { method: "POST" });
+}
+
+// ---------- Content Templates ----------
+
+export interface ContentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  content: string;
+  tags: string[];
+  isBuiltIn: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listTemplates(category?: string): Promise<ContentTemplate[]> {
+  const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+  return json<ContentTemplate[]>(`/templates${qs}`);
+}
+
+export async function createTemplate(data: {
+  name: string;
+  description: string;
+  category: string;
+  content: string;
+  tags?: string[];
+}): Promise<ContentTemplate> {
+  return json("/templates", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateTemplate(
+  id: string,
+  updates: Partial<{ name: string; description: string; category: string; content: string; tags: string[] }>
+): Promise<ContentTemplate> {
+  return json(`/templates/${id}`, { method: "PUT", body: JSON.stringify(updates) });
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/templates/${id}`, { method: "DELETE", headers: auth });
+  if (!res.ok) throw new Error(`Delete failed: HTTP ${res.status}`);
+}
+
+// ---------- Bulk Import ----------
+
+export interface ImportResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  draft_ids: string[];
+  errors: Array<{ index: number; error: string }>;
+}
+
+export async function importMarkdown(entries: Array<{
+  title: string;
+  content: string;
+  source_url?: string;
+  tags?: string[];
+}>): Promise<ImportResult> {
+  return json("/import/markdown", { method: "POST", body: JSON.stringify({ entries }) });
+}
+
+export async function importFromUrls(urls: string[]): Promise<ImportResult> {
+  return json("/import/urls", { method: "POST", body: JSON.stringify({ urls }) });
+}
+
+export async function importWordpress(xml_content: string): Promise<ImportResult> {
+  return json("/import/wordpress", { method: "POST", body: JSON.stringify({ xml_content }) });
+}
+
+// ---------- Post Analytics ----------
+
+export interface PostAnalytics {
+  slug: string;
+  days: number;
+  events: Record<string, number>;
+}
+
+export interface AnalyticsOverviewItem {
+  slug: string;
+  events: Record<string, number>;
+}
+
+export async function trackEvent(slug: string, eventType: string, platform = "blog"): Promise<void> {
+  await json("/analytics/event", {
+    method: "POST",
+    body: JSON.stringify({ slug, event_type: eventType, platform }),
+  });
+}
+
+export async function getPostAnalytics(slug: string, days = 30): Promise<PostAnalytics> {
+  return json<PostAnalytics>(`/analytics/post/${encodeURIComponent(slug)}?days=${days}`);
+}
+
+export async function getAnalyticsOverview(days = 30): Promise<AnalyticsOverviewItem[]> {
+  return json<AnalyticsOverviewItem[]>(`/analytics/overview?days=${days}`);
+}
+
+// ---------- SEO Tracking ----------
+
+export interface SEOSnapshot {
+  id: string;
+  slug: string;
+  data: Record<string, unknown>;
+  createdAt: string;
+}
+
+export async function analyzeSEO(slug: string): Promise<{ slug: string; data: Record<string, unknown>; snapshot_id: string }> {
+  return json(`/seo/analyze/${encodeURIComponent(slug)}`, { method: "POST" });
+}
+
+export async function getSEOHistory(slug: string, limit = 20): Promise<SEOSnapshot[]> {
+  return json<SEOSnapshot[]>(`/seo/history/${encodeURIComponent(slug)}?limit=${limit}`);
+}
+
+export async function getSEOOverview(): Promise<SEOSnapshot[]> {
+  return json<SEOSnapshot[]>("/seo/overview");
+}
+
+// ---------- Comments ----------
+
+export interface Comment {
+  id: string;
+  draftId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  lineNumber: number | null;
+  parentId: string;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listComments(draftId: string): Promise<Comment[]> {
+  return json<Comment[]>(`/comments/${draftId}`);
+}
+
+export async function createComment(data: {
+  draft_id: string;
+  content: string;
+  line_number?: number;
+  parent_id?: string;
+}): Promise<Comment> {
+  return json("/comments", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateComment(
+  id: string,
+  updates: { content?: string; resolved?: boolean }
+): Promise<Comment> {
+  return json(`/comments/${id}`, { method: "PUT", body: JSON.stringify(updates) });
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const auth = await authHeaders();
+  const res = await fetch(`${API_BASE}/comments/${id}`, { method: "DELETE", headers: auth });
+  if (!res.ok) throw new Error(`Delete failed: HTTP ${res.status}`);
+}
+
+// ---------- Newsletter ----------
+
+export interface NewsletterPreview {
+  subject: string;
+  html_body: string;
+  plain_text: string;
+}
+
+export async function previewNewsletter(draftId: string): Promise<NewsletterPreview> {
+  return json("/newsletter/preview", { method: "POST", body: JSON.stringify({ draft_id: draftId }) });
+}
+
+export async function sendNewsletter(data: {
+  draft_id: string;
+  provider: "mailchimp" | "convertkit" | "smtp";
+  config: Record<string, string>;
+}): Promise<{ status: string; provider_response: Record<string, unknown> }> {
+  return json("/newsletter/send", { method: "POST", body: JSON.stringify(data) });
+}

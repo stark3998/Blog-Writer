@@ -215,6 +215,135 @@ body {
 .dark .hover\:bg-gray-50:hover { background-color: var(--bg-elevated); }
 .dark .hover\:bg-indigo-50:hover { background-color: rgba(99, 102, 241, 0.15); }
 
+/* ── Dark mode: Indigo accents ──────────────────────────────── */
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1); }
+.dark .bg-indigo-50\/50 { background-color: rgba(99, 102, 241, 0.06); }
+.dark .bg-indigo-100 { background-color: rgba(99, 102, 241, 0.15); }
+.dark .text-indigo-500 { color: #818cf8; }
+.dark .text-indigo-600 { color: #a5b4fc; }
+.dark .text-indigo-700 { color: #c7d2fe; }
+.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.2); }
+.dark .border-indigo-200\/60 { border-color: rgba(99, 102, 241, 0.15); }
+.dark .border-indigo-300 { border-color: rgba(99, 102, 241, 0.25); }
+.dark .border-indigo-500 { border-color: rgba(129, 140, 248, 0.6); }
+.dark .ring-indigo-200 { --tw-ring-color: rgba(99, 102, 241, 0.2); }
+.dark .hover\:bg-indigo-100:hover { background-color: rgba(99, 102, 241, 0.2); }
+.dark .hover\:text-indigo-600:hover { color: #a5b4fc; }
+.dark .hover\:border-indigo-200:hover { border-color: rgba(99, 102, 241, 0.2); }
+
+/* ── Dark mode: Violet accents ─────────────────────────────── */
+.dark .bg-violet-50 { background-color: rgba(139, 92, 246, 0.1); }
+.dark .text-violet-500 { color: #a78bfa; }
+.dark .border-violet-200\/60 { border-color: rgba(139, 92, 246, 0.15); }
+
+/* ── Dark mode: Red/Error ──────────────────────────────────── */
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1); }
+.dark .text-red-400 { color: #f87171; }
+.dark .text-red-500 { color: #ef4444; }
+.dark .text-red-600 { color: #f87171; }
+.dark .border-red-200\/60 { border-color: rgba(239, 68, 68, 0.15); }
+.dark .hover\:text-red-500:hover { color: #ef4444; }
+.dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.1); }
+
+/* ── Dark mode: Amber/Warning ──────────────────────────────── */
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1); }
+.dark .text-amber-500 { color: #f59e0b; }
+.dark .text-amber-600 { color: #fbbf24; }
+.dark .text-amber-700 { color: #fcd34d; }
+.dark .border-amber-200\/60 { border-color: rgba(245, 158, 11, 0.15); }
+.dark .hover\:text-amber-600:hover { color: #fbbf24; }
+.dark .hover\:border-amber-200:hover { border-color: rgba(245, 158, 11, 0.2); }
+
+/* ── Dark mode: Orange ─────────────────────────────────────── */
+.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1); }
+.dark .text-orange-500 { color: #f97316; }
+.dark .border-orange-200\/60 { border-color: rgba(249, 115, 22, 0.15); }
+
+/* ── Dark mode: Emerald/Green ──────────────────────────────── */
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1); }
+.dark .text-emerald-500 { color: #34d399; }
+.dark .text-emerald-600 { color: #6ee7b7; }
+.dark .text-emerald-700 { color: #a7f3d0; }
+.dark .border-emerald-200\/60 { border-color: rgba(16, 185, 129, 0.15); }
+.dark .bg-green-400 { background-color: #22c55e; }
+.dark .text-green-400 { color: #4ade80; }
+.dark .text-green-600 { color: #4ade80; }
+
+/* ── Dark mode: Cyan ───────────────────────────────────────── */
+.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.1); }
+.dark .text-cyan-500 { color: #22d3ee; }
+.dark .text-cyan-600 { color: #67e8f9; }
+.dark .text-cyan-700 { color: #a5f3fc; }
+.dark .border-cyan-200\/60 { border-color: rgba(6, 182, 212, 0.15); }
+.dark .hover\:bg-cyan-100:hover { background-color: rgba(6, 182, 212, 0.15); }
+
+/* ── Dark mode: Blue (LinkedIn) ────────────────────────────── */
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1); }
+.dark .bg-blue-50\/50 { background-color: rgba(59, 130, 246, 0.06); }
+.dark .text-blue-500 { color: #60a5fa; }
+.dark .text-blue-600 { color: #93c5fd; }
+.dark .text-blue-700 { color: #bfdbfe; }
+.dark .border-blue-200\/60 { border-color: rgba(59, 130, 246, 0.15); }
+.dark .border-blue-200\/40 { border-color: rgba(59, 130, 246, 0.1); }
+.dark .hover\:bg-blue-100:hover { background-color: rgba(59, 130, 246, 0.15); }
+
+/* ── Dark mode: Gray extras ────────────────────────────────── */
+.dark .bg-gray-200 { background-color: #374151; }
+.dark .bg-gray-300 { background-color: #4b5563; }
+.dark .hover\:text-gray-900:hover { color: var(--text-primary); }
+.dark .hover\:text-gray-700:hover { color: #d1d5db; }
+.dark .hover\:bg-gray-100:hover { background-color: var(--bg-inset); }
+.dark .hover\:border-gray-300:hover { border-color: rgba(99, 102, 241, 0.2); }
+.dark .border-transparent { border-color: transparent; }
+
+/* ── Dark mode: Form elements ──────────────────────────────── */
+.dark select {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: rgba(99, 102, 241, 0.12);
+}
+.dark select option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+.dark input {
+  color: var(--text-primary);
+}
+.dark input::placeholder {
+  color: var(--text-tertiary);
+}
+.dark textarea {
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+}
+.dark textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ── Dark mode: Gradients ──────────────────────────────────── */
+.dark .from-indigo-600 { --tw-gradient-from: #4f46e5; }
+.dark .to-violet-600 { --tw-gradient-to: #7c3aed; }
+.dark .from-indigo-500 { --tw-gradient-from: #6366f1; }
+.dark .to-violet-500 { --tw-gradient-to: #8b5cf6; }
+.dark .from-indigo-500\/20 { --tw-gradient-from: rgba(99, 102, 241, 0.2); }
+.dark .via-violet-500\/20 { --tw-gradient-via: rgba(139, 92, 246, 0.2); }
+.dark .to-purple-500\/20 { --tw-gradient-to: rgba(168, 85, 247, 0.2); }
+.dark .disabled\:from-gray-200:disabled { --tw-gradient-from: #374151; }
+.dark .disabled\:to-gray-200:disabled { --tw-gradient-to: #374151; }
+.dark .disabled\:text-gray-400:disabled { color: #6b7280; }
+
+/* ── Dark mode: Decorative background blobs ────────────────── */
+.dark .bg-indigo-200\/30 { background-color: rgba(99, 102, 241, 0.08); }
+.dark .bg-violet-200\/20 { background-color: rgba(139, 92, 246, 0.06); }
+
+/* ── Dark mode: Specific states ────────────────────────────── */
+.dark .hover\:bg-indigo-50\/30:hover, .dark .hover\:bg-indigo-50\/30 { background-color: rgba(99, 102, 241, 0.06); }
+.dark .bg-indigo-50\/30 { background-color: rgba(99, 102, 241, 0.06); }
+.dark .hover\:shadow-lg:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); }
+.dark .shadow-indigo-500\/5 { --tw-shadow-color: rgba(99, 102, 241, 0.08); }
+.dark .shadow-indigo-500\/25 { --tw-shadow-color: rgba(99, 102, 241, 0.15); }
+.dark .shadow-indigo-500\/40 { --tw-shadow-color: rgba(99, 102, 241, 0.2); }
+
 /* Dark scrollbar */
 .dark ::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.2);

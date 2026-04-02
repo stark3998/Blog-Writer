@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { listDrafts, listPublishedBlogs, listRelevantArticles } from "../services/api";
+import { listDrafts, listPublishedBlogs, listRelevantArticles, listScheduledPublishes } from "../services/api";
 import type { BlogDraft, PublishedBlog, CrawledArticle } from "../types";
+import type { ScheduledPublish } from "../services/api";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -10,12 +11,13 @@ import {
   BookOpen,
   TrendingUp,
   Loader2,
+  Clock,
 } from "lucide-react";
 
 interface CalendarItem {
   id: string;
   title: string;
-  type: "draft" | "published" | "article";
+  type: "draft" | "published" | "article" | "scheduled";
   date: string; // YYYY-MM-DD
   draftId?: string;
   slug?: string;
@@ -29,6 +31,7 @@ export default function ContentCalendar() {
   const [drafts, setDrafts] = useState<BlogDraft[]>([]);
   const [published, setPublished] = useState<PublishedBlog[]>([]);
   const [articles, setArticles] = useState<CrawledArticle[]>([]);
+  const [scheduled, setScheduled] = useState<ScheduledPublish[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -38,10 +41,12 @@ export default function ContentCalendar() {
       listDrafts(200),
       listPublishedBlogs(200),
       listRelevantArticles(100),
-    ]).then(([d, p, a]) => {
+      listScheduledPublishes("pending").catch(() => []),
+    ]).then(([d, p, a, s]) => {
       setDrafts(d);
       setPublished(p);
       setArticles(a);
+      setScheduled(s);
     }).catch(() => {})
     .finally(() => setLoading(false));
   }, []);
@@ -62,8 +67,14 @@ export default function ContentCalendar() {
         all.push({ id: `art-${a.id}`, title: a.title, type: "article", date });
       }
     });
+    scheduled.forEach((s) => {
+      const date = s.scheduledAt?.slice(0, 10);
+      if (date) {
+        all.push({ id: `sched-${s.id}`, title: `Scheduled: ${s.platforms.join(", ")}`, type: "scheduled", date, draftId: s.draftId });
+      }
+    });
     return all;
-  }, [drafts, published, articles]);
+  }, [drafts, published, articles, scheduled]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -97,12 +108,14 @@ export default function ContentCalendar() {
     draft: "bg-cyan-50 text-cyan-700 border-cyan-200/60",
     published: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
     article: "bg-amber-50 text-amber-700 border-amber-200/60",
+    scheduled: "bg-violet-50 text-violet-700 border-violet-200/60",
   };
 
   const typeIcons: Record<string, typeof FileText> = {
     draft: FileText,
     published: BookOpen,
     article: TrendingUp,
+    scheduled: Clock,
   };
 
   // Count items per type for this month

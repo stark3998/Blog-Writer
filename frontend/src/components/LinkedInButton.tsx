@@ -6,7 +6,7 @@ import {
   startLinkedInOAuth,
   getLinkedInStatus,
 } from "../services/api";
-import { Loader2, Linkedin, X, Send } from "lucide-react";
+import { Loader2, Linkedin, X, Send, RefreshCw } from "lucide-react";
 import { toast } from "../store/toastStore";
 
 interface Props {
@@ -39,6 +39,7 @@ function wordCount(text: string): number {
 export default function LinkedInButton({ content, title, excerpt, blogUrl }: Props) {
   const [busy, setBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [status, setStatus] = useState("");
   const [preview, setPreview] = useState<PreviewData | null>(null);
 
@@ -167,6 +168,31 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
     }
   };
 
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setStatus("");
+    try {
+      const composed = await composeLinkedInPost({
+        content,
+        title,
+        excerpt,
+        post_format: "feed_post",
+        blog_url: blogUrl || undefined,
+      });
+      setPreview({
+        postText: composed.post_text,
+        imageUrl: composed.image_url,
+        hashtags: composed.hashtags,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Regeneration failed";
+      setStatus(message);
+      setTimeout(() => setStatus(""), 5000);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   return (
     <>
       <div className="relative">
@@ -252,8 +278,20 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
                 <p className="text-xs text-red-500 mr-auto">{status}</p>
               )}
               <button
+                onClick={handleRegenerate}
+                disabled={regenerating || publishing}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200/60 transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 mr-auto"
+              >
+                {regenerating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                {regenerating ? "Regenerating..." : "Regenerate"}
+              </button>
+              <button
                 onClick={() => setPreview(null)}
-                disabled={publishing}
+                disabled={publishing || regenerating}
                 className="px-4 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200/60 transition-all duration-200 disabled:opacity-50"
               >
                 Cancel

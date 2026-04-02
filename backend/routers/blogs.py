@@ -39,6 +39,9 @@ class UpdateDraftRequest(BaseModel):
     slug: str | None = None
     excerpt: str | None = None
     content: str | None = None
+    publishedSlug: str | None = None
+    publishedAt: str | None = None
+    publishedUrl: str | None = None
 
 
 class DraftSummary(BaseModel):
@@ -56,6 +59,9 @@ class DraftSummary(BaseModel):
 
 class DraftFull(DraftSummary):
     content: str
+    publishedSlug: str | None = None
+    publishedAt: str | None = None
+    publishedUrl: str | None = None
 
 
 @router.get("", response_model=list[DraftSummary])

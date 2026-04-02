@@ -184,7 +184,7 @@ export async function createDraft(draft: {
 
 export async function updateDraft(
   id: string,
-  updates: Partial<{ title: string; slug: string; excerpt: string; content: string }>
+  updates: Partial<{ title: string; slug: string; excerpt: string; content: string; publishedSlug: string; publishedAt: string; publishedUrl: string }>
 ): Promise<BlogDraft> {
   return json<BlogDraft>(`/blogs/${id}`, { method: "PUT", body: JSON.stringify(updates) });
 }

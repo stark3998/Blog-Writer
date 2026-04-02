@@ -13,6 +13,7 @@ import {
   updateDraft,
   createDraft,
   publishBlog,
+  getPublishedBlog,
   testDraftReadiness,
 } from "../services/api";
 import type { TestReadinessResponse } from "../services/api";
@@ -62,9 +63,36 @@ export default function Editor() {
   useEffect(() => {
     if (!id) return;
     getDraft(id)
-      .then((d) => {
-        setDraft(d);
+      .then(async (d) => {
         setContent(d.content);
+
+        // If the draft already has publish info, use it directly
+        if (d.publishedSlug) {
+          setDraft(d);
+          return;
+        }
+
+        // Otherwise, check if a published blog exists with the same slug (pre-migration drafts)
+        try {
+          const pub = await getPublishedBlog(d.slug);
+          if (pub) {
+            const blogUrl = `${window.location.origin}/blog/${pub.slug}`;
+            d.publishedSlug = pub.slug;
+            d.publishedAt = pub.published_at;
+            d.publishedUrl = blogUrl;
+
+            // Backfill publish info on the draft so future loads are instant
+            updateDraft(d.id, {
+              publishedSlug: pub.slug,
+              publishedAt: pub.published_at,
+              publishedUrl: blogUrl,
+            }).catch(() => {}); // best-effort backfill
+          }
+        } catch {
+          // No published blog found — that's fine, it's a new draft
+        }
+
+        setDraft(d);
       })
       .catch(() => setError("Failed to load draft"));
   }, [id, setDraft, setContent, setError]);

@@ -186,62 +186,108 @@ def disconnect_session(session_id: str) -> None:
     delete_linkedin_session(session_id)
 
 
-def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str) -> str | None:
-    """Download an image from a URL and upload it to LinkedIn. Returns the asset URN or None."""
+def _load_local_image(image_url: str) -> tuple[bytes, str] | None:
+    """Load an image from our local /api/images/{id} store. Returns (bytes, content_type) or None."""
+    import base64
+    import re as _re
+    match = _re.match(r"^/api/images/(.+)$", image_url)
+    if not match:
+        return None
+    image_id = match.group(1)
     try:
-        # Download the image
-        logger.info("Downloading image for LinkedIn: %s", image_url[:200])
-        img_response = requests.get(image_url, timeout=30, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        })
-        if img_response.status_code >= 400:
-            logger.warning("Image download failed: HTTP %s for %s", img_response.status_code, image_url[:200])
+        from backend.db.cosmos_client import get_image
+        record = get_image(image_id)
+        if not record:
+            logger.warning("Local image not found in DB: %s", image_id)
             return None
+        image_bytes = base64.b64decode(record["imageBase64"])
+        content_type = record.get("contentType", "image/png")
+        logger.info("Loaded local image from DB: %s (%d bytes, type=%s)", image_id, len(image_bytes), content_type)
+        return image_bytes, content_type
+    except Exception as exc:
+        logger.error("Failed to load local image %s: %s", image_id, exc)
+        return None
+
+
+def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str) -> str:
+    """Download an image from a URL and upload it to LinkedIn. Returns the asset URN.
+
+    Raises RuntimeError with a detailed message on any failure.
+    """
+    # Step 1: Load image — either from local DB or by downloading from external URL
+    local = _load_local_image(image_url)
+    if local:
+        image_bytes, content_type = local
+    else:
+        logger.info("Downloading image for LinkedIn: %s", image_url[:200])
+        try:
+            img_response = requests.get(image_url, timeout=30, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Image download failed — could not reach URL: {image_url[:200]}. Error: {exc}")
+        if img_response.status_code >= 400:
+            raise RuntimeError(
+                f"Image download failed — HTTP {img_response.status_code} for {image_url[:200]}. "
+                f"The image may have expired or been deleted."
+            )
         image_bytes = img_response.content
         content_type = img_response.headers.get("Content-Type", "image/jpeg")
         logger.info("Image downloaded: %d bytes, type=%s", len(image_bytes), content_type)
 
-        # Register the upload with LinkedIn
-        register_payload = {
-            "registerUploadRequest": {
-                "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
-                "owner": person_urn,
-                "serviceRelationships": [
-                    {
-                        "relationshipType": "OWNER",
-                        "identifier": "urn:li:userGeneratedContent",
-                    }
-                ],
-            }
-        }
+    if not image_bytes:
+        raise RuntimeError(f"Image is empty (0 bytes) for URL: {image_url[:200]}")
 
-        headers = _linkedin_headers(access_token)
+    # Step 2: Register the upload with LinkedIn
+    register_payload = {
+        "registerUploadRequest": {
+            "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+            "owner": person_urn,
+            "serviceRelationships": [
+                {
+                    "relationshipType": "OWNER",
+                    "identifier": "urn:li:userGeneratedContent",
+                }
+            ],
+        }
+    }
+
+    headers = _linkedin_headers(access_token)
+    try:
         register_response = requests.post(
             "https://api.linkedin.com/v2/assets?action=registerUpload",
             json=register_payload,
             headers=headers,
             timeout=30,
         )
-        if register_response.status_code >= 400:
-            logger.warning("LinkedIn image register failed: HTTP %s — %s", register_response.status_code, register_response.text[:300])
-            return None
+    except requests.RequestException as exc:
+        raise RuntimeError(f"LinkedIn image register request failed: {exc}")
 
-        register_data = register_response.json()
-        upload_url = (
-            register_data.get("value", {})
-            .get("uploadMechanism", {})
-            .get("com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest", {})
-            .get("uploadUrl", "")
+    if register_response.status_code >= 400:
+        raise RuntimeError(
+            f"LinkedIn image register failed — HTTP {register_response.status_code}: "
+            f"{register_response.text[:500]}"
         )
-        asset = register_data.get("value", {}).get("asset", "")
 
-        if not upload_url or not asset:
-            logger.warning("LinkedIn image register returned no upload_url or asset: %s", register_data)
-            return None
+    register_data = register_response.json()
+    upload_url = (
+        register_data.get("value", {})
+        .get("uploadMechanism", {})
+        .get("com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest", {})
+        .get("uploadUrl", "")
+    )
+    asset = register_data.get("value", {}).get("asset", "")
 
-        logger.info("Uploading image to LinkedIn: asset=%s", asset)
+    if not upload_url or not asset:
+        raise RuntimeError(
+            f"LinkedIn image register returned no upload_url or asset. "
+            f"Response: {register_data}"
+        )
 
-        # Upload the image binary
+    logger.info("Uploading image to LinkedIn: asset=%s", asset)
+
+    # Step 3: Upload the image binary
+    try:
         upload_response = requests.put(
             upload_url,
             data=image_bytes,
@@ -251,15 +297,17 @@ def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str
             },
             timeout=60,
         )
-        if upload_response.status_code >= 400:
-            logger.warning("LinkedIn image upload failed: HTTP %s — %s", upload_response.status_code, upload_response.text[:300])
-            return None
+    except requests.RequestException as exc:
+        raise RuntimeError(f"LinkedIn image binary upload failed: {exc}")
 
-        logger.info("Image uploaded to LinkedIn successfully: asset=%s", asset)
-        return asset
-    except Exception as exc:
-        logger.error("Image upload to LinkedIn failed with exception: %s", exc)
-        return None
+    if upload_response.status_code >= 400:
+        raise RuntimeError(
+            f"LinkedIn image binary upload failed — HTTP {upload_response.status_code}: "
+            f"{upload_response.text[:500]}"
+        )
+
+    logger.info("Image uploaded to LinkedIn successfully: asset=%s", asset)
+    return asset
 
 
 def publish_member_post(
@@ -276,14 +324,10 @@ def publish_member_post(
     access_token = str(token_data["access_token"])
     person_urn = str(token_data["person_urn"])
 
-    # Try to upload image if provided
+    # Upload image if provided — fail the entire publish if image upload fails
     asset_urn = None
-    image_failed = False
     if image_url.strip():
         asset_urn = _upload_image_to_linkedin(access_token, person_urn, image_url)
-        if not asset_urn:
-            image_failed = True
-            logger.warning("Image upload failed, publishing without image. URL: %s", image_url[:200])
 
     if asset_urn:
         share_content = {
@@ -334,5 +378,4 @@ def publish_member_post(
         "visibility": visibility,
         "status_code": response.status_code,
         "image_included": bool(asset_urn),
-        "image_failed": image_failed,
     }

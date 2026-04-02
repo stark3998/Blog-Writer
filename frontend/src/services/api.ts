@@ -370,7 +370,6 @@ export interface LinkedInPublishResponse {
   composed: boolean;
   post_text: string;
   image_included: boolean;
-  image_failed: boolean;
 }
 
 export async function composeLinkedInPost(

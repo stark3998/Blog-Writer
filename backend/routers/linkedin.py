@@ -94,7 +94,6 @@ class LinkedInPublishResponse(BaseModel):
     composed: bool
     post_text: str
     image_included: bool = False
-    image_failed: bool = False
 
 
 class GenerateImageRequest(BaseModel):

@@ -1,9 +1,15 @@
 """Image Generator Service — Source image selection + AI hero image generation."""
 
+import base64
 import logging
 import os
 import re
+import uuid
 from typing import Any
+
+import requests
+
+from backend.db.cosmos_client import store_image
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +90,41 @@ def pick_best_source_image(media_assets: list[dict[str, str]]) -> str | None:
     return best_url
 
 
+def _persist_image(image_url: str, source: str = "dall-e", metadata: dict | None = None) -> str:
+    """Download an image from a URL and store it in Cosmos DB.
+
+    Returns:
+        A permanent /api/images/{id} URL that never expires.
+    """
+    try:
+        resp = requests.get(image_url, timeout=60, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        })
+        resp.raise_for_status()
+        image_bytes = resp.content
+        content_type = resp.headers.get("Content-Type", "image/png")
+
+        image_id = str(uuid.uuid4())
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+
+        store_image(
+            image_id=image_id,
+            image_base64=b64,
+            content_type=content_type,
+            source=source,
+            metadata=metadata or {},
+        )
+
+        # Build a permanent URL served by our API
+        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+        permanent_url = f"{blog_base}/api/images/{image_id}" if blog_base else f"/api/images/{image_id}"
+        logger.info(f"Image persisted: {image_id} ({len(image_bytes)} bytes) → {permanent_url}")
+        return permanent_url
+    except Exception as exc:
+        logger.warning(f"Failed to persist image, using original URL: {exc}")
+        return image_url
+
+
 def generate_hero_image(title: str, excerpt: str, topics: list[str]) -> str:
     """Generate a hero image using gpt-image-1-mini via Azure OpenAI.
 
@@ -93,7 +134,7 @@ def generate_hero_image(title: str, excerpt: str, topics: list[str]) -> str:
         topics: Relevant topic tags.
 
     Returns:
-        URL of the generated image.
+        Permanent URL of the generated image (stored in Cosmos DB).
 
     Raises:
         RuntimeError: If image generation fails.
@@ -129,8 +170,14 @@ def generate_hero_image(title: str, excerpt: str, topics: list[str]) -> str:
         if not image_url:
             raise RuntimeError("Image generation returned no URL")
 
-        logger.info(f"Hero image generated: {image_url[:100]}")
-        return image_url
+        logger.info(f"Hero image generated (temp): {image_url[:100]}")
+
+        # Download and persist so the URL never expires
+        permanent_url = _persist_image(image_url, source="dall-e", metadata={
+            "title": title[:200],
+            "model": image_model,
+        })
+        return permanent_url
 
     except Exception as exc:
         logger.error(f"Hero image generation failed: {exc}")

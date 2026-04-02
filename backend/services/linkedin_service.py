@@ -6,10 +6,25 @@ import os
 import re
 from typing import Any
 
+import requests
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
 
 logger = logging.getLogger(__name__)
+
+
+def _is_image_accessible(url: str) -> bool:
+    """Check if an image URL is still accessible (not expired)."""
+    if not url or url.startswith("/api/images/"):
+        # Our own persisted images are always accessible
+        return True
+    try:
+        resp = requests.head(url, timeout=10, allow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0"
+        })
+        return resp.status_code < 400
+    except Exception:
+        return False
 
 def _load_linkedin_prompt() -> str:
     from backend.routers.prompts import load_prompt_content
@@ -176,6 +191,7 @@ def compose_linkedin_post(
     additional_context: str = "",
     blog_url: str = "",
     source_url: str = "",
+    image_handling: str = "regenerate_on_share",
 ) -> dict[str, Any]:
     """Compose an insights-driven LinkedIn post from blog content."""
     if post_format not in ("feed_post", "long_form"):
@@ -184,6 +200,24 @@ def compose_linkedin_post(
     resolved_title = title.strip() or _extract_frontmatter_value(blog_content, "title")
     resolved_excerpt = excerpt.strip() or _extract_frontmatter_value(blog_content, "excerpt")
     image_url = _extract_first_image_url(blog_content)
+
+    # Check if the image is still accessible; if expired, handle based on setting
+    if image_url and not _is_image_accessible(image_url):
+        logger.warning(f"Image URL expired/inaccessible: {image_url[:100]}")
+        if image_handling == "regenerate_on_share":
+            logger.info("Image handling = regenerate_on_share, generating new image")
+        else:
+            logger.info("Image handling = store_image, but stored image missing — regenerating as fallback")
+        try:
+            from backend.services.image_generator import generate_hero_image
+            topics_str = _extract_frontmatter_value(blog_content, "tags")
+            topics = [t.strip().strip('"') for t in topics_str.split(",") if t.strip()] if topics_str else []
+            new_image_url = generate_hero_image(resolved_title, resolved_excerpt, topics)
+            logger.info(f"Regenerated image for LinkedIn share: {new_image_url[:100]}")
+            image_url = new_image_url
+        except Exception as exc:
+            logger.warning(f"Image regeneration failed, proceeding without image: {exc}")
+            image_url = ""
 
     # Auto-populate blog_url from BLOG_BASE_URL + slug if not provided
     if not blog_url:

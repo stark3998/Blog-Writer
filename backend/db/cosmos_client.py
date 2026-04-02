@@ -32,6 +32,7 @@ _prompts_container = None
 _keywords_container = None
 _user_profiles_container = None
 _version_history_container = None
+_images_container = None
 
 
 def _get_client() -> CosmosClient:
@@ -676,6 +677,45 @@ def list_published_blogs(limit: int = 50) -> list[dict[str, Any]]:
             enable_cross_partition_query=True,
         )
     )
+
+
+# ---------- Image Store ----------
+
+
+def _get_images_container():
+    """Get or create the images container for persisting generated/downloaded images."""
+    global _images_container
+    if _images_container is not None:
+        return _images_container
+    _images_container = _create_container_if_not_exists("images")
+    return _images_container
+
+
+def store_image(image_id: str, image_base64: str, content_type: str = "image/png",
+                source: str = "", metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Store an image as base64 in Cosmos DB. Returns the stored record."""
+    container = _get_images_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": image_id,
+        "imageBase64": image_base64,
+        "contentType": content_type,
+        "source": source,
+        "metadata": metadata or {},
+        "createdAt": now,
+    }
+    container.upsert_item(body=item)
+    logger.info(f"Image stored: {image_id} ({len(image_base64)} chars base64, type={content_type})")
+    return item
+
+
+def get_image(image_id: str) -> dict[str, Any] | None:
+    """Get a stored image by ID."""
+    container = _get_images_container()
+    try:
+        return dict(container.read_item(item=image_id, partition_key=image_id))
+    except CosmosResourceNotFoundError:
+        return None
 
 
 # ---------- Feed Sources ----------

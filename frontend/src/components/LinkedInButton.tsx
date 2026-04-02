@@ -169,7 +169,12 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
 
       setPreview(null);
       setShowModal(false);
-      toast.success("Published to LinkedIn!");
+
+      if (result.image_failed) {
+        toast.warning("Published without image", "The image could not be uploaded — it may have expired. Post was published as text only.");
+      } else {
+        toast.success("Published to LinkedIn!");
+      }
 
       if (result.post_id) {
         const postUrn = result.post_id;

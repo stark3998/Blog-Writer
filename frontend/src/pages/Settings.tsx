@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Rss, FileText, Tag, Activity, Clock } from "lucide-react";
+import { Rss, FileText, Tag, Activity, Clock, Settings2 } from "lucide-react";
+import GeneralSettings from "./settings/GeneralSettings";
 import FeedsSettings from "./settings/FeedsSettings";
 import PromptsSettings from "./settings/PromptsSettings";
 import KeywordsSettings from "./settings/KeywordsSettings";
@@ -8,6 +9,7 @@ import DiagnosticsSettings from "./settings/DiagnosticsSettings";
 import SchedulerSettings from "./settings/SchedulerSettings";
 
 const TABS = [
+  { id: "general", label: "General", icon: Settings2 },
   { id: "feeds", label: "Feeds", icon: Rss },
   { id: "scheduler", label: "Scheduler", icon: Clock },
   { id: "prompts", label: "Prompts", icon: FileText },
@@ -19,7 +21,7 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get("tab") as TabId) || "feeds";
+  const initialTab = (searchParams.get("tab") as TabId) || "general";
   const [activeTab, setActiveTab] = useState<TabId>(
     TABS.some((t) => t.id === initialTab) ? initialTab : "feeds"
   );
@@ -58,6 +60,7 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
+      {activeTab === "general" && <GeneralSettings />}
       {activeTab === "feeds" && <FeedsSettings />}
       {activeTab === "scheduler" && <SchedulerSettings />}
       {activeTab === "prompts" && <PromptsSettings />}

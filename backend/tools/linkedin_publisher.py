@@ -190,12 +190,16 @@ def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str
     """Download an image from a URL and upload it to LinkedIn. Returns the asset URN or None."""
     try:
         # Download the image
+        logger.info("Downloading image for LinkedIn: %s", image_url[:200])
         img_response = requests.get(image_url, timeout=30, headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         })
-        img_response.raise_for_status()
+        if img_response.status_code >= 400:
+            logger.warning("Image download failed: HTTP %s for %s", img_response.status_code, image_url[:200])
+            return None
         image_bytes = img_response.content
         content_type = img_response.headers.get("Content-Type", "image/jpeg")
+        logger.info("Image downloaded: %d bytes, type=%s", len(image_bytes), content_type)
 
         # Register the upload with LinkedIn
         register_payload = {
@@ -219,6 +223,7 @@ def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str
             timeout=30,
         )
         if register_response.status_code >= 400:
+            logger.warning("LinkedIn image register failed: HTTP %s — %s", register_response.status_code, register_response.text[:300])
             return None
 
         register_data = register_response.json()
@@ -231,7 +236,10 @@ def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str
         asset = register_data.get("value", {}).get("asset", "")
 
         if not upload_url or not asset:
+            logger.warning("LinkedIn image register returned no upload_url or asset: %s", register_data)
             return None
+
+        logger.info("Uploading image to LinkedIn: asset=%s", asset)
 
         # Upload the image binary
         upload_response = requests.put(
@@ -244,10 +252,13 @@ def _upload_image_to_linkedin(access_token: str, person_urn: str, image_url: str
             timeout=60,
         )
         if upload_response.status_code >= 400:
+            logger.warning("LinkedIn image upload failed: HTTP %s — %s", upload_response.status_code, upload_response.text[:300])
             return None
 
+        logger.info("Image uploaded to LinkedIn successfully: asset=%s", asset)
         return asset
-    except Exception:
+    except Exception as exc:
+        logger.error("Image upload to LinkedIn failed with exception: %s", exc)
         return None
 
 
@@ -267,8 +278,12 @@ def publish_member_post(
 
     # Try to upload image if provided
     asset_urn = None
+    image_failed = False
     if image_url.strip():
         asset_urn = _upload_image_to_linkedin(access_token, person_urn, image_url)
+        if not asset_urn:
+            image_failed = True
+            logger.warning("Image upload failed, publishing without image. URL: %s", image_url[:200])
 
     if asset_urn:
         share_content = {
@@ -318,4 +333,6 @@ def publish_member_post(
         "post_id": post_id,
         "visibility": visibility,
         "status_code": response.status_code,
+        "image_included": bool(asset_urn),
+        "image_failed": image_failed,
     }

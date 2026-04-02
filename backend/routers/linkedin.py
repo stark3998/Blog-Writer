@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.auth import get_current_user
-from backend.db.cosmos_client import get_draft
+from backend.db.cosmos_client import get_draft, get_user_profile
 from backend.models.user import UserInfo
 from backend.services.hashtag_agent import generate_hashtags
 from backend.services.linkedin_service import compose_linkedin_post
@@ -92,6 +92,8 @@ class LinkedInPublishResponse(BaseModel):
     status_code: int
     composed: bool
     post_text: str
+    image_included: bool = False
+    image_failed: bool = False
 
 
 class HashtagRequest(BaseModel):
@@ -175,8 +177,12 @@ async def oauth_disconnect(session_id: str):
 
 
 @router.post("/compose", response_model=LinkedInComposeResponse)
-async def compose_post(request: LinkedInComposeRequest):
+async def compose_post(request: LinkedInComposeRequest, user: UserInfo = Depends(get_current_user)):
     """Compose an optimized LinkedIn post from blog content or a saved draft."""
+    # Get user's image handling preference
+    profile = get_user_profile(user.user_id) if user.user_id != "local-dev" else None
+    image_handling = (profile or {}).get("settings", {}).get("image_handling", "regenerate_on_share")
+
     content = request.content
     title = request.title
     excerpt = request.excerpt
@@ -220,6 +226,7 @@ async def compose_post(request: LinkedInComposeRequest):
             additional_context=request.additional_context,
             blog_url=blog_url,
             source_url=request.source_url,
+            image_handling=image_handling,
         )
         return LinkedInComposeResponse(**result)
     except ValueError as exc:

@@ -359,6 +359,8 @@ export interface LinkedInPublishResponse {
   status_code: number;
   composed: boolean;
   post_text: string;
+  image_included: boolean;
+  image_failed: boolean;
 }
 
 export async function composeLinkedInPost(
@@ -1138,15 +1140,28 @@ export async function addTopicKeywords(
 
 // ---------- User Profile ----------
 
+export interface UserSettings {
+  image_handling: "store_image" | "regenerate_on_share";
+}
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   linkedinSessionId: string;
+  settings: UserSettings;
   createdAt: string;
   lastLoginAt: string;
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
   return json<UserProfile>("/user/me");
+}
+
+export async function getUserSettings(): Promise<UserSettings> {
+  return json<UserSettings>("/user/settings");
+}
+
+export async function updateUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
+  return json<UserSettings>("/user/settings", { method: "PUT", body: JSON.stringify(settings) });
 }

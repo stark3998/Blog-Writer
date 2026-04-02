@@ -150,6 +150,25 @@ async def health_check():
     return {"status": "healthy", "version": "2.0.0"}
 
 
+@app.get("/api/images/{image_id}")
+async def serve_image(image_id: str):
+    """Serve a stored image by ID."""
+    import base64
+    from fastapi.responses import Response
+    from backend.db.cosmos_client import get_image
+
+    record = get_image(image_id)
+    if not record:
+        return JSONResponse(status_code=404, content={"detail": "Image not found"})
+
+    image_bytes = base64.b64decode(record["imageBase64"])
+    return Response(
+        content=image_bytes,
+        media_type=record.get("contentType", "image/png"),
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
 # Serve React static files in production
 STATIC_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 if STATIC_DIR.exists():

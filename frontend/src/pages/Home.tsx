@@ -153,7 +153,7 @@ export default function Home() {
   }, [drafts, originFilter, tagFilter]);
 
   return (
-      <div className="max-w-7xl mx-auto px-6 pt-8 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-12">
         {/* Dashboard Header — URL Input */}
         <section className="mb-8 animate-fade-in-up">
           <div className="flex items-center justify-between mb-6">
@@ -164,7 +164,7 @@ export default function Home() {
           </div>
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-purple-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative flex gap-3 p-2 rounded-2xl bg-white border border-gray-200/80 shadow-lg shadow-indigo-500/5">
+            <div className="relative flex flex-col sm:flex-row gap-3 p-2 rounded-2xl bg-white border border-gray-200/80 shadow-lg shadow-indigo-500/5">
               <div className="relative flex-1">
                 <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                 <input
@@ -180,7 +180,7 @@ export default function Home() {
               <button
                 onClick={handleGenerate}
                 disabled={busy || !url.trim()}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none"
               >
                 {busy ? (
                   <>
@@ -372,7 +372,7 @@ export default function Home() {
                       </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/editor/${draft.id}`); }}
-                        className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100"
                         title="Edit"
                       >
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -383,7 +383,7 @@ export default function Home() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                          className="p-2 rounded-lg text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 hidden sm:block sm:opacity-0 sm:group-hover:opacity-100"
                           title="Open source"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -391,7 +391,7 @@ export default function Home() {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteDraft(draft.id); }}
-                        className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

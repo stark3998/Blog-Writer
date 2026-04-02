@@ -42,6 +42,7 @@ import {
   History,
   MessageSquare,
   Clock,
+  MoreHorizontal,
 } from "lucide-react";
 
 type ViewMode = "split" | "editor" | "preview";
@@ -51,8 +52,10 @@ export default function Editor() {
   const navigate = useNavigate();
   const { content, setContent, draft, setDraft, error, setError } = useBlogStore();
 
-  const [viewMode, setViewMode] = useState<ViewMode>("split");
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? "editor" : "split");
   const [showAI, setShowAI] = useState(false);
+  const [showMobileMore, setShowMobileMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [publishing, setPublishing] = useState(false);
@@ -216,8 +219,8 @@ export default function Editor() {
   return (
     <div className="h-[calc(100vh-3.25rem)] flex flex-col">
       {/* Toolbar */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200/80 glass-strong shrink-0 animate-fade-in-down overflow-visible z-50 relative">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-2 sm:py-2.5 border-b border-gray-200/80 glass-strong shrink-0 animate-fade-in-down overflow-visible z-50 relative">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <Link
             to="/"
             className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 shrink-0"
@@ -225,13 +228,13 @@ export default function Editor() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-px h-5 bg-gray-200 shrink-0 self-stretch my-1" />
+          <div className="w-px h-5 bg-gray-200 shrink-0 self-stretch my-1 hidden sm:block" />
           <div className="min-w-0 flex flex-col">
-            <span className="text-sm text-gray-600 truncate font-semibold">
+            <span className="text-xs sm:text-sm text-gray-600 truncate font-semibold">
               {draft?.title ?? "Untitled Draft"}
             </span>
             {(draft?.sourceUrl || publishedUrl) && (
-              <div className="flex items-center gap-3 text-[11px]">
+              <div className="hidden sm:flex items-center gap-3 text-[11px]">
                 {draft?.sourceUrl && (
                   <a
                     href={draft.sourceUrl}
@@ -264,18 +267,18 @@ export default function Editor() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* View mode toggles */}
           <div className="flex bg-gray-100 rounded-xl p-0.5 mr-1 border border-gray-200/60">
             {([
               { mode: "editor" as ViewMode, icon: Code, label: "Editor only" },
-              { mode: "split" as ViewMode, icon: PanelLeftOpen, label: "Split view" },
+              { mode: "split" as ViewMode, icon: PanelLeftOpen, label: "Split view", hideOnMobile: true },
               { mode: "preview" as ViewMode, icon: Eye, label: "Preview only" },
-            ]).map(({ mode, icon: Icon, label }) => (
+            ]).map(({ mode, icon: Icon, label, hideOnMobile }) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${hideOnMobile ? "hidden sm:block" : ""} ${
                   viewMode === mode
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-400 hover:text-gray-600"
@@ -287,7 +290,7 @@ export default function Editor() {
             ))}
           </div>
 
-          {/* AI Toggle */}
+          {/* AI Toggle — always visible */}
           <button
             onClick={() => setShowAI(!showAI)}
             className={`p-2 rounded-xl transition-all duration-200 ${
@@ -300,83 +303,85 @@ export default function Editor() {
             <Sparkles className="w-4 h-4" />
           </button>
 
-          {/* Export */}
-          <ExportDropdown content={content} />
+          {/* Desktop-only toolbar buttons */}
+          <div className="hidden sm:contents">
+            {/* Export */}
+            <ExportDropdown content={content} />
 
-          {/* Distribute (LinkedIn, Twitter, Medium) */}
-          <DistributeDropdown>
-            <LinkedInButton
-              content={content}
-              title={draft?.title}
-              excerpt={draft?.excerpt}
-              blogUrl={publishedUrl || undefined}
-            />
-            <TwitterButton
-              content={content}
-              title={draft?.title}
-              excerpt={draft?.excerpt}
-              blogUrl={publishedUrl || undefined}
-            />
-            <MediumButton
-              content={content}
-              title={draft?.title}
-              excerpt={draft?.excerpt}
-              blogUrl={publishedUrl || undefined}
-            />
-            <NewsletterButton draftId={draft?.id} />
-          </DistributeDropdown>
+            {/* Distribute (LinkedIn, Twitter, Medium) */}
+            <DistributeDropdown>
+              <LinkedInButton
+                content={content}
+                title={draft?.title}
+                excerpt={draft?.excerpt}
+                blogUrl={publishedUrl || undefined}
+              />
+              <TwitterButton
+                content={content}
+                title={draft?.title}
+                excerpt={draft?.excerpt}
+                blogUrl={publishedUrl || undefined}
+              />
+              <MediumButton
+                content={content}
+                title={draft?.title}
+                excerpt={draft?.excerpt}
+                blogUrl={publishedUrl || undefined}
+              />
+              <NewsletterButton draftId={draft?.id} />
+            </DistributeDropdown>
 
-          {/* SEO Score */}
-          <button
-            onClick={() => { setShowSEO(!showSEO); if (showSEO) return; setShowAI(false); setShowTest(false); setShowHistory(false); }}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              showSEO
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
-                : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent"
-            }`}
-            title="SEO Score"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          {/* Version History */}
-          <button
-            onClick={() => { setShowHistory(!showHistory); if (showHistory) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowComments(false); }}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              showHistory
-                ? "bg-violet-50 text-violet-600 border border-violet-200/60"
-                : "text-gray-400 hover:text-violet-600 hover:bg-violet-50 border border-transparent"
-            }`}
-            title="Version History"
-          >
-            <History className="w-4 h-4" />
-          </button>
-
-          {/* Comments */}
-          <button
-            onClick={() => { setShowComments(!showComments); if (showComments) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowHistory(false); }}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              showComments
-                ? "bg-amber-50 text-amber-600 border border-amber-200/60"
-                : "text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent"
-            }`}
-            title="Comments"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
-
-          {/* Schedule */}
-          {draft?.id && (
+            {/* SEO Score */}
             <button
-              onClick={() => setShowSchedule(true)}
-              className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent transition-all duration-200"
-              title="Schedule Publish"
+              onClick={() => { setShowSEO(!showSEO); if (showSEO) return; setShowAI(false); setShowTest(false); setShowHistory(false); }}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                showSEO
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                  : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent"
+              }`}
+              title="SEO Score"
             >
-              <Clock className="w-4 h-4" />
+              <Search className="w-4 h-4" />
             </button>
-          )}
 
-          {/* Test Readiness */}
+            {/* Version History */}
+            <button
+              onClick={() => { setShowHistory(!showHistory); if (showHistory) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowComments(false); }}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                showHistory
+                  ? "bg-violet-50 text-violet-600 border border-violet-200/60"
+                  : "text-gray-400 hover:text-violet-600 hover:bg-violet-50 border border-transparent"
+              }`}
+              title="Version History"
+            >
+              <History className="w-4 h-4" />
+            </button>
+
+            {/* Comments */}
+            <button
+              onClick={() => { setShowComments(!showComments); if (showComments) return; setShowAI(false); setShowTest(false); setShowSEO(false); setShowHistory(false); }}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                showComments
+                  ? "bg-amber-50 text-amber-600 border border-amber-200/60"
+                  : "text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent"
+              }`}
+              title="Comments"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+
+            {/* Schedule */}
+            {draft?.id && (
+              <button
+                onClick={() => setShowSchedule(true)}
+                className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent transition-all duration-200"
+                title="Schedule Publish"
+              >
+                <Clock className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Test Readiness */}
           <button
             onClick={() => {
               setShowTest(!showTest);
@@ -391,14 +396,66 @@ export default function Editor() {
           >
             <FlaskConical className="w-4 h-4" />
           </button>
+          </div>{/* end hidden sm:contents */}
 
-          <div className="w-px h-5 bg-gray-200 mx-1" />
+          {/* Mobile overflow menu button */}
+          <div className="relative sm:hidden">
+            <button
+              onClick={() => setShowMobileMore(!showMobileMore)}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                showMobileMore
+                  ? "bg-gray-100 text-gray-700"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+              }`}
+              title="More actions"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {showMobileMore && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white border border-gray-200/80 shadow-lg py-1 z-50 animate-scale-in">
+                <button onClick={() => { setShowSEO(!showSEO); setShowMobileMore(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                  <Search className="w-3.5 h-3.5" /> SEO Score
+                </button>
+                <button onClick={() => { setShowHistory(!showHistory); setShowMobileMore(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                  <History className="w-3.5 h-3.5" /> Version History
+                </button>
+                <button onClick={() => { setShowComments(!showComments); setShowMobileMore(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                  <MessageSquare className="w-3.5 h-3.5" /> Comments
+                </button>
+                {draft?.id && (
+                  <button onClick={() => { setShowSchedule(true); setShowMobileMore(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                    <Clock className="w-3.5 h-3.5" /> Schedule
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowTest(!showTest); if (!showTest && draft?.id && !testResult) handleTestReadiness(); setShowMobileMore(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" /> Test Readiness
+                </button>
+                <div className="border-t border-gray-100 my-1" />
+                <div className="px-4 py-2">
+                  <ExportDropdown content={content} />
+                </div>
+                <div className="px-4 py-2">
+                  <DistributeDropdown>
+                    <LinkedInButton content={content} title={draft?.title} excerpt={draft?.excerpt} blogUrl={publishedUrl || undefined} />
+                    <TwitterButton content={content} title={draft?.title} excerpt={draft?.excerpt} blogUrl={publishedUrl || undefined} />
+                    <MediumButton content={content} title={draft?.title} excerpt={draft?.excerpt} blogUrl={publishedUrl || undefined} />
+                    <NewsletterButton draftId={draft?.id} />
+                  </DistributeDropdown>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 mx-0.5 sm:mx-1" />
 
           {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 border border-gray-200/60 text-gray-500 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300"
+            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 border border-gray-200/60 text-gray-500 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300"
             title="Save (Ctrl+S)"
           >
             {saving ? (
@@ -408,25 +465,25 @@ export default function Editor() {
             ) : (
               <Save className="w-3.5 h-3.5" />
             )}
-            {saveStatus === "saved" ? "Saved" : "Save"}
+            <span className="hidden sm:inline">{saveStatus === "saved" ? "Saved" : "Save"}</span>
           </button>
 
           {/* Publish / Update */}
           <button
             onClick={handlePublish}
             disabled={publishing || !content.trim()}
-            className={`px-3.5 py-1.5 rounded-xl bg-gradient-to-r ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r ${
               isPublished
                 ? "from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-500/20 hover:shadow-emerald-500/30"
                 : "from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/20 hover:shadow-indigo-500/30"
-            } disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm disabled:shadow-none`}
+            } disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-xs sm:text-sm font-medium transition-all duration-300 flex items-center gap-1.5 shadow-sm disabled:shadow-none`}
           >
             {publishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Upload className="w-3.5 h-3.5" />
             )}
-            {isPublished ? "Update" : "Publish"}
+            <span className="hidden sm:inline">{isPublished ? "Update" : "Publish"}</span>
           </button>
         </div>
       </header>

@@ -339,19 +339,19 @@ export default function Dashboard() {
   };
 
   return (
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header with time range */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <BarChart3 className="w-6 h-6 text-indigo-500" />
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
               Analytics
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               Article ratings, relevance scores, and pipeline health at a glance.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {TIME_RANGES.map((r) => (
               <button
                 key={r.value}
@@ -382,7 +382,7 @@ export default function Dashboard() {
         ) : stats ? (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
               <StatCard
                 label="Total Articles"
                 value={stats.total_articles}
@@ -548,17 +548,19 @@ export default function Dashboard() {
             {/* Articles Table */}
             <div className="rounded-2xl bg-white border border-gray-200/60 shadow-sm overflow-hidden">
               {/* Table Header / Filters */}
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-indigo-500" />
-                  Crawled Articles
-                  <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                    {articles.length}
-                  </span>
-                </h3>
+              <div className="p-4 border-b border-gray-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-indigo-500" />
+                    Crawled Articles
+                    <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                      {articles.length}
+                    </span>
+                  </h3>
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Search */}
-                  <div className="relative">
+                  <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                     <input
                       type="text"
@@ -570,16 +572,16 @@ export default function Dashboard() {
                         clearTimeout(searchTimerRef.current);
                         searchTimerRef.current = setTimeout(() => setSearchDebounced(val), 400);
                       }}
-                      className="w-44 pl-8 pr-3 py-1.5 rounded-lg bg-white border border-gray-200/60 text-xs text-gray-700 outline-none placeholder-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                      className="w-full sm:w-44 pl-8 pr-3 py-1.5 rounded-lg bg-white border border-gray-200/60 text-xs text-gray-700 outline-none placeholder-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
                     />
                   </div>
                   {/* Status filter */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
                     {STATUS_FILTERS.map((sf) => (
                       <button
                         key={sf.value}
                         onClick={() => setStatusFilter(sf.value)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all ${
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all shrink-0 ${
                           statusFilter === sf.value
                             ? "bg-indigo-50 border-indigo-200 text-indigo-600"
                             : "bg-white border-gray-200/60 text-gray-400 hover:border-gray-300"
@@ -675,8 +677,125 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
+              {/* Mobile card layout */}
+              <div className="md:hidden divide-y divide-gray-50">
+                {sortedArticles.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-gray-400 text-sm">
+                    No articles found for the selected filters.
+                  </div>
+                ) : (
+                  sortedArticles.map((a) => (
+                    <div
+                      key={a.id}
+                      className="px-4 py-3 space-y-2"
+                      onClick={() => setExpandedArticle(expandedArticle === a.id ? null : a.id)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSelect(a.id); }}
+                          className="text-gray-400 hover:text-indigo-500 transition-colors mt-0.5 shrink-0"
+                        >
+                          {selected.has(a.id) ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-500" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${a.is_relevant ? "bg-emerald-400" : "bg-gray-300"}`} />
+                            <span className="text-xs font-medium text-gray-800 line-clamp-2">{a.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <StatusBadge status={a.status} />
+                            <ScoreBar score={a.relevance_score} width={50} />
+                            <span className="text-[10px] text-gray-400">{a.feed_name}</span>
+                          </div>
+                          {a.matched_topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {a.matched_topics.slice(0, 3).map((t) => (
+                                <span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-indigo-50 text-indigo-500 border border-indigo-200/60">{t}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Mobile actions */}
+                      <div className="flex items-center gap-1.5 ml-6">
+                        <a
+                          href={a.article_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        {a.draft_id && (
+                          <Link
+                            to={`/editor/${a.draft_id}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/60"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <FileText className="w-3 h-3" />
+                            Blog
+                          </Link>
+                        )}
+                        {!a.draft_id && (a.status === "skipped" || a.status === "skipped_rank" || a.status === "error") && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRegenerate(a.id); }}
+                            disabled={!!actionLoading[a.id]}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-cyan-600 bg-cyan-50 border border-cyan-200/60 disabled:opacity-40"
+                          >
+                            {actionLoading[a.id] === "regenerate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+                            Generate
+                          </button>
+                        )}
+                        {a.draft_id && !a.linkedin_post_id && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleLinkedIn(a.id); }}
+                            disabled={!!actionLoading[a.id]}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/60 disabled:opacity-40"
+                          >
+                            {actionLoading[a.id] === "linkedin" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Linkedin className="w-3 h-3" />}
+                            LinkedIn
+                          </button>
+                        )}
+                        {a.linkedin_post_id && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-blue-500 bg-blue-50/50 border border-blue-200/40">
+                            <Linkedin className="w-3 h-3" />
+                            Posted
+                          </span>
+                        )}
+                        <span className="text-[10px] text-gray-400 ml-auto">
+                          {a.crawled_at ? new Date(a.crawled_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
+                        </span>
+                      </div>
+                      {/* Expanded details (mobile) */}
+                      {expandedArticle === a.id && (
+                        <div className="ml-6 p-3 rounded-xl bg-gray-50/80 space-y-2 text-[11px]">
+                          <div>
+                            <span className="text-gray-400 font-semibold uppercase tracking-wide block mb-0.5">Article URL</span>
+                            <a href={a.article_url} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline break-all">{a.article_url}</a>
+                          </div>
+                          {a.draft_id && <div><span className="text-gray-400 font-semibold uppercase tracking-wide block mb-0.5">Draft ID</span><span className="text-gray-600 break-all">{a.draft_id}</span></div>}
+                          {a.linkedin_post_id && <div><span className="text-gray-400 font-semibold uppercase tracking-wide block mb-0.5">LinkedIn Post</span><span className="text-gray-600">{a.linkedin_post_id}</span></div>}
+                          {a.last_error && <div><span className="text-red-400 font-semibold uppercase tracking-wide block mb-0.5">Last Error</span><span className="text-red-500 font-mono text-[10px] break-all">{a.last_error}</span></div>}
+                          {a.matched_keywords.length > 0 && (
+                            <div>
+                              <span className="text-gray-400 font-semibold uppercase tracking-wide block mb-0.5">Keywords</span>
+                              <div className="flex flex-wrap gap-1">{a.matched_keywords.map((kw) => (<span key={kw} className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200/60">{kw}</span>))}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50/80 text-gray-500 uppercase tracking-wide text-[10px]">

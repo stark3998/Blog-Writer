@@ -168,6 +168,16 @@ body {
 .delay-4 { animation-delay: 320ms; }
 .delay-5 { animation-delay: 400ms; }
 
+/* ── Hide scrollbar (for horizontal tab bars etc.) ───────────── */
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Glass effect ────────────────────────────────────────────── */
 
 .glass {

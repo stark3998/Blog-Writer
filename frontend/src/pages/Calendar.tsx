@@ -24,6 +24,7 @@ interface CalendarItem {
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function ContentCalendar() {
@@ -134,47 +135,49 @@ export default function ContentCalendar() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <CalendarIcon className="w-6 h-6 text-indigo-500" />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
             Content Calendar
           </h2>
           <p className="text-sm text-gray-500 mt-1">
             Visualize your content pipeline across time
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Legend */}
-          <div className="flex items-center gap-3 mr-4">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2 sm:gap-3 mr-2 sm:mr-4">
+            <div className="flex items-center gap-1">
               <div className="w-2.5 h-2.5 rounded bg-cyan-400" />
               <span className="text-[10px] text-gray-500 font-medium">Drafts ({draftCount})</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <div className="w-2.5 h-2.5 rounded bg-emerald-400" />
               <span className="text-[10px] text-gray-500 font-medium">Published ({pubCount})</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <div className="w-2.5 h-2.5 rounded bg-amber-400" />
               <span className="text-[10px] text-gray-500 font-medium">Queued ({artCount})</span>
             </div>
           </div>
 
-          <button onClick={prevMonth} className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button onClick={goToday} className="px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/60 hover:bg-indigo-100 transition-all">
-            Today
-          </button>
-          <button onClick={nextMonth} className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <span className="text-lg font-bold text-gray-900 ml-2">
-            {MONTHS[month]} {year}
-          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={prevMonth} className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={goToday} className="px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/60 hover:bg-indigo-100 transition-all">
+              Today
+            </button>
+            <button onClick={nextMonth} className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <span className="text-base sm:text-lg font-bold text-gray-900 ml-1 sm:ml-2">
+              {MONTHS[month]} {year}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -182,9 +185,10 @@ export default function ContentCalendar() {
       <div className="rounded-2xl bg-white border border-gray-200/60 shadow-sm overflow-hidden">
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-gray-100">
-          {DAYS.map((d) => (
-            <div key={d} className="px-2 py-2.5 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">
-              {d}
+          {DAYS.map((d, i) => (
+            <div key={d} className="px-1 sm:px-2 py-2 sm:py-2.5 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wide">
+              <span className="hidden sm:inline">{d}</span>
+              <span className="sm:hidden">{DAYS_SHORT[i]}</span>
             </div>
           ))}
         </div>
@@ -199,7 +203,7 @@ export default function ContentCalendar() {
             return (
               <div
                 key={idx}
-                className={`min-h-[100px] border-b border-r border-gray-100 p-1.5 ${
+                className={`min-h-[60px] sm:min-h-[100px] border-b border-r border-gray-100 p-1 sm:p-1.5 ${
                   day ? "bg-white hover:bg-gray-50/50" : "bg-gray-50/30"
                 } transition-colors`}
               >
@@ -210,7 +214,22 @@ export default function ContentCalendar() {
                     }`}>
                       {day}
                     </div>
-                    <div className="space-y-0.5">
+                    {/* Mobile: compact dots */}
+                    <div className="flex flex-wrap gap-0.5 sm:hidden">
+                      {dayItems.slice(0, 4).map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleItemClick(item)}
+                          className={`w-2 h-2 rounded-full ${
+                            item.type === "draft" ? "bg-cyan-400" : item.type === "published" ? "bg-emerald-400" : item.type === "scheduled" ? "bg-violet-400" : "bg-amber-400"
+                          }`}
+                          title={item.title}
+                        />
+                      ))}
+                      {dayItems.length > 4 && <span className="text-[8px] text-gray-400">+{dayItems.length - 4}</span>}
+                    </div>
+                    {/* Desktop: full items */}
+                    <div className="hidden sm:block space-y-0.5">
                       {dayItems.slice(0, 3).map((item) => {
                         const Icon = typeIcons[item.type];
                         return (

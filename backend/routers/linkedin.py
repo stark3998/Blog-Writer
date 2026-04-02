@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from backend.auth import get_current_user
 from backend.db.cosmos_client import get_draft
 from backend.models.user import UserInfo
+from backend.services.hashtag_agent import generate_hashtags
 from backend.services.linkedin_service import compose_linkedin_post
 from backend.tools.linkedin_publisher import (
     disconnect_session,
@@ -91,6 +92,35 @@ class LinkedInPublishResponse(BaseModel):
     status_code: int
     composed: bool
     post_text: str
+
+
+class HashtagRequest(BaseModel):
+    content: str = ""
+    title: str = ""
+    excerpt: str = ""
+
+
+class HashtagResponse(BaseModel):
+    topics: list[str]
+    hashtags: list[dict]
+    final_tags: list[str]
+
+
+@router.post("/hashtags", response_model=HashtagResponse)
+async def regenerate_hashtags(request: HashtagRequest):
+    """Generate trend-optimized hashtags for the given content."""
+    if not request.content.strip():
+        raise HTTPException(status_code=400, detail="Content is required")
+    try:
+        result = generate_hashtags(
+            content=request.content,
+            title=request.title,
+            excerpt=request.excerpt,
+            platform="linkedin",
+        )
+        return HashtagResponse(**result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Hashtag generation failed: {str(exc)}")
 
 
 @router.get("/oauth/start", response_model=LinkedInOAuthStartResponse)

@@ -367,6 +367,20 @@ export async function composeLinkedInPost(
   return json("/linkedin/compose", { method: "POST", body: JSON.stringify(data) });
 }
 
+export interface HashtagResult {
+  topics: string[];
+  hashtags: { tag: string; category: string; reason: string }[];
+  final_tags: string[];
+}
+
+export async function regenerateHashtags(data: {
+  content: string;
+  title?: string;
+  excerpt?: string;
+}): Promise<HashtagResult> {
+  return json("/linkedin/hashtags", { method: "POST", body: JSON.stringify(data) });
+}
+
 export async function startLinkedInOAuth(
   sessionId?: string
 ): Promise<LinkedInOAuthStartResponse> {

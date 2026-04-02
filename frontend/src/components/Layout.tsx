@@ -37,7 +37,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Navigation */}
       <nav className="relative glass-strong border-b border-indigo-100/60 animate-fade-in-down sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-between">
+        <div className="px-6 py-2.5 flex items-center justify-between">
           {/* Left: Logo + Nav Links */}
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3 group shrink-0">

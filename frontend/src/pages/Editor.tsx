@@ -210,33 +210,54 @@ export default function Editor() {
     <div className="h-[calc(100vh-3.25rem)] flex flex-col">
       {/* Toolbar */}
       <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200/80 glass-strong shrink-0 animate-fade-in-down overflow-visible z-50 relative">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <Link
             to="/"
-            className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+            className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 shrink-0"
             title="Back to Home"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-px h-5 bg-gray-200" />
-          <span className="text-sm text-gray-600 truncate max-w-xs font-semibold">
-            {draft?.title ?? "Untitled Draft"}
-          </span>
-          {draft?.sourceUrl && (
-            <a
-              href={draft.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200/60 transition-all duration-200"
-              title={draft.sourceUrl}
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span className="truncate max-w-[180px]">Source</span>
-            </a>
-          )}
+          <div className="w-px h-5 bg-gray-200 shrink-0 self-stretch my-1" />
+          <div className="min-w-0 flex flex-col">
+            <span className="text-sm text-gray-600 truncate font-semibold">
+              {draft?.title ?? "Untitled Draft"}
+            </span>
+            {(draft?.sourceUrl || publishedUrl) && (
+              <div className="flex items-center gap-3 text-[11px]">
+                {draft?.sourceUrl && (
+                  <a
+                    href={draft.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-indigo-600 transition-colors truncate max-w-[300px] flex items-center gap-1"
+                    title={draft.sourceUrl}
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                    {draft.sourceUrl.replace(/^https?:\/\//, "")}
+                  </a>
+                )}
+                {draft?.sourceUrl && publishedUrl && (
+                  <span className="text-gray-300">·</span>
+                )}
+                {publishedUrl && (
+                  <a
+                    href={publishedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-500 hover:text-emerald-600 transition-colors truncate max-w-[300px] flex items-center gap-1"
+                    title={publishedUrl}
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                    Published
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* View mode toggles */}
           <div className="flex bg-gray-100 rounded-xl p-0.5 mr-1 border border-gray-200/60">
             {([

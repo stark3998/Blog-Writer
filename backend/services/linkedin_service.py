@@ -286,6 +286,30 @@ def compose_linkedin_post(
             sections.append(" ".join(hashtags))
         generated_post = "\n\n".join([section for section in sections if section])
 
+    # Run dedicated hashtag agent for trend-optimized tags
+    try:
+        from backend.services.hashtag_agent import generate_hashtags
+        hashtag_result = generate_hashtags(
+            content=body,
+            title=resolved_title,
+            excerpt=resolved_excerpt,
+            platform="linkedin",
+        )
+        agent_tags = hashtag_result.get("final_tags", [])
+        if agent_tags:
+            logger.info(f"Hashtag agent replaced {len(hashtags)} tags with {len(agent_tags)}: {agent_tags}")
+            hashtags = agent_tags
+            # Update the post text: swap old hashtag line with new ones
+            lines = generated_post.rstrip().split("\n")
+            hashtag_idx = _find_hashtag_line_index(lines)
+            if hashtag_idx is not None:
+                lines[hashtag_idx] = " ".join(agent_tags)
+            else:
+                lines.append("\n" + " ".join(agent_tags))
+            generated_post = "\n".join(lines)
+    except Exception as exc:
+        logger.warning(f"Hashtag agent failed, keeping composer hashtags: {exc}")
+
     if not hashtags:
         hashtags = ["#SoftwareEngineering", "#AI", "#Leadership"]
 

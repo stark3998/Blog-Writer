@@ -82,8 +82,8 @@ async def auth_middleware(request: Request, call_next):
     """Require valid Entra ID bearer token for API routes."""
     path = request.url.path
 
-    # Skip auth for non-API routes (static files), health, and LinkedIn callback
-    if not path.startswith("/api/") or path in AUTH_SKIP_PATHS:
+    # Skip auth for non-API routes (static files), health, OAuth callbacks, and public images
+    if not path.startswith("/api/") or path in AUTH_SKIP_PATHS or path.startswith("/api/images/"):
         return await call_next(request)
 
     # Skip auth if Entra ID is not configured (local dev without auth)

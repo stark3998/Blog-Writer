@@ -53,8 +53,7 @@ def _publish_to_blog(draft: dict[str, Any]) -> dict[str, Any]:
         date=date,
     )
 
-    blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
-    blog_url = f"{blog_base}/blog/{slug}" if blog_base else f"/blog/{slug}"
+    blog_url = f"/blog/{slug}"
 
     # Update draft with publish info
     from backend.db.cosmos_client import update_draft

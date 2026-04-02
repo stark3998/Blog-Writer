@@ -79,7 +79,7 @@ async def publish_blog_post(request: PublishRequest):
             date=date,
         )
 
-        blog_url = f"{_blog_base_url()}/blog/{result['slug']}"
+        blog_url = f"/blog/{result['slug']}"
 
         # Store publish info back on the draft so the editor knows it's published
         if request.draft_id:

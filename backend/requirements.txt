@@ -24,6 +24,9 @@ beautifulsoup4>=4.13.0
 feedparser>=6.0.0
 apscheduler>=3.10.0
 
+# Image processing
+Pillow>=11.0.0
+
 # Export services
 markdown>=3.8
 weasyprint>=63.1

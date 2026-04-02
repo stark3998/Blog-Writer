@@ -1,6 +1,7 @@
 """Image Generator Service — Source image selection + AI hero image generation."""
 
 import base64
+import io
 import logging
 import os
 import re
@@ -8,8 +9,12 @@ import uuid
 from typing import Any
 
 import requests
+from PIL import Image
 
 from backend.db.cosmos_client import store_image
+
+# Cosmos DB max document size is 2 MB; stay safely under that.
+_MAX_B64_LENGTH = 1_800_000  # ~1.35 MB raw bytes
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +95,36 @@ def pick_best_source_image(media_assets: list[dict[str, str]]) -> str | None:
     return best_url
 
 
+def _compress_b64(raw_b64: str, content_type: str = "image/png") -> tuple[str, str]:
+    """Compress a base64-encoded image to fit within Cosmos DB limits.
+
+    Returns (compressed_b64, content_type).
+    """
+    if len(raw_b64) <= _MAX_B64_LENGTH:
+        return raw_b64, content_type
+
+    raw_bytes = base64.b64decode(raw_b64)
+    img = Image.open(io.BytesIO(raw_bytes))
+    img = img.convert("RGB")  # drop alpha for JPEG
+
+    # Try decreasing quality until under limit
+    for quality in (85, 70, 55, 40):
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        if len(b64) <= _MAX_B64_LENGTH:
+            logger.info(f"Compressed image to JPEG q={quality} ({len(b64)} b64 chars)")
+            return b64, "image/jpeg"
+
+    # Last resort: resize down
+    img.thumbnail((1024, 1024), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=50, optimize=True)
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    logger.info(f"Resized & compressed image ({len(b64)} b64 chars)")
+    return b64, "image/jpeg"
+
+
 def _persist_image(image_url: str, source: str = "dall-e", metadata: dict | None = None) -> str:
     """Download an image from a URL and store it in Cosmos DB.
 
@@ -106,6 +141,7 @@ def _persist_image(image_url: str, source: str = "dall-e", metadata: dict | None
 
         image_id = str(uuid.uuid4())
         b64 = base64.b64encode(image_bytes).decode("ascii")
+        b64, content_type = _compress_b64(b64, content_type)
 
         store_image(
             image_id=image_id,
@@ -116,8 +152,7 @@ def _persist_image(image_url: str, source: str = "dall-e", metadata: dict | None
         )
 
         # Build a permanent URL served by our API
-        blog_base = os.environ.get("BLOG_BASE_URL", "").rstrip("/")
-        permanent_url = f"{blog_base}/api/images/{image_id}" if blog_base else f"/api/images/{image_id}"
+        permanent_url = f"/api/images/{image_id}"
         logger.info(f"Image persisted: {image_id} ({len(image_bytes)} bytes) → {permanent_url}")
         return permanent_url
     except Exception as exc:
@@ -163,21 +198,34 @@ def generate_hero_image(title: str, excerpt: str, topics: list[str]) -> str:
             model=image_model,
             prompt=prompt,
             n=1,
-            size="1792x1024",
+            size="1536x1024",
         )
 
-        image_url = response.data[0].url
-        if not image_url:
-            raise RuntimeError("Image generation returned no URL")
+        image_data = response.data[0]
 
-        logger.info(f"Hero image generated (temp): {image_url[:100]}")
-
-        # Download and persist so the URL never expires
-        permanent_url = _persist_image(image_url, source="dall-e", metadata={
-            "title": title[:200],
-            "model": image_model,
-        })
-        return permanent_url
+        # gpt-image-1 models return b64_json; DALL-E 3 returns url
+        if image_data.b64_json:
+            image_id = str(uuid.uuid4())
+            b64, ct = _compress_b64(image_data.b64_json, "image/png")
+            store_image(
+                image_id=image_id,
+                image_base64=b64,
+                content_type=ct,
+                source="dall-e",
+                metadata={"title": title[:200], "model": image_model},
+            )
+            permanent_url = f"/api/images/{image_id}"
+            logger.info(f"Hero image persisted from b64: {image_id}")
+            return permanent_url
+        elif image_data.url:
+            logger.info(f"Hero image generated (temp): {image_data.url[:100]}")
+            permanent_url = _persist_image(image_data.url, source="dall-e", metadata={
+                "title": title[:200],
+                "model": image_model,
+            })
+            return permanent_url
+        else:
+            raise RuntimeError("Image generation returned no data")
 
     except Exception as exc:
         logger.error(f"Hero image generation failed: {exc}")

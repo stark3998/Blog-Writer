@@ -178,6 +178,9 @@ async def get_dashboard_articles(
     status: str = "",
     feed_id: str = "",
     relevant_only: bool = False,
+    search: str = "",
+    topic: str = "",
+    keyword: str = "",
     limit: int = 200,
 ):
     """Get crawled articles for the dashboard table with feed names."""
@@ -191,6 +194,13 @@ async def get_dashboard_articles(
         articles = [a for a in articles if a.get("feedSourceId") == feed_id]
     if relevant_only:
         articles = [a for a in articles if a.get("isRelevant")]
+    if search:
+        search_lower = search.lower()
+        articles = [a for a in articles if search_lower in a.get("title", "").lower()]
+    if topic:
+        articles = [a for a in articles if topic in a.get("matchedTopics", [])]
+    if keyword:
+        articles = [a for a in articles if keyword in a.get("matchedKeywords", [])]
 
     # Sort by relevance score descending
     articles.sort(key=lambda a: a.get("relevanceScore", 0), reverse=True)

@@ -960,22 +960,46 @@ def delete_crawled_articles_by_feed(feed_source_id: str) -> int:
 
 
 def list_crawled_articles(
-    feed_source_id: str | None = None, limit: int = 50
+    feed_source_id: str | None = None,
+    limit: int = 50,
+    search: str | None = None,
+    status: str | None = None,
+    topic: str | None = None,
+    keyword: str | None = None,
 ) -> list[dict[str, Any]]:
-    """List crawled articles, optionally filtered by feed source."""
+    """List crawled articles with optional filters.
+
+    Args:
+        feed_source_id: Filter by feed source.
+        limit: Max results.
+        search: Case-insensitive substring match on title.
+        status: Filter by status (e.g. 'drafted', 'published', 'skipped', 'error').
+        topic: Filter articles whose matchedTopics array contains this value.
+        keyword: Filter articles whose matchedKeywords array contains this value.
+    """
     container = _get_crawled_articles_container()
+    conditions: list[str] = []
+    params: list[dict[str, Any]] = [{"name": "@limit", "value": limit}]
+
     if feed_source_id:
-        query = (
-            "SELECT * FROM c WHERE c.feedSourceId = @feedSourceId "
-            "ORDER BY c.crawledAt DESC OFFSET 0 LIMIT @limit"
-        )
-        params = [
-            {"name": "@feedSourceId", "value": feed_source_id},
-            {"name": "@limit", "value": limit},
-        ]
-    else:
-        query = "SELECT * FROM c ORDER BY c.crawledAt DESC OFFSET 0 LIMIT @limit"
-        params = [{"name": "@limit", "value": limit}]
+        conditions.append("c.feedSourceId = @feedSourceId")
+        params.append({"name": "@feedSourceId", "value": feed_source_id})
+    if search:
+        conditions.append("CONTAINS(LOWER(c.title), LOWER(@search))")
+        params.append({"name": "@search", "value": search})
+    if status:
+        conditions.append("c.status = @status")
+        params.append({"name": "@status", "value": status})
+    if topic:
+        conditions.append("ARRAY_CONTAINS(c.matchedTopics, @topic)")
+        params.append({"name": "@topic", "value": topic})
+    if keyword:
+        conditions.append("ARRAY_CONTAINS(c.matchedKeywords, @keyword)")
+        params.append({"name": "@keyword", "value": keyword})
+
+    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    query = f"SELECT * FROM c{where} ORDER BY c.crawledAt DESC OFFSET 0 LIMIT @limit"
+
     return list(
         container.query_items(
             query=query, parameters=params, enable_cross_partition_query=True

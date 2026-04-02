@@ -825,8 +825,17 @@ export async function deleteAllCrawledArticles(): Promise<{ count: number }> {
   return json<{ count: number }>("/feeds/articles/all", { method: "DELETE" });
 }
 
-export async function listFeedArticles(feedId: string, limit = 50): Promise<CrawledArticle[]> {
-  return json<CrawledArticle[]>(`/feeds/${feedId}/articles?limit=${limit}`);
+export async function listFeedArticles(
+  feedId: string,
+  opts: { limit?: number; search?: string; status?: string; topic?: string; keyword?: string } = {},
+): Promise<CrawledArticle[]> {
+  const params = new URLSearchParams();
+  params.set("limit", String(opts.limit ?? 50));
+  if (opts.search) params.set("search", opts.search);
+  if (opts.status) params.set("status", opts.status);
+  if (opts.topic) params.set("topic", opts.topic);
+  if (opts.keyword) params.set("keyword", opts.keyword);
+  return json<CrawledArticle[]>(`/feeds/${feedId}/articles?${params.toString()}`);
 }
 
 export async function listRelevantArticles(limit = 30): Promise<CrawledArticle[]> {
@@ -895,6 +904,9 @@ export async function getDashboardArticles(params: {
   status?: string;
   feed_id?: string;
   relevant_only?: boolean;
+  search?: string;
+  topic?: string;
+  keyword?: string;
   limit?: number;
 } = {}): Promise<DashboardArticle[]> {
   const qs = new URLSearchParams();
@@ -902,6 +914,9 @@ export async function getDashboardArticles(params: {
   if (params.status) qs.set("status", params.status);
   if (params.feed_id) qs.set("feed_id", params.feed_id);
   if (params.relevant_only) qs.set("relevant_only", "true");
+  if (params.search) qs.set("search", params.search);
+  if (params.topic) qs.set("topic", params.topic);
+  if (params.keyword) qs.set("keyword", params.keyword);
   if (params.limit !== undefined) qs.set("limit", String(params.limit));
   return json<DashboardArticle[]>(`/dashboard/articles?${qs.toString()}`);
 }

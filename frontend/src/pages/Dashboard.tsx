@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getDashboardStats,
@@ -31,6 +31,8 @@ import {
   RotateCw,
   Square,
   CheckSquare,
+  Search,
+  X,
 } from "lucide-react";
 
 const TIME_RANGES = [
@@ -176,6 +178,11 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("");
   const [feedFilter, setFeedFilter] = useState("");
   const [relevantOnly, setRelevantOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [topicFilter, setTopicFilter] = useState("");
+  const [keywordFilter, setKeywordFilter] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [sortField, setSortField] = useState<SortField>("relevance_score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
@@ -188,7 +195,16 @@ export default function Dashboard() {
     try {
       const [s, a, f] = await Promise.all([
         getDashboardStats(days),
-        getDashboardArticles({ days, status: statusFilter, feed_id: feedFilter, relevant_only: relevantOnly, limit: 500 }),
+        getDashboardArticles({
+          days,
+          status: statusFilter,
+          feed_id: feedFilter,
+          relevant_only: relevantOnly,
+          search: searchDebounced || undefined,
+          topic: topicFilter || undefined,
+          keyword: keywordFilter || undefined,
+          limit: 500,
+        }),
         listFeeds(),
       ]);
       setStats(s);
@@ -202,7 +218,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-  }, [days, statusFilter, feedFilter, relevantOnly]);
+  }, [days, statusFilter, feedFilter, relevantOnly, topicFilter, keywordFilter, searchDebounced]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -541,6 +557,22 @@ export default function Dashboard() {
                   </span>
                 </h3>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search articles..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSearchQuery(val);
+                        clearTimeout(searchTimerRef.current);
+                        searchTimerRef.current = setTimeout(() => setSearchDebounced(val), 400);
+                      }}
+                      className="w-44 pl-8 pr-3 py-1.5 rounded-lg bg-white border border-gray-200/60 text-xs text-gray-700 outline-none placeholder-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                    />
+                  </div>
                   {/* Status filter */}
                   <div className="flex items-center gap-1">
                     {STATUS_FILTERS.map((sf) => (
@@ -570,6 +602,42 @@ export default function Dashboard() {
                       </option>
                     ))}
                   </select>
+                  {/* Topic filter */}
+                  {(() => {
+                    const allTopics = Array.from(
+                      new Set(articles.flatMap((a) => a.matched_topics))
+                    ).sort();
+                    return allTopics.length > 0 ? (
+                      <select
+                        value={topicFilter}
+                        onChange={(e) => setTopicFilter(e.target.value)}
+                        className="px-2 py-1 rounded-lg bg-white border border-gray-200/60 text-xs text-gray-600 outline-none"
+                      >
+                        <option value="">All Topics</option>
+                        {allTopics.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    ) : null;
+                  })()}
+                  {/* Keyword filter */}
+                  {(() => {
+                    const allKeywords = Array.from(
+                      new Set(articles.flatMap((a) => a.matched_keywords ?? []))
+                    ).sort();
+                    return allKeywords.length > 0 ? (
+                      <select
+                        value={keywordFilter}
+                        onChange={(e) => setKeywordFilter(e.target.value)}
+                        className="px-2 py-1 rounded-lg bg-white border border-gray-200/60 text-xs text-gray-600 outline-none"
+                      >
+                        <option value="">All Keywords</option>
+                        {allKeywords.map((kw) => (
+                          <option key={kw} value={kw}>{kw}</option>
+                        ))}
+                      </select>
+                    ) : null;
+                  })()}
                   {/* Relevant only toggle */}
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <button
@@ -586,6 +654,24 @@ export default function Dashboard() {
                     </button>
                     <span className="text-[10px] text-gray-500 font-medium">Relevant only</span>
                   </label>
+                  {/* Clear all filters */}
+                  {(searchQuery || statusFilter || feedFilter || topicFilter || keywordFilter || relevantOnly) && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSearchDebounced("");
+                        setStatusFilter("");
+                        setFeedFilter("");
+                        setTopicFilter("");
+                        setKeywordFilter("");
+                        setRelevantOnly(false);
+                      }}
+                      className="px-2 py-1 rounded-lg text-[10px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200/60 transition-all flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 

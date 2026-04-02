@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Play,
   Square,
+  Search,
 } from "lucide-react";
 
 interface CrawlLogEntry {
@@ -58,6 +59,13 @@ export default function FeedsSettings() {
   const [showCrawlLog, setShowCrawlLog] = useState(false);
   const [liveCrawlLog, setLiveCrawlLog] = useState<Record<string, CrawlLogEntry[]>>({});
   const crawlLogEndRef = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Article search & filter state (per feed)
+  const [articleSearch, setArticleSearch] = useState<Record<string, string>>({});
+  const [articleStatusFilter, setArticleStatusFilter] = useState<Record<string, string>>({});
+  const [articleTopicFilter, setArticleTopicFilter] = useState<Record<string, string>>({});
+  const [articleKeywordFilter, setArticleKeywordFilter] = useState<Record<string, string>>({});
+  const searchTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Add form state
   const [newUrl, setNewUrl] = useState("");
@@ -222,15 +230,31 @@ export default function FeedsSettings() {
         appendLog(feedId, "success", `Crawl complete — ${d.articles_found} found, ${d.articles_relevant} relevant, ${d.articles_processed} processed`);
         setCrawlingFeeds((prev) => { const next = new Set(prev); next.delete(feedId); return next; });
         loadData();
-        listFeedArticles(feedId).then((articles) =>
-          setFeedArticles((prev) => ({ ...prev, [feedId]: articles }))
-        ).catch(() => {});
+        loadFeedArticles(feedId);
       },
       onError: (err) => {
         appendLog(feedId, "error", `Error: ${err}`);
         setCrawlingFeeds((prev) => { const next = new Set(prev); next.delete(feedId); return next; });
       },
     });
+  };
+
+  const loadFeedArticles = async (feedId: string) => {
+    try {
+      const articles = await listFeedArticles(feedId, {
+        search: articleSearch[feedId] || undefined,
+        status: articleStatusFilter[feedId] || undefined,
+        topic: articleTopicFilter[feedId] || undefined,
+        keyword: articleKeywordFilter[feedId] || undefined,
+      });
+      setFeedArticles((prev) => ({ ...prev, [feedId]: articles }));
+    } catch {}
+  };
+
+  const handleArticleFilterChange = (feedId: string) => {
+    // Debounce search, immediate for dropdowns
+    clearTimeout(searchTimerRef.current[feedId]);
+    searchTimerRef.current[feedId] = setTimeout(() => loadFeedArticles(feedId), 300);
   };
 
   const handleExpandFeed = async (feedId: string) => {
@@ -240,10 +264,7 @@ export default function FeedsSettings() {
     }
     setExpandedFeed(feedId);
     if (!feedArticles[feedId]) {
-      try {
-        const articles = await listFeedArticles(feedId);
-        setFeedArticles((prev) => ({ ...prev, [feedId]: articles }));
-      } catch {}
+      await loadFeedArticles(feedId);
     }
   };
 
@@ -398,8 +419,7 @@ export default function FeedsSettings() {
       alert(`Deleted ${result.count} crawled article(s).`);
       for (const f of feeds) {
         if (expandedFeed === f.id) {
-          const arts = await listFeedArticles(f.id);
-          setFeedArticles((prev) => ({ ...prev, [f.id]: arts }));
+          await loadFeedArticles(f.id);
         }
       }
     } catch {}
@@ -821,6 +841,93 @@ export default function FeedsSettings() {
                       <button onClick={() => handleDeleteAllArticles(feed.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-red-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200/60 transition-all">
                         <Trash2 className="w-3 h-3" />
                         Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search & Filter Bar */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search articles..."
+                        value={articleSearch[feed.id] ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setArticleSearch((prev) => ({ ...prev, [feed.id]: val }));
+                          handleArticleFilterChange(feed.id);
+                        }}
+                        className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-700 outline-none placeholder-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/10"
+                      />
+                    </div>
+                    <select
+                      value={articleStatusFilter[feed.id] ?? ""}
+                      onChange={(e) => {
+                        setArticleStatusFilter((prev) => ({ ...prev, [feed.id]: e.target.value }));
+                        setTimeout(() => loadFeedArticles(feed.id), 0);
+                      }}
+                      className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-600 outline-none"
+                    >
+                      <option value="">All statuses</option>
+                      <option value="published">Published</option>
+                      <option value="drafted">Drafted</option>
+                      <option value="skipped">Skipped</option>
+                      <option value="skipped_rank">Skipped (rank)</option>
+                      <option value="error">Error</option>
+                      <option value="pending">Pending</option>
+                    </select>
+                    {feed.topics.length > 0 && (
+                      <select
+                        value={articleTopicFilter[feed.id] ?? ""}
+                        onChange={(e) => {
+                          setArticleTopicFilter((prev) => ({ ...prev, [feed.id]: e.target.value }));
+                          setTimeout(() => loadFeedArticles(feed.id), 0);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-600 outline-none"
+                      >
+                        <option value="">All topics</option>
+                        {feed.topics.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    )}
+                    {/* Collect unique keywords from loaded articles */}
+                    {(() => {
+                      const allKw = Array.from(
+                        new Set(
+                          (feedArticles[feed.id] ?? []).flatMap((a) => a.matched_keywords ?? [])
+                        )
+                      ).sort();
+                      return allKw.length > 0 ? (
+                        <select
+                          value={articleKeywordFilter[feed.id] ?? ""}
+                          onChange={(e) => {
+                            setArticleKeywordFilter((prev) => ({ ...prev, [feed.id]: e.target.value }));
+                            setTimeout(() => loadFeedArticles(feed.id), 0);
+                          }}
+                          className="px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-600 outline-none"
+                        >
+                          <option value="">All keywords</option>
+                          {allKw.map((kw) => (
+                            <option key={kw} value={kw}>{kw}</option>
+                          ))}
+                        </select>
+                      ) : null;
+                    })()}
+                    {(articleSearch[feed.id] || articleStatusFilter[feed.id] || articleTopicFilter[feed.id] || articleKeywordFilter[feed.id]) && (
+                      <button
+                        onClick={() => {
+                          setArticleSearch((prev) => ({ ...prev, [feed.id]: "" }));
+                          setArticleStatusFilter((prev) => ({ ...prev, [feed.id]: "" }));
+                          setArticleTopicFilter((prev) => ({ ...prev, [feed.id]: "" }));
+                          setArticleKeywordFilter((prev) => ({ ...prev, [feed.id]: "" }));
+                          setTimeout(() => loadFeedArticles(feed.id), 0);
+                        }}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200/60 transition-all flex items-center gap-1"
+                      >
+                        <X className="w-3 h-3" />
+                        Clear
                       </button>
                     )}
                   </div>

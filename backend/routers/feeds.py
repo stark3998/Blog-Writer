@@ -431,13 +431,27 @@ async def trigger_crawl(feed_id: str):
 
 
 @router.get("/{feed_id}/articles", response_model=list[CrawledArticleResponse])
-async def get_feed_articles(feed_id: str, limit: int = 50):
-    """List crawled articles for a specific feed source."""
+async def get_feed_articles(
+    feed_id: str,
+    limit: int = 50,
+    search: str | None = None,
+    status: str | None = None,
+    topic: str | None = None,
+    keyword: str | None = None,
+):
+    """List crawled articles for a specific feed source with optional filters."""
     source = get_feed_source(feed_id)
     if not source:
         raise HTTPException(status_code=404, detail="Feed source not found")
 
-    articles = list_crawled_articles(feed_source_id=feed_id, limit=limit)
+    articles = list_crawled_articles(
+        feed_source_id=feed_id,
+        limit=limit,
+        search=search or None,
+        status=status or None,
+        topic=topic or None,
+        keyword=keyword or None,
+    )
     return [_to_article_response(a) for a in articles]
 
 

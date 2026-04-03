@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
-  composeLinkedInPost,
   publishLinkedInPost,
   startLinkedInOAuth,
   getLinkedInStatus,
   regenerateHashtags,
   generateLinkedInImage,
+  streamComposeLinkedInPost,
 } from "../services/api";
-import { Loader2, Linkedin, X, Send, RefreshCw, Hash, ImagePlus, Trash2 } from "lucide-react";
+import type { LinkedInComposeStep, LinkedInComposeResponse } from "../services/api";
+import { Loader2, Linkedin, X, Send, RefreshCw, Hash, ImagePlus, Trash2, Check, Circle, AlertCircle } from "lucide-react";
 import { toast } from "../store/toastStore";
 
 interface Props {
@@ -23,6 +24,89 @@ interface PreviewData {
   imageUrl: string;
   hashtags: string[];
 }
+
+/* ---- Workflow steps definition ---- */
+
+interface WorkflowStep {
+  key: string;
+  label: string;
+  status: "pending" | "running" | "complete" | "error";
+  message?: string;
+}
+
+const INITIAL_STEPS: WorkflowStep[] = [
+  { key: "blog_check", label: "Checking blog status", status: "pending" },
+  { key: "blog_publish", label: "Publishing blog", status: "pending" },
+  { key: "portfolio_deploy", label: "Deploying portfolio", status: "pending" },
+  { key: "compose", label: "Composing LinkedIn post", status: "pending" },
+];
+
+function StepIcon({ status }: { status: WorkflowStep["status"] }) {
+  switch (status) {
+    case "complete":
+      return <Check className="w-3.5 h-3.5 text-emerald-500" />;
+    case "running":
+      return <Loader2 className="w-3.5 h-3.5 text-[#0a66c2] animate-spin" />;
+    case "error":
+      return <AlertCircle className="w-3.5 h-3.5 text-amber-500" />;
+    default:
+      return <Circle className="w-3.5 h-3.5 text-gray-300" />;
+  }
+}
+
+function ProgressTracker({ steps }: { steps: WorkflowStep[] }) {
+  // Only show steps that are not still pending (or the first pending one)
+  const visibleSteps = steps.filter(
+    (s) => s.status !== "pending"
+  );
+
+  if (visibleSteps.length === 0) return null;
+
+  const completed = visibleSteps.filter((s) => s.status === "complete").length;
+  const total = steps.filter((s) => s.status !== "pending").length || 1;
+  const pct = Math.round((completed / Math.max(total, steps.length - 1)) * 100);
+
+  return (
+    <div className="space-y-3">
+      {/* Progress bar */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#0a66c2] to-[#0077b5] transition-all duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[10px] font-semibold text-gray-400 tabular-nums w-8 text-right">
+          {pct}%
+        </span>
+      </div>
+
+      {/* Step list */}
+      <div className="space-y-1.5">
+        {visibleSteps.map((step) => (
+          <div key={step.key} className="flex items-center gap-2">
+            <StepIcon status={step.status} />
+            <span
+              className={`text-xs ${
+                step.status === "running"
+                  ? "text-gray-700 font-medium"
+                  : step.status === "complete"
+                  ? "text-gray-400"
+                  : step.status === "error"
+                  ? "text-amber-600"
+                  : "text-gray-400"
+              }`}
+            >
+              {step.message || step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---- Main component ---- */
 
 const SESSION_KEY = "linkedin_session_id";
 
@@ -48,31 +132,55 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
   const [imageLoading, setImageLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [steps, setSteps] = useState<WorkflowStep[]>(INITIAL_STEPS);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const composePost = async () => {
+  const updateStep = useCallback((key: string, update: Partial<WorkflowStep>) => {
+    setSteps((prev) =>
+      prev.map((s) => (s.key === key ? { ...s, ...update } : s))
+    );
+  }, []);
+
+  const resetSteps = useCallback(() => {
+    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending", message: undefined })));
+  }, []);
+
+  const composePost = useCallback(() => {
     setComposing(true);
     setStatus("");
-    try {
-      const composed = await composeLinkedInPost({
+    resetSteps();
+
+    const controller = streamComposeLinkedInPost(
+      {
         content,
         title,
         excerpt,
         post_format: "feed_post",
         blog_url: blogUrl || undefined,
-      });
-      setPreview({
-        postText: composed.post_text,
-        imageUrl: composed.image_url,
-        hashtags: composed.hashtags,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Compose failed";
-      setStatus(message);
-      toast.error("LinkedIn error", message);
-    } finally {
-      setComposing(false);
-    }
-  };
+      },
+      {
+        onStep(data: LinkedInComposeStep) {
+          updateStep(data.step, { status: data.status, message: data.message });
+        },
+        onComplete(data: LinkedInComposeResponse) {
+          // Mark compose step as complete
+          updateStep("compose", { status: "complete", message: "Post composed" });
+          setPreview({
+            postText: data.post_text,
+            imageUrl: data.image_url,
+            hashtags: data.hashtags,
+          });
+          setComposing(false);
+        },
+        onError(message: string) {
+          setStatus(message);
+          toast.error("LinkedIn error", message);
+          setComposing(false);
+        },
+      }
+    );
+    abortRef.current = controller;
+  }, [content, title, excerpt, blogUrl, updateStep, resetSteps]);
 
   const handleClick = async () => {
     if (!content.trim()) return;
@@ -149,10 +257,15 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
   };
 
   const handleCloseModal = () => {
-    if (composing || regenerating) return; // don't close while generating
+    if (composing || regenerating) {
+      // Abort the stream if composing
+      abortRef.current?.abort();
+      setComposing(false);
+    }
     setShowModal(false);
     setPreview(null);
     setStatus("");
+    resetSteps();
   };
 
   const handlePublish = async () => {
@@ -176,7 +289,6 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
 
       if (result.post_id) {
         const postUrn = result.post_id;
-        // Handle both urn:li:share:XXX and urn:li:ugcPost:XXX formats
         const activityId = postUrn.replace(/^urn:li:(share|ugcPost):/, "");
         window.open(
           `https://www.linkedin.com/feed/update/urn:li:share:${activityId}/`,
@@ -194,30 +306,41 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
     }
   };
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = () => {
     setRegenerating(true);
     setPreview(null);
     setStatus("");
-    try {
-      const composed = await composeLinkedInPost({
+    resetSteps();
+
+    const controller = streamComposeLinkedInPost(
+      {
         content,
         title,
         excerpt,
         post_format: "feed_post",
         blog_url: blogUrl || undefined,
-      });
-      setPreview({
-        postText: composed.post_text,
-        imageUrl: composed.image_url,
-        hashtags: composed.hashtags,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Regeneration failed";
-      setStatus(message);
-      setTimeout(() => setStatus(""), 5000);
-    } finally {
-      setRegenerating(false);
-    }
+      },
+      {
+        onStep(data: LinkedInComposeStep) {
+          updateStep(data.step, { status: data.status, message: data.message });
+        },
+        onComplete(data: LinkedInComposeResponse) {
+          updateStep("compose", { status: "complete", message: "Post composed" });
+          setPreview({
+            postText: data.post_text,
+            imageUrl: data.image_url,
+            hashtags: data.hashtags,
+          });
+          setRegenerating(false);
+        },
+        onError(message: string) {
+          setStatus(message);
+          setTimeout(() => setStatus(""), 5000);
+          setRegenerating(false);
+        },
+      }
+    );
+    abortRef.current = controller;
   };
 
   const handleResuggestHashtags = async () => {
@@ -231,7 +354,6 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
       });
       const newTags = result.final_tags;
       if (newTags.length > 0) {
-        // Replace hashtag line in the post text
         const lines = preview.postText.trimEnd().split("\n");
         const lastLine = lines[lines.length - 1]?.trim() ?? "";
         const isHashtagLine = lastLine && lastLine.split(/\s+/).every((w) => w.startsWith("#"));
@@ -310,31 +432,22 @@ export default function LinkedInButton({ content, title, excerpt, blogUrl }: Pro
               </div>
               <button
                 onClick={handleCloseModal}
-                disabled={composing || regenerating}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Loading state */}
+            {/* Progress tracker — shown during compose/regenerate */}
             {(composing || regenerating) && !preview && (
-              <div className="px-5 py-16 flex flex-col items-center gap-4">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full border-2 border-indigo-100 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-[#0a66c2]" />
+              <div className="px-5 py-6 space-y-5">
+                <ProgressTracker steps={steps} />
+                <div className="flex justify-center">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-700">
-                    {regenerating ? "Regenerating your post..." : "AI is crafting your LinkedIn post"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">Analyzing content, optimizing for engagement & generating hashtags</p>
-                </div>
-                <div className="flex gap-1 mt-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0a66c2] animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             )}

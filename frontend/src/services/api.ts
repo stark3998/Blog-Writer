@@ -378,6 +378,82 @@ export async function composeLinkedInPost(
   return json("/linkedin/compose", { method: "POST", body: JSON.stringify(data) });
 }
 
+// ---------- LinkedIn Compose Streaming ----------
+
+export interface LinkedInComposeStep {
+  step: string;
+  status: "running" | "complete" | "error";
+  message: string;
+}
+
+export interface LinkedInComposeStreamCallbacks {
+  onStep?: (data: LinkedInComposeStep) => void;
+  onComplete?: (data: LinkedInComposeResponse) => void;
+  onError?: (message: string) => void;
+}
+
+export function streamComposeLinkedInPost(
+  data: LinkedInComposeRequest,
+  callbacks: LinkedInComposeStreamCallbacks
+): AbortController {
+  const controller = new AbortController();
+
+  authHeaders().then((auth) => {
+    fetch(`${API_BASE}/linkedin/compose/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          callbacks.onError?.(errBody.detail ?? `HTTP ${res.status}`);
+          return;
+        }
+
+        const reader = res.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          let currentEvent = "message";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              try {
+                const parsed = JSON.parse(line.slice(6));
+                switch (currentEvent) {
+                  case "step": callbacks.onStep?.(parsed); break;
+                  case "complete": callbacks.onComplete?.(parsed); break;
+                  case "error": callbacks.onError?.(parsed.message); break;
+                }
+              } catch { /* ignore malformed JSON */ }
+              currentEvent = "message";
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          callbacks.onError?.(err.message);
+        }
+      });
+  });
+
+  return controller;
+}
+
 export async function generateLinkedInImage(data: {
   title: string;
   excerpt?: string;

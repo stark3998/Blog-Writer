@@ -1,5 +1,7 @@
 """Publish Router — Publish blog posts to Cosmos DB and serve them publicly."""
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -7,6 +9,9 @@ from pydantic import BaseModel
 from backend.db.cosmos_client import get_published_blog, publish_blog, record_post_event, update_draft
 from backend.services.config import get_blog_base_url
 from backend.services.export_service import _convert_to_html, _strip_frontmatter
+from backend.tools.portfolio_deployer import trigger_deploy as trigger_portfolio_deploy
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["publish"])
 
@@ -87,6 +92,13 @@ async def publish_blog_post(request: PublishRequest):
                 "publishedAt": result.get("publishedAt", ""),
                 "publishedUrl": blog_url,
             })
+
+        # Trigger portfolio GitHub Pages rebuild
+        try:
+            trigger_portfolio_deploy()
+            logger.info(f"Portfolio deploy triggered after publishing: {result['slug']}")
+        except Exception as deploy_exc:
+            logger.warning(f"Portfolio deploy trigger failed (non-blocking): {deploy_exc}")
 
         return PublishResponse(blog_url=blog_url, slug=result["slug"], title=title)
     except Exception as e:

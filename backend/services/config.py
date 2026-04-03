@@ -37,4 +37,4 @@ def get_blog_base_url(user_id: str | None = None) -> str:
         except Exception as exc:
             logger.debug(f"Could not query user profiles for blog_base_url: {exc}")
 
-    return os.environ.get("BLOG_BASE_URL", "").rstrip("/")
+    return os.environ.get("BLOG_BASE_URL", "https://jatinmadan.com").rstrip("/")

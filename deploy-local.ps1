@@ -168,7 +168,8 @@ if ($SkipBuild) {
         $portfolioImage = "$acrLoginServer/portfolio:$latestPortfolioTag"
         Write-Host "Portfolio image:   $portfolioImage"
     }
-} else {
+}
+else {
     $fullImage = "$acrLoginServer/blog-writer-webapp:$Tag"
 
     # Fetch Entra ID config from Terraform outputs for frontend build args
@@ -195,7 +196,8 @@ if ($SkipBuild) {
             if ($PSCmdlet.ShouldProcess($portfolioImage, 'az acr build')) {
                 Invoke-AcrBuild -Registry $acrName -ImageName "portfolio" -Tag $Tag -DockerfilePath "$portfolioDir/Dockerfile" -ContextPath $portfolioDir
             }
-        } else {
+        }
+        else {
             Write-Warning "Portfolio directory not found at $portfolioDir — skipping portfolio build."
             $portfolioImage = $null
         }
@@ -229,7 +231,8 @@ $portalUrl = Get-TerraformOutput -Name 'portal_resource_group_url'
 if ($WhatIfPreference) {
     Write-Step 'Preview complete'
     Write-Host 'No Azure resources or local files were changed.'
-} elseif (-not $SkipHealthCheck) {
+}
+elseif (-not $SkipHealthCheck) {
     Write-Step "Running health check — Blog Writer"
     $health = Invoke-RestMethod -Uri "$appUrl/api/health" -Method Get -TimeoutSec 60
     Write-Host ("Health: " + ($health | ConvertTo-Json -Compress))
@@ -239,7 +242,8 @@ if ($WhatIfPreference) {
         try {
             $portfolioHealth = Invoke-WebRequest -Uri $portfolioUrl -Method Get -TimeoutSec 60 -UseBasicParsing
             Write-Host "Portfolio: HTTP $($portfolioHealth.StatusCode)"
-        } catch {
+        }
+        catch {
             Write-Warning "Portfolio health check failed: $_"
         }
     }

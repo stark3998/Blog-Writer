@@ -156,7 +156,7 @@ variable "portfolio_env_vars" {
   description = "Plaintext environment variables for the portfolio Container App."
   type        = map(string)
   default = {
-    NODE_ENV       = "production"
+    NODE_ENV        = "production"
     COSMOS_DATABASE = "blog-writer"
   }
 }

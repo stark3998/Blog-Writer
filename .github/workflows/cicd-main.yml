@@ -126,7 +126,7 @@ jobs:
         run: terraform -chdir="$TF_WORKING_DIR" init
 
       - name: Terraform fmt check
-        run: terraform -chdir="$TF_WORKING_DIR" fmt -check
+        run: terraform -chdir="$TF_WORKING_DIR" fmt -check *.tf
 
       - name: Terraform validate
         run: terraform -chdir="$TF_WORKING_DIR" validate

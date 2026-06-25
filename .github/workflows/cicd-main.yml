@@ -26,6 +26,7 @@ concurrency:
 env:
   TF_WORKING_DIR: infra/terraform
   IMAGE_NAME: blog-writer-webapp
+  TF_IN_AUTOMATION: true
   ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
   ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
@@ -60,6 +61,11 @@ jobs:
 
           if [ -z "${{ vars.COSMOS_ENDPOINT }}" ] || [ -z "${{ vars.LINKEDIN_CLIENT_ID }}" ] || [ -z "${{ vars.LINKEDIN_REDIRECT_URI }}" ]; then
             echo "Missing one or more required GitHub repository variables"
+            exit 1
+          fi
+
+          if [ -z "${{ vars.ENTRA_CLIENT_ID }}" ]; then
+            echo "Missing required GitHub repository variable: ENTRA_CLIENT_ID"
             exit 1
           fi
 
@@ -99,6 +105,7 @@ jobs:
           container_app_name             = "${{ vars.TF_CONTAINER_APP_NAME || 'ca-blog-writer-dev' }}"
           container_app_environment_name = "${{ vars.TF_CONTAINER_APP_ENV_NAME || 'cae-blog-writer-dev' }}"
           log_analytics_workspace_name   = "${{ vars.TF_LOG_ANALYTICS_NAME || 'law-blog-writer-dev' }}"
+          entra_client_id                = "${{ vars.ENTRA_CLIENT_ID }}"
 
           container_image = "${{ vars.TF_CONTAINER_IMAGE || 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' }}"
 
@@ -147,19 +154,19 @@ jobs:
           EOF
 
       - name: Terraform init
-        run: terraform -chdir="$TF_WORKING_DIR" init
+        run: terraform -chdir="$TF_WORKING_DIR" init -input=false
 
       - name: Terraform fmt check
         run: terraform -chdir="$TF_WORKING_DIR" fmt -check *.tf
 
       - name: Terraform validate
-        run: terraform -chdir="$TF_WORKING_DIR" validate
+        run: terraform -chdir="$TF_WORKING_DIR" validate -no-color
 
       - name: Terraform plan infra
-        run: terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra
+        run: terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra -input=false
 
       - name: Terraform apply infra
-        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-infra
+        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve -input=false tfplan-infra
 
       - name: Capture infra outputs
         id: outputs
@@ -319,6 +326,7 @@ jobs:
           container_app_name             = "${{ vars.TF_CONTAINER_APP_NAME || 'ca-blog-writer-dev' }}"
           container_app_environment_name = "${{ vars.TF_CONTAINER_APP_ENV_NAME || 'cae-blog-writer-dev' }}"
           log_analytics_workspace_name   = "${{ vars.TF_LOG_ANALYTICS_NAME || 'law-blog-writer-dev' }}"
+          entra_client_id                = "${{ vars.ENTRA_CLIENT_ID }}"
 
           container_image = "${{ vars.TF_CONTAINER_IMAGE || 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' }}"
 
@@ -376,10 +384,10 @@ jobs:
             PLAN_ARGS="$PLAN_ARGS -var portfolio_container_image=$PORTFOLIO_IMAGE"
           fi
 
-          terraform -chdir="$TF_WORKING_DIR" plan $PLAN_ARGS
+          terraform -chdir="$TF_WORKING_DIR" plan $PLAN_ARGS -input=false
 
       - name: Terraform apply app image rollout
-        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-app
+        run: terraform -chdir="$TF_WORKING_DIR" apply -auto-approve -input=false tfplan-app
 
   summary:
     name: Deployment Summary

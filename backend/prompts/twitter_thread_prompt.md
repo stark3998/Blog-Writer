@@ -53,11 +53,43 @@ Write exactly 4-6 tweets. Each tweet must stand alone — a reader who only sees
 ### Tweet 6 — CTA
 - Include the blog URL or source URL (URLs count as 23 characters on Twitter).
 - End with an open question: something you'd genuinely want to hear other practitioners answer. Not engagement bait.
-- 1-2 hashtags MAXIMUM from this list: #EntraID #Azure #MicrosoftSecurity #AzureAD #Microsoft365 #AIFoundry #MicrosoftDefender #Intune #CloudSecurity #AzureOpenAI
-- Format: "Full breakdown: [url] | [hashtag] [hashtag] \n\n[question]?"
+- Include 3-4 of the most relevant hashtags from the list below — pick based on the article's content.
+- Format: "Full breakdown: [url]\n\n#Tag1 #Tag2 #Tag3 #Tag4\n\n[question]?"
+
+## Hashtag Strategy — Spread Across the Thread
+
+Hashtags increase discoverability. Use them strategically across tweets, not just the CTA:
+
+- **Tweet 1 (Hook):** Embed 1 high-reach hashtag inline where it fits naturally (e.g. "...in #EntraID just changed."). If it doesn't fit naturally, skip it — don't force it.
+- **Tweets 2-4 (Substance):** Add 1 contextually relevant hashtag per tweet where it fits the sentence. Never append a hashtag list — weave it into the text.
+- **Tweet 5 (Take):** No hashtags — this is your personal voice, hashtags break the tone.
+- **Tweet 6 (CTA):** 3-4 hashtags as a block after the URL and before the question.
+
+**Total target across the whole thread: 5-7 unique hashtags.**
+
+### Hashtag List — pick the most relevant for the article topic
+
+**Identity & Security:**
+`#EntraID` `#AzureAD` `#MicrosoftSecurity` `#CloudSecurity` `#ZeroTrust` `#Cybersecurity` `#IAM` `#MicrosoftDefender` `#Sentinel` `#Purview` `#CIAM` `#IdentityProtection`
+
+**Azure Platform:**
+`#Azure` `#AzureCloud` `#CloudComputing` `#MicrosoftAzure` `#AzureContainerApps` `#KeyVault` `#CosmosDB` `#AzureDevOps`
+
+**AI & Copilot:**
+`#AIFoundry` `#AzureOpenAI` `#MicrosoftCopilot` `#GenerativeAI` `#AIAgents` `#LLM`
+
+**Microsoft Ecosystem:**
+`#Microsoft365` `#M365` `#Intune` `#Teams` `#SharePoint` `#ExchangeOnline` `#Microsoft`
+
+**Developer / Architecture:**
+`#DevOps` `#API` `#CloudArchitecture` `#Serverless` `#IaC` `#Terraform`
+
+**Always consider these high-reach tags for relevant content:**
+`#Azure` `#Microsoft365` `#Cybersecurity` `#CloudComputing` `#Microsoft`
 
 ## Character Rules
 - Every tweet ≤ 280 characters. URLs count as 23 characters regardless of actual length.
+- Hashtags count toward the 280 character limit.
 - Vary sentence rhythm. Short punchy sentences. Then longer ones when more nuance is needed.
 - Use contractions (it's, don't, I've, we're). Sounds more human.
 - Starting a sentence with "And" or "But" is fine.

@@ -1,4 +1,10 @@
-"""Twitter/X Publisher Tool — OAuth 2.0 PKCE and tweet publishing via X API v2."""
+"""Twitter/X Publisher Tool — OAuth 1.0a (free tier) and OAuth 2.0 PKCE via X API v2.
+
+Auth priority:
+  1. OAuth 1.0a — when TWITTER_API_KEY + TWITTER_API_SECRET + TWITTER_ACCESS_TOKEN +
+     TWITTER_ACCESS_TOKEN_SECRET are all set (X Free tier, up to 17 posts/day).
+  2. OAuth 2.0 Bearer — falls back to per-session tokens stored in Cosmos DB.
+"""
 
 import hashlib
 import os
@@ -10,6 +16,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import requests
+from requests_oauthlib import OAuth1
 
 from backend.db.cosmos_client import (
     consume_twitter_oauth_state,
@@ -23,6 +30,17 @@ TWITTER_AUTH_URL = "https://twitter.com/i/oauth2/authorize"
 TWITTER_TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
 TWITTER_ME_URL = "https://api.twitter.com/2/users/me"
 TWITTER_TWEET_URL = "https://api.twitter.com/2/tweets"
+
+
+def _oauth1_auth() -> OAuth1 | None:
+    """Return an OAuth1 auth object if all four credentials are set, else None."""
+    api_key = os.environ.get("TWITTER_API_KEY", "").strip()
+    api_secret = os.environ.get("TWITTER_API_SECRET", "").strip()
+    access_token = os.environ.get("TWITTER_ACCESS_TOKEN", "").strip()
+    access_token_secret = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "").strip()
+    if api_key and api_secret and access_token and access_token_secret:
+        return OAuth1(api_key, api_secret, access_token, access_token_secret)
+    return None
 
 
 def _require_env(name: str) -> str:
@@ -253,24 +271,35 @@ def publish_tweet(
     session_id: str,
     text: str,
 ) -> dict[str, Any]:
-    """Publish a tweet using X API v2."""
+    """Publish a tweet using X API v2.
+
+    Uses OAuth 1.0a (free tier) when TWITTER_API_KEY/SECRET/ACCESS_TOKEN/SECRET are set,
+    otherwise falls back to the OAuth 2.0 Bearer token for session_id.
+    """
     if not text.strip():
         raise RuntimeError("Tweet text cannot be empty")
 
-    token_data = _token_for_session(session_id)
-    access_token = str(token_data["access_token"])
-
     payload = {"text": text}
+    oauth1 = _oauth1_auth()
 
-    response = requests.post(
-        TWITTER_TWEET_URL,
-        json=payload,
-        headers={
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        },
-        timeout=30,
-    )
+    if oauth1:
+        response = requests.post(
+            TWITTER_TWEET_URL,
+            json=payload,
+            auth=oauth1,
+            timeout=30,
+        )
+    else:
+        token_data = _token_for_session(session_id)
+        response = requests.post(
+            TWITTER_TWEET_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token_data['access_token']}",
+                "Content-Type": "application/json",
+            },
+            timeout=30,
+        )
 
     if response.status_code >= 400:
         raise RuntimeError(f"Twitter publish failed: {response.text}")
@@ -301,8 +330,10 @@ def publish_thread(
     if not tweets:
         raise RuntimeError("Tweet list cannot be empty")
 
-    token_data = _token_for_session(session_id)
-    access_token = str(token_data["access_token"])
+    oauth1 = _oauth1_auth()
+    if not oauth1:
+        token_data = _token_for_session(session_id)
+        access_token = str(token_data["access_token"])
 
     tweet_ids: list[str] = []
     reply_to_id: str | None = None
@@ -315,15 +346,23 @@ def publish_thread(
         if reply_to_id:
             payload["reply"] = {"in_reply_to_tweet_id": reply_to_id}
 
-        response = requests.post(
-            TWITTER_TWEET_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            },
-            timeout=30,
-        )
+        if oauth1:
+            response = requests.post(
+                TWITTER_TWEET_URL,
+                json=payload,
+                auth=oauth1,
+                timeout=30,
+            )
+        else:
+            response = requests.post(
+                TWITTER_TWEET_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
 
         if response.status_code >= 400:
             raise RuntimeError(

@@ -39,6 +39,14 @@ PROMPT_REGISTRY: dict[str, tuple[Path, str]] = {
         PROMPT_DIR / "humanizer_prompt.md",
         "Humanizer agent — rewrites AI-generated posts to sound authentically human with your persona",
     ),
+    "twitter_thread_prompt": (
+        PROMPT_DIR / "twitter_thread_prompt.md",
+        "Twitter thread composer — generates 4-6 tweet threads in Merill Fernando style",
+    ),
+    "twitter_selector_prompt": (
+        PROMPT_DIR / "twitter_selector_prompt.md",
+        "Twitter thread selector — picks the best thread from crawl candidates",
+    ),
 }
 
 

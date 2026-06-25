@@ -685,6 +685,46 @@ def list_published_blogs(limit: int = 50) -> list[dict[str, Any]]:
     )
 
 
+def list_news_posts(
+    limit: int = 50,
+    offset: int = 0,
+    tag: str | None = None,
+) -> list[dict[str, Any]]:
+    """List auto-published news posts (origin=rss_crawl) for the public news hub."""
+    container = _get_published_blogs_container()
+    if tag:
+        query = (
+            "SELECT c.id, c.slug, c.title, c.excerpt, c.sourceUrl, "
+            "c.publishedAt, c.updatedAt, c.tags, c.sourceType "
+            "FROM c WHERE c.origin = 'rss_crawl' "
+            "AND ARRAY_CONTAINS(c.tags, @tag) "
+            "ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit"
+        )
+        params = [
+            {"name": "@limit", "value": limit},
+            {"name": "@offset", "value": offset},
+            {"name": "@tag", "value": tag},
+        ]
+    else:
+        query = (
+            "SELECT c.id, c.slug, c.title, c.excerpt, c.sourceUrl, "
+            "c.publishedAt, c.updatedAt, c.tags, c.sourceType "
+            "FROM c WHERE c.origin = 'rss_crawl' "
+            "ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit"
+        )
+        params = [
+            {"name": "@limit", "value": limit},
+            {"name": "@offset", "value": offset},
+        ]
+    return list(
+        container.query_items(
+            query=query,
+            parameters=params,
+            enable_cross_partition_query=True,
+        )
+    )
+
+
 # ---------- Image Store ----------
 
 
@@ -744,6 +784,7 @@ def create_feed_source(
     topics: list[str] | None = None,
     auto_publish_blog: bool = False,
     auto_publish_linkedin: bool = False,
+    auto_publish_twitter: bool = False,
     crawl_interval_minutes: int = 1440,
     max_article_age_days: int = 7,
     max_articles_to_generate: int = 1,
@@ -760,6 +801,7 @@ def create_feed_source(
         "topics": topics or ["cloud security", "azure", "ai"],
         "autoPublishBlog": auto_publish_blog,
         "autoPublishLinkedIn": auto_publish_linkedin,
+        "autoPublishTwitter": auto_publish_twitter,
         "crawlIntervalMinutes": crawl_interval_minutes,
         "maxArticleAgeDays": max_article_age_days,
         "maxArticlesToGenerate": max_articles_to_generate,
@@ -804,7 +846,7 @@ def update_feed_source(source_id: str, updates: dict[str, Any]) -> dict[str, Any
 
     allowed = {
         "name", "baseUrl", "feedUrl", "feedType", "topics",
-        "autoPublishBlog", "autoPublishLinkedIn", "crawlIntervalMinutes",
+        "autoPublishBlog", "autoPublishLinkedIn", "autoPublishTwitter", "crawlIntervalMinutes",
         "maxArticleAgeDays", "maxArticlesToGenerate",
         "enabled", "lastCrawledAt",
     }

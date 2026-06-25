@@ -9,6 +9,7 @@ from typing import Any
 from backend.db.cosmos_client import (
     create_draft,
     get_linkedin_session,
+    get_twitter_session,
     list_feed_sources,
     publish_blog,
     has_linkedin_post_today,
@@ -87,6 +88,34 @@ def _get_active_linkedin_session_id() -> str | None:
     return None
 
 
+def _get_active_twitter_session_id() -> str | None:
+    """Find the active Twitter OAuth session from TWITTER_AUTO_SESSION_ID env var."""
+    session_id = os.environ.get("TWITTER_AUTO_SESSION_ID", "").strip()
+    if session_id:
+        session = get_twitter_session(session_id)
+        if session and session.get("accessToken"):
+            expires_at = float(session.get("expiresAt", 0) or 0)
+            if expires_at > 0:
+                days_remaining = (expires_at - time.time()) / 86400
+                if days_remaining <= 0:
+                    logger.warning("Twitter session has expired")
+                    notify("twitter_session_expiring", {
+                        "session_id": session_id,
+                        "days_remaining": 0,
+                        "message": "Twitter session has expired. Re-authenticate to continue auto-posting.",
+                    })
+                    return None
+                elif days_remaining <= 7:
+                    logger.warning(f"Twitter session expires in {days_remaining:.1f} days")
+                    notify("twitter_session_expiring", {
+                        "session_id": session_id,
+                        "days_remaining": round(days_remaining, 1),
+                        "message": f"Twitter session expires in {days_remaining:.0f} days. Re-authenticate soon.",
+                    })
+            return session_id
+    return None
+
+
 def process_relevant_article(
     article: dict[str, Any], feed_source: dict[str, Any]
 ) -> dict[str, Any]:
@@ -104,6 +133,8 @@ def process_relevant_article(
     auto_publish_linkedin = feed_source.get("autoPublishLinkedIn", False)
 
     logger.info(f"Processing article: {article['title'][:80]} ({article_url})")
+
+    auto_publish_twitter = feed_source.get("autoPublishTwitter", False)
 
     result: dict[str, Any] = {
         "draft_id": "",
@@ -212,6 +243,30 @@ def process_relevant_article(
             "blog_url": blog_url,
             "hashtags": linkedin_data.get("hashtags", []),
         }
+
+    # Step 5: Compose Twitter thread (promote our blog, attribute the source)
+    if auto_publish_twitter:
+        try:
+            from backend.services.twitter_service import compose_thread
+            twitter_data = compose_thread(
+                blog_content=blog_data["mdx_content"],
+                title=blog_data["title"],
+                excerpt=blog_data["excerpt"],
+                blog_url=blog_url,
+                source_url=article_url,
+            )
+            result["twitter_data"] = {
+                "title": blog_data["title"],
+                "excerpt": blog_data["excerpt"],
+                "tweets": twitter_data.get("tweets", []),
+                "thread_length": twitter_data.get("thread_length", 0),
+                "hook_tweet": twitter_data["tweets"][0]["tweet"] if twitter_data.get("tweets") else "",
+                "article_url": article_url,
+                "blog_url": blog_url,
+            }
+            logger.info(f"Twitter thread composed for: {blog_data['title'][:60]}")
+        except Exception as exc:
+            logger.error(f"Twitter thread compose failed for {article_url}: {exc}")
 
     return result
 
@@ -482,6 +537,140 @@ def publish_best_linkedin_post(
         logger.error(f"LinkedIn auto-publish failed after retries for best post: {exc}")
         notify("pipeline_error", {
             "stage": "linkedin_publish",
+            "title": best["title"],
+            "error": str(exc)[:500],
+        })
+        return None
+
+
+def select_best_thread(candidates: list[dict[str, Any]]) -> int:
+    """Use the twitter selector prompt to pick the best thread to publish.
+
+    Args:
+        candidates: List of dicts with keys: title, hook_tweet, thread_length, article_url.
+
+    Returns:
+        Index of the best candidate (0-based).
+    """
+    if len(candidates) <= 1:
+        return 0
+
+    from backend.routers.prompts import load_prompt_content
+
+    system_prompt = load_prompt_content("twitter_selector_prompt")
+
+    payload = [
+        {
+            "index": i,
+            "title": c["title"],
+            "hook_tweet": c.get("hook_tweet", ""),
+            "thread_length": c.get("thread_length", 0),
+            "article_url": c.get("article_url", ""),
+        }
+        for i, c in enumerate(candidates)
+    ]
+
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+    from openai import AzureOpenAI
+
+    endpoint = os.environ.get("PROJECT_ENDPOINT", "")
+    api_key = os.environ.get("PROJECT_API_KEY", "")
+    api_version = os.environ.get("API_VERSION", "2024-12-01-preview")
+    model = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o")
+
+    if api_key:
+        client = AzureOpenAI(azure_endpoint=endpoint, api_key=api_key, api_version=api_version)
+    else:
+        credential = DefaultAzureCredential()
+        token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
+        client = AzureOpenAI(azure_endpoint=endpoint, azure_ad_token_provider=token_provider, api_version=api_version)
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(payload)},
+            ],
+            temperature=0.3,
+            max_completion_tokens=300,
+        )
+        raw = response.choices[0].message.content or "{}"
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        result = json.loads(raw)
+        idx = int(result.get("selected_index", 0))
+        reasoning = result.get("reasoning", "")
+        logger.info(f"Best Twitter thread selected: index={idx}, reasoning={reasoning}")
+        if 0 <= idx < len(candidates):
+            return idx
+        logger.warning(f"Selected index {idx} out of range, defaulting to 0")
+        return 0
+    except Exception as exc:
+        logger.error(f"Twitter thread selector failed: {exc}, defaulting to first candidate")
+        return 0
+
+
+def publish_best_twitter_thread(
+    candidates: list[dict[str, Any]],
+    feed_source: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Select the best Twitter thread from candidates and publish it.
+
+    Returns publish result or None if skipped/failed.
+    """
+    if not candidates:
+        logger.info("No Twitter thread candidates to select from")
+        return None
+
+    auto_publish_twitter = feed_source.get("autoPublishTwitter", False)
+    if not auto_publish_twitter:
+        logger.info("Auto-publish Twitter is disabled for this feed source")
+        return {"skipped": True, "reason": "auto_publish_disabled"}
+
+    session_id = _get_active_twitter_session_id()
+    if not session_id:
+        logger.warning("Auto-publish Twitter requested but no active session found")
+        return {"skipped": True, "reason": "no_twitter_session"}
+
+    best_idx = select_best_thread(candidates)
+    best = candidates[best_idx]
+    tweet_texts = [t["tweet"] for t in best.get("tweets", [])]
+
+    if not tweet_texts:
+        logger.error("Best Twitter candidate has no tweet texts")
+        return None
+
+    try:
+        from backend.tools.twitter_publisher import publish_thread as _publish_thread
+        tw_result = _retry_with_backoff(
+            _publish_thread,
+            session_id=session_id,
+            tweets=tweet_texts,
+        )
+        logger.info(
+            f"Best Twitter thread published: {tw_result.get('thread_id', '')} "
+            f"({tw_result.get('tweet_count', 0)} tweets) — '{best['title'][:60]}'"
+        )
+        notify("twitter_published", {
+            "thread_id": tw_result.get("thread_id", ""),
+            "tweet_count": tw_result.get("tweet_count", 0),
+            "title": best["title"],
+            "blog_url": best.get("blog_url", ""),
+            "article_url": best.get("article_url", ""),
+            "hook_tweet": best.get("hook_tweet", "")[:200],
+        })
+        return {
+            "thread_id": tw_result.get("thread_id", ""),
+            "selected_index": best_idx,
+            "title": best["title"],
+            "tweet_count": tw_result.get("tweet_count", 0),
+        }
+    except Exception as exc:
+        logger.error(f"Twitter auto-publish failed after retries: {exc}")
+        notify("pipeline_error", {
+            "stage": "twitter_publish",
             "title": best["title"],
             "error": str(exc)[:500],
         })

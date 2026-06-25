@@ -11,24 +11,36 @@ import BlogView from "./pages/BlogView";
 import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
+import NewsHub from "./pages/NewsHub";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AppAuthProvider>
       <BrowserRouter>
-        <AuthGuard>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/editor" element={<Editor />} />
-              <Route path="/editor/:id" element={<Editor />} />
-              <Route path="/blog/:slug" element={<BlogView />} />
-              <Route path="/analytics" element={<Dashboard />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </Layout>
-        </AuthGuard>
+        <Routes>
+          {/* Public routes — no auth required */}
+          <Route path="/news" element={<NewsHub />} />
+
+          {/* Authenticated app */}
+          <Route
+            path="*"
+            element={
+              <AuthGuard>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/editor" element={<Editor />} />
+                    <Route path="/editor/:id" element={<Editor />} />
+                    <Route path="/blog/:slug" element={<BlogView />} />
+                    <Route path="/analytics" element={<Dashboard />} />
+                    <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Routes>
+                </Layout>
+              </AuthGuard>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </AppAuthProvider>
   </StrictMode>

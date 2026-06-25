@@ -1,4 +1,4 @@
-"""Twitter Service — Compose concise, engagement-optimized tweets from blog content."""
+"""Twitter Service — Compose tweets and threads from blog content."""
 
 import json
 import logging
@@ -149,6 +149,84 @@ Return JSON with these fields:
         "tweet_text": tweet_text,
         "hashtags": hashtags[:5],
         "char_count": len(tweet_text),
+        "title": resolved_title,
+        "excerpt": resolved_excerpt,
+    }
+
+
+def compose_thread(
+    blog_content: str,
+    title: str = "",
+    excerpt: str = "",
+    blog_url: str = "",
+    source_url: str = "",
+    additional_context: str = "",
+) -> dict[str, Any]:
+    """Compose a 4-6 tweet thread from blog content using the twitter_thread_prompt."""
+    from backend.routers.prompts import load_prompt_content
+
+    resolved_title = title.strip() or _extract_frontmatter_value(blog_content, "title")
+    resolved_excerpt = excerpt.strip() or _extract_frontmatter_value(blog_content, "excerpt")
+    body = _strip_frontmatter(blog_content)
+
+    if not body:
+        raise ValueError("Blog content is empty")
+
+    system_prompt = load_prompt_content("twitter_thread_prompt")
+    client, model = _get_openai_client()
+
+    url_note = ""
+    if blog_url:
+        url_note += f"\nBlog URL (for tweet 6 CTA, counts as 23 chars): {blog_url}"
+    if source_url:
+        url_note += f"\nSource URL (use if no blog URL): {source_url}"
+
+    user_prompt = (
+        f"Title: {resolved_title or '(missing)'}\n"
+        f"Excerpt: {resolved_excerpt or '(missing)'}\n"
+        f"{url_note}\n"
+        f"Additional context: {additional_context or '(none)'}\n\n"
+        f"Blog content (first 3000 chars):\n{body[:3000]}\n\n"
+        "Generate a Twitter thread (4-6 tweets) following the system prompt rules exactly. "
+        "Return only the JSON object."
+    )
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.85,
+        max_completion_tokens=1200,
+    )
+
+    raw_output = response.choices[0].message.content or ""
+
+    try:
+        parsed = json.loads(_clean_json_response(raw_output))
+        tweets = parsed.get("tweets", [])
+        thread_length = int(parsed.get("thread_length", len(tweets)))
+    except Exception:
+        logger.error(f"Failed to parse thread JSON: {raw_output[:200]}")
+        raise ValueError("Thread composition returned invalid JSON")
+
+    # Validate and truncate any tweets that exceed the character limit
+    url_placeholder_len = 23
+    for tweet_obj in tweets:
+        text = str(tweet_obj.get("tweet", "")).strip()
+        # Rough char count: replace URLs with 23-char placeholders for estimation
+        estimated_len = len(re.sub(r"https?://\S+", "x" * url_placeholder_len, text))
+        if estimated_len > TWEET_CHAR_LIMIT:
+            # Hard truncate as a safety net — the prompt should handle this, but just in case
+            tweet_obj["tweet"] = text[:TWEET_CHAR_LIMIT - 3] + "..."
+            logger.warning(f"Tweet {tweet_obj.get('position')} truncated to fit 280 chars")
+
+    logger.info(f"Composed Twitter thread: {thread_length} tweets for '{resolved_title[:60]}'")
+
+    return {
+        "tweets": tweets,
+        "thread_length": thread_length,
         "title": resolved_title,
         "excerpt": resolved_excerpt,
     }

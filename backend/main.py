@@ -44,6 +44,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.routers import generate, edit, blogs, export, publish, linkedin, twitter, medium, feeds, diagnostics, prompts, keywords, user, dashboard
+from backend.routers.news import router as news_router
 from backend.routers.import_export import router as import_router
 from backend.routers.newsletter import router as newsletter_router
 from backend.routers.voice_profiles import router as voice_profiles_router
@@ -75,6 +76,7 @@ app.add_middleware(
 
 # Auth middleware — validate Entra ID tokens on /api/* routes (except health)
 AUTH_SKIP_PATHS = {"/api/health", "/api/linkedin/oauth/callback", "/api/twitter/oauth/callback"}
+AUTH_SKIP_PREFIXES = ("/api/images/", "/api/news")
 
 
 @app.middleware("http")
@@ -82,8 +84,8 @@ async def auth_middleware(request: Request, call_next):
     """Require valid Entra ID bearer token for API routes."""
     path = request.url.path
 
-    # Skip auth for non-API routes (static files), health, OAuth callbacks, and public images
-    if not path.startswith("/api/") or path in AUTH_SKIP_PATHS or path.startswith("/api/images/"):
+    # Skip auth for non-API routes (static files), health, OAuth callbacks, public images, and news hub
+    if not path.startswith("/api/") or path in AUTH_SKIP_PATHS or path.startswith(AUTH_SKIP_PREFIXES):
         return await call_next(request)
 
     # Skip auth if Entra ID is not configured (local dev without auth)
@@ -137,6 +139,7 @@ app.include_router(schedule_router)
 app.include_router(analytics_router)
 app.include_router(seo_router)
 app.include_router(comments_router)
+app.include_router(news_router)
 
 
 @app.on_event("startup")

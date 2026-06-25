@@ -6,12 +6,13 @@ from pydantic import BaseModel
 from backend.auth import get_current_user
 from backend.db.cosmos_client import get_draft
 from backend.models.user import UserInfo
-from backend.services.twitter_service import compose_tweet
+from backend.services.twitter_service import compose_tweet, compose_thread
 from backend.tools.twitter_publisher import (
     disconnect_session,
     get_connection_status,
     handle_oauth_callback,
     publish_tweet,
+    publish_thread,
     start_oauth,
 )
 
@@ -63,6 +64,47 @@ class TwitterPublishResponse(BaseModel):
     tweet_id: str
     text: str
     status_code: int
+    composed: bool
+
+
+class TwitterThreadTweet(BaseModel):
+    position: int
+    tweet: str
+
+
+class TwitterComposeThreadRequest(BaseModel):
+    content: str | None = None
+    draft_id: str | None = None
+    title: str = ""
+    excerpt: str = ""
+    blog_url: str = ""
+    source_url: str = ""
+    additional_context: str = ""
+
+
+class TwitterComposeThreadResponse(BaseModel):
+    tweets: list[TwitterThreadTweet]
+    thread_length: int
+    title: str
+    excerpt: str
+
+
+class TwitterPublishThreadRequest(BaseModel):
+    session_id: str
+    tweets: list[str] | None = None
+    content: str | None = None
+    draft_id: str | None = None
+    title: str = ""
+    excerpt: str = ""
+    blog_url: str = ""
+    source_url: str = ""
+
+
+class TwitterPublishThreadResponse(BaseModel):
+    session_id: str
+    thread_id: str
+    tweet_ids: list[str]
+    tweet_count: int
     composed: bool
 
 
@@ -191,3 +233,84 @@ async def publish_post(request: TwitterPublishRequest):
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Twitter publish failed: {str(exc)}")
+
+
+@router.post("/compose/thread", response_model=TwitterComposeThreadResponse)
+async def compose_thread_post(request: TwitterComposeThreadRequest):
+    """Compose a 4-6 tweet thread from blog content."""
+    content = request.content
+    title = request.title
+    excerpt = request.excerpt
+
+    if request.draft_id:
+        draft = get_draft(request.draft_id)
+        if not draft:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        content = draft.get("content", "")
+        title = title or draft.get("title", "")
+        excerpt = excerpt or draft.get("excerpt", "")
+
+    if not content or not content.strip():
+        raise HTTPException(status_code=400, detail="Either non-empty content or a valid draft_id is required")
+
+    try:
+        result = compose_thread(
+            blog_content=content,
+            title=title,
+            excerpt=excerpt,
+            blog_url=request.blog_url,
+            source_url=request.source_url,
+            additional_context=request.additional_context,
+        )
+        return TwitterComposeThreadResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Thread compose failed: {str(exc)}")
+
+
+@router.post("/publish/thread", response_model=TwitterPublishThreadResponse)
+async def publish_thread_post(request: TwitterPublishThreadRequest):
+    """Publish a Twitter thread — optionally compose from content first."""
+    tweet_texts = request.tweets
+    composed = False
+
+    if not tweet_texts:
+        content = request.content
+        title = request.title
+        excerpt = request.excerpt
+
+        if request.draft_id:
+            draft = get_draft(request.draft_id)
+            if not draft:
+                raise HTTPException(status_code=404, detail="Draft not found")
+            content = draft.get("content", "")
+            title = title or draft.get("title", "")
+            excerpt = excerpt or draft.get("excerpt", "")
+
+        if not content or not content.strip():
+            raise HTTPException(status_code=400, detail="Provide tweets list or content/draft_id to compose from")
+
+        try:
+            thread_data = compose_thread(
+                blog_content=content,
+                title=title,
+                excerpt=excerpt,
+                blog_url=request.blog_url,
+                source_url=request.source_url,
+            )
+            tweet_texts = [t["tweet"] for t in thread_data.get("tweets", [])]
+            composed = True
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Thread compose failed: {str(exc)}")
+
+    if not tweet_texts:
+        raise HTTPException(status_code=400, detail="No tweets to publish")
+
+    try:
+        result = publish_thread(session_id=request.session_id, tweets=tweet_texts)
+        return TwitterPublishThreadResponse(**result, composed=composed)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Thread publish failed: {str(exc)}")

@@ -282,3 +282,62 @@ def publish_tweet(
         "text": data.get("text", text),
         "status_code": response.status_code,
     }
+
+
+def publish_thread(
+    session_id: str,
+    tweets: list[str],
+) -> dict[str, Any]:
+    """Publish a Twitter thread — each tweet replies to the previous one.
+
+    Args:
+        session_id: Active OAuth session ID.
+        tweets: List of tweet texts in order (first tweet posted standalone,
+                subsequent tweets as replies to maintain the thread).
+
+    Returns:
+        Dict with thread_id (first tweet's id), tweet_ids list, tweet_count.
+    """
+    if not tweets:
+        raise RuntimeError("Tweet list cannot be empty")
+
+    token_data = _token_for_session(session_id)
+    access_token = str(token_data["access_token"])
+
+    tweet_ids: list[str] = []
+    reply_to_id: str | None = None
+
+    for i, text in enumerate(tweets):
+        if not text.strip():
+            continue
+
+        payload: dict[str, Any] = {"text": text.strip()}
+        if reply_to_id:
+            payload["reply"] = {"in_reply_to_tweet_id": reply_to_id}
+
+        response = requests.post(
+            TWITTER_TWEET_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            timeout=30,
+        )
+
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Twitter thread publish failed on tweet {i + 1}/{len(tweets)}: {response.text}"
+            )
+
+        data = response.json().get("data", {})
+        tweet_id = data.get("id", "")
+        tweet_ids.append(tweet_id)
+        reply_to_id = tweet_id
+
+    return {
+        "session_id": session_id,
+        "thread_id": tweet_ids[0] if tweet_ids else "",
+        "tweet_ids": tweet_ids,
+        "tweet_count": len(tweet_ids),
+    }

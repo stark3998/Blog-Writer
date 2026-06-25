@@ -100,6 +100,33 @@ async def publish_blog_post(request: PublishRequest):
         except Exception as deploy_exc:
             logger.warning(f"Portfolio deploy trigger failed (non-blocking): {deploy_exc}")
 
+        # Auto-post Twitter thread if TWITTER_AUTO_SESSION_ID is configured
+        import os
+        twitter_session_id = os.environ.get("TWITTER_AUTO_SESSION_ID", "").strip()
+        if twitter_session_id:
+            try:
+                from backend.services.twitter_service import compose_thread
+                from backend.tools.twitter_publisher import publish_thread as _publish_thread
+                from backend.db.cosmos_client import get_twitter_session
+                session = get_twitter_session(twitter_session_id)
+                if session and session.get("accessToken"):
+                    blog_base = get_blog_base_url()
+                    full_blog_url = f"{blog_base}{blog_url}" if blog_base else blog_url
+                    thread_data = compose_thread(
+                        blog_content=request.content,
+                        title=title,
+                        excerpt=excerpt,
+                        blog_url=full_blog_url,
+                    )
+                    tweet_texts = [t["tweet"] for t in thread_data.get("tweets", [])]
+                    tw_result = _publish_thread(session_id=twitter_session_id, tweets=tweet_texts)
+                    logger.info(
+                        f"Auto-tweeted thread on publish: {tw_result.get('thread_id', '')} "
+                        f"({tw_result.get('tweet_count', 0)} tweets) for {result['slug']}"
+                    )
+            except Exception as tw_exc:
+                logger.warning(f"Auto-tweet on publish failed (non-blocking): {tw_exc}")
+
         return PublishResponse(blog_url=blog_url, slug=result["slug"], title=title)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")

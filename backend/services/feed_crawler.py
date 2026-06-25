@@ -23,7 +23,11 @@ from backend.db.cosmos_client import (
     upsert_crawled_article,
 )
 from backend.services.relevance_classifier import classify_article
-from backend.services.auto_publisher import process_relevant_article, publish_best_linkedin_post
+from backend.services.auto_publisher import (
+    process_relevant_article,
+    publish_best_linkedin_post,
+    publish_best_twitter_thread,
+)
 from backend.services.notification_service import notify
 
 logger = logging.getLogger(__name__)
@@ -346,6 +350,7 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
         topics = source.get("topics", ["cloud security", "azure", "ai"])
         max_to_generate = source.get("maxArticlesToGenerate", 1)
         linkedin_candidates: list[dict[str, Any]] = []
+        twitter_candidates: list[dict[str, Any]] = []
 
         # Phase 1: Classify all new articles (fetch content for better AI classification)
         from backend.services.relevance_classifier import fetch_article_content
@@ -467,6 +472,11 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                         **result["linkedin_data"],
                         "crawled_article_id": aid,
                     })
+                if result.get("twitter_data"):
+                    twitter_candidates.append({
+                        **result["twitter_data"],
+                        "crawled_article_id": aid,
+                    })
             except Exception as exc:
                 logger.error(f"Failed to process article {article['url']}: {exc}")
                 crawled_record["status"] = "error"
@@ -488,6 +498,19 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
                     winner_record["status"] = "published"
                     upsert_crawled_article(winner_record)
 
+        # Phase 4b: Select and publish the best Twitter thread
+        twitter_result = None
+        if twitter_candidates:
+            twitter_result = publish_best_twitter_thread(twitter_candidates, source)
+            if twitter_result and twitter_result.get("thread_id"):
+                winner_aid = twitter_candidates[twitter_result["selected_index"]]["crawled_article_id"]
+                winner_record = get_crawled_article(winner_aid)
+                if winner_record:
+                    winner_record["twitterThreadId"] = twitter_result["thread_id"]
+                    if winner_record.get("status") != "published":
+                        winner_record["status"] = "published"
+                    upsert_crawled_article(winner_record)
+
         # Update job and source
         now = datetime.now(timezone.utc).isoformat()
         job_updates.update({
@@ -499,6 +522,8 @@ def crawl_feed_source(source_id: str) -> dict[str, Any]:
         if linkedin_result and linkedin_result.get("post_id"):
             job_updates["linkedinPostId"] = linkedin_result["post_id"]
             job_updates["linkedinSelectedIndex"] = linkedin_result["selected_index"]
+        if twitter_result and twitter_result.get("thread_id"):
+            job_updates["twitterThreadId"] = twitter_result["thread_id"]
         update_crawl_job(job["id"], job_updates)
         update_feed_source(source_id, {"lastCrawledAt": now})
 
@@ -773,6 +798,11 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                         **result["linkedin_data"],
                         "crawled_article_id": aid,
                     })
+                if result.get("twitter_data"):
+                    twitter_candidates.append({
+                        **result["twitter_data"],
+                        "crawled_article_id": aid,
+                    })
 
                 yield {
                     "type": "generated",
@@ -844,6 +874,34 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                     },
                 }
 
+        # Phase 4b: Select and publish the best Twitter thread
+        twitter_result = None
+        if twitter_candidates:
+            yield {
+                "type": "selecting_best_twitter",
+                "data": {"candidates": len(twitter_candidates)},
+            }
+
+            twitter_result = publish_best_twitter_thread(twitter_candidates, source)
+
+            if twitter_result and twitter_result.get("thread_id"):
+                winner_aid = twitter_candidates[twitter_result["selected_index"]]["crawled_article_id"]
+                winner_record = get_crawled_article(winner_aid)
+                if winner_record:
+                    winner_record["twitterThreadId"] = twitter_result["thread_id"]
+                    if winner_record.get("status") != "published":
+                        winner_record["status"] = "published"
+                    upsert_crawled_article(winner_record)
+
+                yield {
+                    "type": "twitter_thread_published",
+                    "data": {
+                        "thread_id": twitter_result["thread_id"],
+                        "title": twitter_result.get("title", ""),
+                        "tweet_count": twitter_result.get("tweet_count", 0),
+                    },
+                }
+
         # Finalize
         now = datetime.now(timezone.utc).isoformat()
         job_updates.update({
@@ -855,6 +913,8 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
         if linkedin_result and linkedin_result.get("post_id"):
             job_updates["linkedinPostId"] = linkedin_result["post_id"]
             job_updates["linkedinSelectedIndex"] = linkedin_result["selected_index"]
+        if twitter_result and twitter_result.get("thread_id"):
+            job_updates["twitterThreadId"] = twitter_result["thread_id"]
         update_crawl_job(job["id"], job_updates)
         update_feed_source(source_id, {"lastCrawledAt": now})
 
@@ -868,6 +928,7 @@ def crawl_feed_source_stream(source_id: str) -> Generator[dict[str, Any], None, 
                 "articles_relevant": relevant_count,
                 "articles_processed": processed_count,
                 "linkedin_published": linkedin_result.get("post_id", "") if linkedin_result else "",
+                "twitter_published": twitter_result.get("thread_id", "") if twitter_result else "",
                 "status": "completed",
             },
         }

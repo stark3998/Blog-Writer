@@ -113,9 +113,9 @@ def _publish_to_linkedin(draft: dict[str, Any]) -> dict[str, Any]:
 
 
 def _publish_to_twitter(draft: dict[str, Any]) -> dict[str, Any]:
-    """Compose and publish a tweet from the draft."""
-    from backend.services.twitter_service import compose_tweet
-    from backend.tools.twitter_publisher import publish_tweet
+    """Compose and publish a Twitter thread from the draft."""
+    from backend.services.twitter_service import compose_thread
+    from backend.tools.twitter_publisher import publish_thread
 
     # Find an active Twitter session
     session_id = os.environ.get("TWITTER_AUTO_SESSION_ID", "").strip()
@@ -134,7 +134,7 @@ def _publish_to_twitter(draft: dict[str, Any]) -> dict[str, Any]:
     slug = draft.get("slug", draft["id"])
     blog_url = f"{blog_base}/blog/{slug}" if blog_base else ""
 
-    tweet_data = compose_tweet(
+    thread_data = compose_thread(
         blog_content=content,
         title=title,
         excerpt=excerpt,
@@ -142,15 +142,13 @@ def _publish_to_twitter(draft: dict[str, Any]) -> dict[str, Any]:
         source_url=source_url,
     )
 
-    result = publish_tweet(
-        session_id=session_id,
-        tweet_text=tweet_data.get("tweet_text", ""),
-    )
+    tweet_texts = [t["tweet"] for t in thread_data.get("tweets", [])]
+    result = publish_thread(session_id=session_id, tweets=tweet_texts)
 
     return {
         "platform": "twitter",
-        "tweet_id": result.get("tweet_id", ""),
-        "status_code": result.get("status_code", 0),
+        "thread_id": result.get("thread_id", ""),
+        "tweet_count": result.get("tweet_count", 0),
     }
 
 

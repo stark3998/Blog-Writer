@@ -163,13 +163,33 @@ jobs:
         run: terraform -chdir="$TF_WORKING_DIR" init
 
       - name: Terraform fmt check
-        run: terraform -chdir="$TF_WORKING_DIR" fmt -check *.tf
+        run: terraform -chdir="$TF_WORKING_DIR" fmt -check .
 
       - name: Terraform validate
         run: terraform -chdir="$TF_WORKING_DIR" validate -no-color
 
-      - name: Terraform plan infra
-        run: timeout 20m terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra
+      - name: Terraform plan infra (with stale-lock recovery)
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          if timeout 20m terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra 2>&1 | tee tfplan-infra.log; then
+            exit 0
+          fi
+
+          if grep -q "Error acquiring the state lock" tfplan-infra.log; then
+            LOCK_ID=$(sed -n 's/.*ID:[[:space:]]*\(.*\)$/\1/p' tfplan-infra.log | head -n1 | xargs)
+            if [ -n "$LOCK_ID" ]; then
+              echo "Detected stale Terraform state lock: $LOCK_ID"
+              terraform -chdir="$TF_WORKING_DIR" force-unlock -force "$LOCK_ID"
+              echo "Retrying terraform plan after force-unlock"
+              timeout 20m terraform -chdir="$TF_WORKING_DIR" plan -out=tfplan-infra
+              exit 0
+            fi
+          fi
+
+          echo "Terraform plan failed for a non-lock reason or lock ID was not found"
+          exit 1
 
       - name: Terraform apply infra
         run: timeout 20m terraform -chdir="$TF_WORKING_DIR" apply -auto-approve tfplan-infra

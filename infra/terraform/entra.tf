@@ -2,16 +2,8 @@
 
 data "azuread_client_config" "current" {}
 
-data "azuread_application" "blog_writer" {
-  client_id = var.entra_client_id
-}
-
-data "azuread_service_principal" "blog_writer" {
-  client_id = var.entra_client_id
-}
-
 output "entra_client_id" {
-  value       = data.azuread_application.blog_writer.client_id
+  value       = var.entra_client_id
   description = "Entra ID Application (client) ID for Blog Writer"
 }
 

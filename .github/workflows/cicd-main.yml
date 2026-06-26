@@ -163,7 +163,10 @@ jobs:
         run: terraform -chdir="$TF_WORKING_DIR" init
 
       - name: Terraform fmt check
-        run: terraform -chdir="$TF_WORKING_DIR" fmt -check .
+        shell: bash
+        run: |
+          cd "$TF_WORKING_DIR"
+          terraform fmt -check *.tf
 
       - name: Terraform validate
         run: terraform -chdir="$TF_WORKING_DIR" validate -no-color

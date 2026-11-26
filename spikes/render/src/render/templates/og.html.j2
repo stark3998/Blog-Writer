@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>{{ spec.title }}</title>
+<style>{{ font_css }}{{ css_vars }}
+{% include "og.css" %}
+</style>
+</head>
+<body>
+<main class="og" data-fit="og">
+<div class="og__rail" aria-hidden="true"></div>
+<div class="og__body" data-fit="og body">
+{% if spec.kicker %}<p class="og__kicker">{{ spec.kicker }}</p>{% endif %}
+<h1 class="og__title" style="font-size:{{ fit(spec.title, 'og_title') }}px">{{ spec.title }}</h1>
+<p class="og__by"><span class="og__name">{{ brand.author_name }}</span>{% if brand.site_name %}<span class="og__site">{{ brand.site_name }}</span>{% endif %}</p>
+</div>
+</main>
+</body>
+</html>

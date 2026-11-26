@@ -1,0 +1,15 @@
+---
+title: "Migrating SSO: \"the boring way\""
+slug: okta-to-entra-migration
+excerpt: "How we moved 40 apps from Okta to Entra ID without a flag day."
+pillar: identity
+format: case-study
+tags: [identity, entra]
+series:
+  id: okta-entra-field-notes
+  title: "Okta → Entra field notes"
+  part: 2
+  total: 5
+---
+
+Body starts right after the closing fence, with no blank line.

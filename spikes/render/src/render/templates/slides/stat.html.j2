@@ -1,0 +1,10 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<div class="stat">
+<p class="stat__value" style="font-size:{{ fit(s.value, 'stat') }}px">{{ s.value }}</p>
+<p class="stat__label">{{ s.label }}</p>
+{% if s.context %}<p class="stat__context">{{ s.context }}</p>{% endif %}
+</div>
+{% if s.source %}<p class="source">Source: {{ s.source }}</p>{% endif %}
+{% endcall %}

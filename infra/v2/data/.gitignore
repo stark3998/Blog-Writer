@@ -1,0 +1,7 @@
+.terraform/
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+backend.hcl
+*.tfplan
+tfplan*

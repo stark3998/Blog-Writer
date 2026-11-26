@@ -1,0 +1,10 @@
+{
+  "name": "bw-render-vendor",
+  "private": true,
+  "description": "Pinned browser-side bundles for the render spike. Runtime uses @mermaid-js/tiny/dist/mermaid.tiny.js, and mermaid/dist/mermaid.min.js only for mindmap, architecture or KaTeX diagrams.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@mermaid-js/tiny": "12.3.0",
+    "mermaid": "12.3.0"
+  }
+}

@@ -1,0 +1,3 @@
+# Private workspace for one owner. Nothing here is meant to be indexed.
+User-agent: *
+Disallow: /

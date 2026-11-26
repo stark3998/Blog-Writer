@@ -1,0 +1,9 @@
+# Keep the build context small and free of local state (browsers, venvs, outputs, caches).
+.venv/
+.ms-playwright/
+vendor/node_modules/
+out/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]

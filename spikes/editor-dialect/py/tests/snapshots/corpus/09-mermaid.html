@@ -1,0 +1,18 @@
+<p>A flowchart:</p>
+<figure class="mermaid" data-diagram="5a46a1fe5b8f2a8394c9f3070e7faa20f0ad82772a34f2cd35e70ec2496ac864"><pre class="mermaid-source"><code>flowchart LR
+  A[Agent] --&gt;|tool call| G{Gateway}
+  G --&gt;|allowed| T[Tool]
+  G --&gt;|denied| L[(Audit log)]
+</code></pre></figure>
+<p>A sequence diagram:</p>
+<figure class="mermaid" data-diagram="7a4b9cc55b9e9593a32075bc659214c479a96ae020b69b9c8193dab7fde47035"><pre class="mermaid-source"><code>sequenceDiagram
+  participant U as User
+  participant A as Agent
+  U-&gt;&gt;A: Request
+  A--&gt;&gt;U: Response with [^citation-like] text
+</code></pre></figure>
+<p>Mermaid class syntax uses triple colons, which must not be read as a callout:</p>
+<figure class="mermaid" data-diagram="715d912c06e6bfe91e1202364a76a87584953d3ef8a06922de1340fafdac1097"><pre class="mermaid-source"><code>flowchart TD
+  A:::critical --&gt; B
+  classDef critical fill:#f96
+</code></pre></figure>

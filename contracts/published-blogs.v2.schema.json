@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blogwriter:contracts:published-blogs:v2",
+  "title": "published-blogs document, schema version 2",
+  "description": "One document per post in the Cosmos DB containers published-blogs and published-blogs-staging (partition key /id). Written only by the Blog Writer server; read by the portfolio build. Rules JSON Schema cannot express (id == slug, redirect target, timestamps not in the future, toc and media consistency with htmlContent, htmlContent inside sanitizer-profile.json, document size) are listed in contracts/README.md and enforced by blogwriter.publish.contract. Patterns are ECMA-262 with the u flag (Ajv's default).",
+  "type": "object",
+  "required": ["id", "slug", "schemaVersion", "status", "updatedAt"],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/slug",
+      "description": "Cosmos id and partition key. Always equal to slug: the portfolio point-reads item(slug, slug)."
+    },
+    "slug": {
+      "$ref": "#/$defs/slug",
+      "description": "URL slug (/blog/<slug>). Immutable once published: a rename writes a redirect stub under the old slug."
+    },
+    "schemaVersion": {
+      "const": 2,
+      "description": "Major version of this contract. Documents without it are v1 legacy documents."
+    },
+    "status": {
+      "enum": ["published", "redirect", "unpublished"],
+      "description": "published renders (once publishedAt has passed); redirect is a stub pointing at redirectTo; unpublished is a tombstone that renders nothing and keeps the slug reserved."
+    },
+    "redirectTo": {
+      "$ref": "#/$defs/slug",
+      "description": "Slug of the document that replaces this one. Only for status redirect; never equal to id."
+    },
+    "title": {
+      "type": "string",
+      "$ref": "#/$defs/plainText",
+      "maxLength": 150,
+      "description": "Post title (v1 field)."
+    },
+    "excerpt": {
+      "type": "string",
+      "$ref": "#/$defs/plainText",
+      "maxLength": 400,
+      "description": "Summary for listings, feeds and meta description fallbacks (v1 field)."
+    },
+    "htmlContent": {
+      "$ref": "#/$defs/body",
+      "description": "Sanitized HTML fragment (no html/head/body wrapper) inside contracts/sanitizer-profile.json. Media references point at assets[].path (v1 field)."
+    },
+    "mdxContent": {
+      "$ref": "#/$defs/body",
+      "description": "Canonical article-dialect Markdown (frontmatter and body) of the published version, at most 512 KiB of UTF-8. Kept for compatibility and export; readers render htmlContent, never this (v1 field)."
+    },
+    "sourceUrl": {
+      "$ref": "#/$defs/httpsUrl",
+      "description": "Optional primary source the post responds to (v1 field). Omitted when there is none; never an empty string."
+    },
+    "sourceType": {
+      "$ref": "#/$defs/token",
+      "description": "Optional origin label (v1 field), e.g. original or news-analysis."
+    },
+    "publishedAt": {
+      "$ref": "#/$defs/utcTimestamp",
+      "description": "First publication instant. Readers never render a document before this instant."
+    },
+    "updatedAt": {
+      "$ref": "#/$defs/utcTimestamp",
+      "description": "Last write instant (content change, correction, redirect or unpublish). Never earlier than publishedAt."
+    },
+    "date": {
+      "$ref": "#/$defs/fullDate",
+      "description": "v1 compatibility only: the UTC calendar date of publishedAt. Readers use publishedAt."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tag" },
+      "maxItems": 10,
+      "uniqueItems": true,
+      "description": "Tag slugs from the article frontmatter, in frontmatter order (may be empty)."
+    },
+    "pillar": {
+      "$ref": "#/$defs/slug",
+      "description": "Pillar id from the Library settings."
+    },
+    "format": {
+      "$ref": "#/$defs/slug",
+      "description": "Format-pack id, e.g. case-study, framework, deep-explainer, news-analysis."
+    },
+    "series": {
+      "type": "object",
+      "required": ["id", "title", "part"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "$ref": "#/$defs/plainText", "maxLength": 150 },
+        "part": { "$ref": "#/$defs/seriesNumber" },
+        "total": {
+          "$ref": "#/$defs/seriesNumber",
+          "description": "Omitted when unknown; otherwise at least part."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional series membership."
+    },
+    "heroImage": {
+      "type": "object",
+      "required": ["url", "alt", "width", "height"],
+      "properties": {
+        "url": { "$ref": "#/$defs/url" },
+        "alt": { "type": "string", "$ref": "#/$defs/plainText", "maxLength": 300 },
+        "width": { "$ref": "#/$defs/dimension" },
+        "height": { "$ref": "#/$defs/dimension" }
+      },
+      "additionalProperties": false,
+      "description": "Hero image (a typographic card by default). A site-relative url must be one of assets[].path."
+    },
+    "ogImage": {
+      "type": "object",
+      "required": ["url", "width", "height"],
+      "properties": {
+        "url": {
+          "allOf": [
+            { "$ref": "#/$defs/url" },
+            {
+              "type": "string",
+              "pattern": "\\.png$",
+              "description": "a PNG file (.png): LinkedIn and X cannot render SVG Open Graph images"
+            }
+          ]
+        },
+        "width": { "const": 1200 },
+        "height": { "const": 630 }
+      },
+      "additionalProperties": false,
+      "description": "1200x630 PNG Open Graph image. A site-relative url must be one of assets[].path."
+    },
+    "assets": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["path", "blob", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/assetPath" },
+          "blob": { "$ref": "#/$defs/blobName" },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Media the portfolio copies from the private Blob container published into public/blog-media (same origin). path is /blog-media/<id>/<file>, blob is <id>/<file> with the same file, sha256 is the hex digest of the blob bytes."
+    },
+    "readingTimeMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "wordCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200000
+    },
+    "toc": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "level"],
+        "properties": {
+          "id": { "$ref": "#/$defs/headingId" },
+          "text": { "type": "string", "$ref": "#/$defs/text", "maxLength": 300 },
+          "level": { "enum": [2, 3] }
+        },
+        "additionalProperties": false
+      },
+      "description": "Table of contents: every h2 and h3 of htmlContent that carries an id, in document order (may be empty)."
+    },
+    "citations": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "url"],
+        "properties": {
+          "id": { "$ref": "#/$defs/sourceId" },
+          "title": { "type": "string", "$ref": "#/$defs/text", "maxLength": 500 },
+          "url": { "$ref": "#/$defs/url" },
+          "publisher": { "type": "string", "$ref": "#/$defs/text", "maxLength": 200 },
+          "date": { "$ref": "#/$defs/partialDate" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Sources cited by the article, in footnote order (may be empty). id is the brief source id used as the [^src-id] label."
+    },
+    "corrections": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["date", "note"],
+        "properties": {
+          "date": { "$ref": "#/$defs/fullDate" },
+          "note": { "type": "string", "$ref": "#/$defs/text", "maxLength": 1000 }
+        },
+        "additionalProperties": false
+      },
+      "description": "Dated correction notes, oldest first (may be empty). Dates fall between the UTC dates of publishedAt and updatedAt."
+    },
+    "canonicalUrl": {
+      "$ref": "#/$defs/httpsUrl",
+      "description": "Optional canonical URL when it is not the post's own URL."
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "metaTitle": { "type": "string", "$ref": "#/$defs/plainText", "maxLength": 150 },
+        "metaDescription": { "type": "string", "$ref": "#/$defs/plainText", "maxLength": 400 }
+      },
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "Optional overrides; readers fall back to title and excerpt."
+    }
+  },
+  "patternProperties": {
+    "^_(?:rid|self|etag|attachments|ts|lsn)$": {
+      "description": "Cosmos DB system properties, present on documents read back from the store. Writers never set them."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": { "status": { "const": "published" } }
+      },
+      "then": {
+        "required": [
+          "title",
+          "excerpt",
+          "htmlContent",
+          "publishedAt",
+          "tags",
+          "pillar",
+          "format",
+          "heroImage",
+          "ogImage",
+          "assets",
+          "readingTimeMinutes",
+          "wordCount",
+          "toc",
+          "citations",
+          "corrections"
+        ],
+        "properties": {
+          "title": true,
+          "excerpt": true,
+          "htmlContent": true,
+          "publishedAt": true,
+          "tags": true,
+          "pillar": true,
+          "format": true,
+          "heroImage": true,
+          "ogImage": true,
+          "assets": true,
+          "readingTimeMinutes": true,
+          "wordCount": true,
+          "toc": true,
+          "citations": true,
+          "corrections": true,
+          "redirectTo": {
+            "not": {},
+            "description": "is only allowed when status is \"redirect\""
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": { "status": { "const": "redirect" } }
+      },
+      "then": {
+        "required": ["redirectTo"],
+        "properties": { "redirectTo": true },
+        "propertyNames": {
+          "enum": [
+            "id",
+            "slug",
+            "schemaVersion",
+            "status",
+            "redirectTo",
+            "updatedAt",
+            "_rid",
+            "_self",
+            "_etag",
+            "_attachments",
+            "_ts",
+            "_lsn"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": { "status": { "const": "unpublished" } }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "id",
+            "slug",
+            "schemaVersion",
+            "status",
+            "updatedAt",
+            "_rid",
+            "_self",
+            "_etag",
+            "_attachments",
+            "_ts",
+            "_lsn"
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "lowercase kebab-case: words of [a-z0-9] joined by single hyphens"
+    },
+    "tag": {
+      "type": "string",
+      "$ref": "#/$defs/slug",
+      "maxLength": 40
+    },
+    "sourceId": {
+      "type": "string",
+      "$ref": "#/$defs/slug",
+      "maxLength": 64
+    },
+    "headingId": {
+      "$ref": "#/$defs/slug",
+      "description": "a heading id from htmlContent (lowercase kebab-case)"
+    },
+    "token": {
+      "type": "string",
+      "maxLength": 40,
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$",
+      "description": "a lowercase token: words of [a-z0-9] joined by single hyphens or underscores"
+    },
+    "plainText": {
+      "type": "string",
+      "pattern": "^[^\\s<\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff](?:[^<\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff]*[^\\s<\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff])?$",
+      "description": "non-empty plain text on one line: no '<', no control characters or line breaks, no leading or trailing whitespace"
+    },
+    "text": {
+      "type": "string",
+      "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff](?:[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff]*[^\\s\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ufeff\\ufffe\\uffff\\ud800-\\udfff])?$",
+      "description": "non-empty text on one line ('<' allowed; readers escape it): no control characters or line breaks, no leading or trailing whitespace"
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000\\ud800-\\udfff]*$",
+      "description": "document text: no NUL characters and no unpaired surrogates"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$",
+      "description": "a UTC instant with second precision, YYYY-MM-DDTHH:MM:SSZ (fixed width, so string order is time order)"
+    },
+    "fullDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$",
+      "description": "a calendar date, YYYY-MM-DD"
+    },
+    "partialDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12][0-9]|3[01]))?)?$",
+      "description": "a date, YYYY, YYYY-MM or YYYY-MM-DD"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s\\\\\\x00-\\x1f\\x7f]+$",
+      "description": "an absolute https:// URL without whitespace, backslashes or control characters"
+    },
+    "url": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^(?:https://[^\\s\\\\\\x00-\\x1f\\x7f]+|/(?![/\\\\])[^\\s\\\\\\x00-\\x1f\\x7f]*)$",
+      "description": "an https:// URL or a site-relative path starting with a single '/' (the sanitizer profile's src rule)"
+    },
+    "assetPath": {
+      "type": "string",
+      "maxLength": 300,
+      "pattern": "^/blog-media/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:[._-][a-z0-9]+)*\\.(?:avif|gif|jpeg|jpg|png|svg|webp)$",
+      "description": "/blog-media/<slug>/<file>, where file is lowercase [a-z0-9._-] with an image extension"
+    },
+    "blobName": {
+      "type": "string",
+      "maxLength": 300,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:[._-][a-z0-9]+)*\\.(?:avif|gif|jpeg|jpg|png|svg|webp)$",
+      "description": "<slug>/<file> inside the Blob container published"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "a SHA-256 digest as 64 lowercase hex characters"
+    },
+    "dimension": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16384
+    },
+    "seriesNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9999
+    }
+  }
+}

@@ -42,3 +42,10 @@ override.tf.json
 # OS
 .DS_Store
 Thumbs.db
+
+# v2 hygiene
+infra/terraform/outputs.txt
+.env.*
+!.env.example
+!frontend/.env.example
+backups/

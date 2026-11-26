@@ -1,0 +1,25 @@
+{#- Test-only template: references remote assets every way a page can. Production templates never do.
+    It deliberately has NO Content-Security-Policy so that the route guard is exercised on its own. -#}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+{% if csp %}<meta http-equiv="Content-Security-Policy" content="{{ csp }}">{% endif %}
+<title>remote assets</title>
+<style>
+@import url("{{ canary }}/import.css");
+@font-face{font-family:Remote;src:url("{{ canary }}/font.woff2") format("woff2")}
+body{margin:0;background:url("{{ canary }}/background.png");font-family:Remote,sans-serif}
+</style>
+<link rel="stylesheet" href="{{ canary }}/link.css">
+<link rel="prefetch" href="{{ canary }}/prefetch">
+</head>
+<body>
+<img id="https" src="https://example.com/tracker.png" alt="">
+<img id="http" src="{{ canary }}/pixel.png" alt="">
+<img id="data" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="">
+<img id="file" src="file:///etc/hosts" alt="">
+<iframe src="{{ canary }}/frame.html"></iframe>
+<p>Remote</p>
+</body>
+</html>

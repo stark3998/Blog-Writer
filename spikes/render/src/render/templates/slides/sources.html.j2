@@ -1,0 +1,10 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+<ol class="refs">
+{% for src in s.sources %}
+<li class="refs__item"><span class="refs__n">{{ loop.index }}</span><div class="refs__text"><p class="refs__pub">{{ src.publisher }}</p><p class="refs__title">{{ src.title }}{% if src.date %}<span class="refs__date">, {{ src.date }}</span>{% endif %}</p></div></li>
+{% endfor %}
+</ol>
+{% endcall %}

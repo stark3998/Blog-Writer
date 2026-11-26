@@ -1,9 +1,8 @@
 name: Main CI CD
 
+# v1 pipeline: manual-only while v2 is rebuilt (see infra/v2 and the v2 workflows).
+# A push to main must not run Terraform against the v1 stack or roll it to a placeholder image.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       skip_build:

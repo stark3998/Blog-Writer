@@ -1,0 +1,129 @@
+name: CI
+
+# v2 checks for the server, the web app and the shared contracts. No secrets, read-only token.
+# Pushes run on main only; branches get CI through their pull request (no duplicate runs).
+# The paths are everything the jobs read: the server's db tests check its container registry
+# against the Terraform in infra/v2/data.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "web/**"
+      - "contracts/**"
+      - "infra/v2/data/*.tf"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "web/**"
+      - "contracts/**"
+      - "infra/v2/data/*.tf"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  # One group per pull request, where a new push cancels the superseded run. Each main commit
+  # gets a group of its own: in a shared group a newer run would replace a pending one.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  server:
+    name: Server (ruff, pyright, pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    env:
+      # A uv-managed CPython (the newest 3.12 that uv 0.12.5 knows), never the runner's
+      # older system Python: the contract's HTML audit relies on a patched html.parser.
+      UV_PYTHON_PREFERENCE: only-managed
+      PYRIGHT_PYTHON_IGNORE_WARNINGS: "1"
+      # The plan runs CI with asyncio debug: cross-thread loop calls raise, slow callbacks log.
+      PYTHONASYNCIODEBUG: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.12.5"
+          require-checksums: "true"
+          working-directory: server
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install (locked)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run --locked ruff check .
+
+      - name: Format
+        run: uv run --locked ruff format --check .
+
+      - name: Type-check
+        run: uv run --locked pyright
+
+      - name: Test
+        run: uv run --locked pytest -q
+
+  web-present:
+    name: Detect the web app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      lockfile: ${{ steps.detect.outputs.lockfile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: web/package-lock.json
+          sparse-checkout-cone-mode: false
+
+      # hashFiles is not available in a job-level `if`, so the check runs here.
+      - name: Look for web/package-lock.json
+        id: detect
+        run: echo "lockfile=${{ hashFiles('web/package-lock.json') != '' }}" >> "$GITHUB_OUTPUT"
+
+  web:
+    name: Web (lint, typecheck, test, build)
+    needs: web-present
+    # Skipped until the web app (and its lockfile) exists.
+    if: needs.web-present.outputs.lockfile == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Exact pin: jsdom needs >= 24.15.0, and the editor's TipTap pins are gated on tests.
+          node-version: "24.22.3"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install (locked)
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

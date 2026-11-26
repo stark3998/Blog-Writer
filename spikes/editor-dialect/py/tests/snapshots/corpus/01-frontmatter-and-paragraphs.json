@@ -1,0 +1,19 @@
+{
+  "frontmatter": {
+    "title": "Frontmatter and plain paragraphs",
+    "slug": "frontmatter-and-paragraphs",
+    "excerpt": "The smallest complete article: canonical frontmatter, a lede and two paragraphs.",
+    "pillar": "governance",
+    "format": "news-analysis",
+    "tags": [
+      "corpus",
+      "basics"
+    ],
+    "series": null
+  },
+  "toc": [],
+  "citations": [],
+  "diagrams": [],
+  "wordCount": 74,
+  "readingTimeMinutes": 1
+}

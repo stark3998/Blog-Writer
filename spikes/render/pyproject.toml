@@ -1,0 +1,69 @@
+[project]
+name = "bw-render-spike"
+version = "0.1.0"
+description = "Blog Writer v2 Phase 0 spike: isolated Chromium rendering of carousels, OG cards and Mermaid diagrams."
+requires-python = ">=3.12,<3.13"
+# Exact pins: the spike graduates into server/render, where Renovate owns upgrades.
+dependencies = [
+    "jinja2==3.1.6",
+    "lxml==6.1.3",
+    "markupsafe==3.0.4",
+    "playwright==1.65.2",
+    "psutil==7.2.2",
+    "pydantic==2.14.4",
+    "pypdf==7.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pillow==13.0.0",
+    "pyright==1.1.414",
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "ruff==0.17.6",
+    "types-lxml==2026.2.16",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "render"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: renders full decks in Chromium (still runs by default)",
+]
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "PTH"]
+ignore = [
+    "S101", # assert is fine in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "PTH", "ASYNC240"]  # tests may check the filesystem synchronously
+"bench/**" = ["S", "T20"]
+
+[tool.pyright]
+include = ["src", "tests", "bench"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportPrivateUsage = false
+venvPath = "."
+venv = ".venv"

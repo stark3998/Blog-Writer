@@ -1,0 +1,9 @@
+# Copy to backend.hcl (gitignored) or generate it from the bootstrap root:
+#   terraform -chdir=bootstrap output -raw backend_config > backend.hcl
+# then: terraform init -backend-config=backend.hcl
+#
+# use_azuread_auth = true is set in versions.tf. With Entra ID auth the azurerm
+# backend needs only these three values (no subscription or resource group).
+storage_account_name = "<state storage account from the bootstrap output>"
+container_name       = "tfstate"
+key                  = "blog-writer-v2.tfstate"

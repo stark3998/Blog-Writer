@@ -1,0 +1,23 @@
+# Local backend settings (generated from the bootstrap output).
+backend.hcl
+*.backend.hcl
+
+# Already ignored at the repository root; repeated so infra/v2 stays safe if
+# the root .gitignore changes.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan*
+*.tfvars
+*.tfvars.json
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Keep the provider lock files and the examples.
+!.terraform.lock.hcl
+!*.tfvars.example
+!backend.hcl.example

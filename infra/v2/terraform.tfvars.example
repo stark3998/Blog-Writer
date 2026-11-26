@@ -1,0 +1,61 @@
+# Copy to terraform.tfvars (gitignored) and fill in. This repository is PUBLIC:
+# never commit real subscription/tenant/object IDs, email addresses or names.
+# The all-zero GUIDs below are placeholders; validation rejects them.
+# In CI, provide the same values as TF_VAR_* from GitHub environment secrets.
+
+# Leave unset and export ARM_SUBSCRIPTION_ID instead, or set it here locally.
+# subscription_id = "00000000-0000-0000-0000-000000000000"
+
+location            = "eastus"
+resource_group_name = "rg-blog-writer-v2"
+
+# Lab-required resource group tags (exact names: Purpose, Owner, Expiry Date).
+tag_purpose     = "<purpose>"
+tag_owner       = "<owner-alias>"
+tag_expiry_date = "2027-06-30"
+
+# Owner (Entra object ID: az ad signed-in-user show --query id -o tsv).
+owner_object_id = "00000000-0000-0000-0000-000000000000"
+alert_email     = "owner@example.com"
+
+# GitHub OIDC (case-sensitive, must match the token's 'sub' claim).
+github_owner     = "<github-user-or-org>"
+github_repo      = "Blog-Writer"
+portfolio_repo   = "portfolio"
+portfolio_branch = "master"
+
+# Easy Auth: client ID of the Entra app registration the owner created
+# (README owner step 1). Or set create_entra_app = true.
+easyauth_client_id  = "00000000-0000-0000-0000-000000000000"
+easyauth_credential = "federated"
+# create_entra_app  = false
+
+# Container app. Keep the placeholder image and TCP probes for the first apply;
+# flip http_health_probes_enabled after deploy.yml has shipped a real image.
+http_health_probes_enabled = false
+
+# Key Vault secrets the owner has already set (README owner step 2). Each one
+# listed here becomes a versionless Key Vault reference on the container app.
+key_vault_secrets_set = [
+  # "app-encryption-key",
+  # "vapid-private-key",
+  # "vapid-public-key",
+  # "portfolio-dispatch-token",
+  # "linkedin-client-secret",
+]
+
+# Model capacity (units of 1K TPM), merged over the defaults in locals.tf.
+# model_capacity = {
+#   "gpt-6.2-sol" = 500
+# }
+
+# Optional features (all default off).
+# enable_gpt_5_6_sol          = false
+# enable_image_generation     = false
+# enable_webiq                = false # register Microsoft.WebIQ first
+# enable_claude_deployment    = false # owner deploys Claude in the portal instead
+# ci_infra_rbac_admin_enabled = false
+
+claude_deployment_name = "claude-opus-5-5"
+monthly_budget_amount  = 300
+enable_locks           = true

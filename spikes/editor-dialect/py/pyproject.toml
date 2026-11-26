@@ -1,0 +1,42 @@
+[project]
+name = "article-render"
+version = "0.1.0"
+description = "Server-side renderer, sanitizer and linter for the Blog Writer v2 article Markdown dialect (spike)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "markdown-it-py==4.3.0",
+    "mdit-py-plugins==0.7.0",
+    "nh3==0.3.8",
+    "pygments==2.21.0",
+    "pyyaml==6.0.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "ruff==0.17.6",
+    "mypy==2.4.1",
+    "types-pyyaml==6.0.12.20261122",
+    "types-pygments==2.21.0.20261122",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"

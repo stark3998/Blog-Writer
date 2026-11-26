@@ -1,0 +1,5 @@
+# Local tool output for the editor-dialect spike (root .gitignore already covers
+# node_modules/, .venv/, __pycache__/ and .pytest_cache/).
+web/reports/
+.mypy_cache/
+.ruff_cache/

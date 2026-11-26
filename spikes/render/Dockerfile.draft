@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1.7
+#
+# DRAFT - NOT BUILT. Docker was not available on the machine that ran the Phase 0 render spike.
+# This is the render slice of the v2 single-container image (plan: "Target architecture" > "Runtime").
+#
+# Build context is this folder (spikes/render):
+#   docker build -f Dockerfile.draft -t bw-render-spike .
+# Reproduce the ACA budget locally (1 vCPU / 2 GiB, no swap) and print cgroup memory.peak per scenario:
+#   docker run --rm --cpus=1 --memory=2g --memory-swap=2g bw-render-spike
+# If Chromium refuses to start ("No usable sandbox!"), user namespaces are blocked by the runtime's
+# seccomp profile. Record that, then re-run with -e BW_RENDER_CHROMIUM_SANDBOX=0 (see the spike report).
+#
+# TODO(digest-pinning): every FROM below is pinned to an exact version tag but NOT yet to a digest.
+#   Resolve each tag once (docker buildx imagetools inspect <tag>), rewrite as <tag>@sha256:<digest>,
+#   and let Renovate keep the digests current (plan: "Supply chain" - base images by digest).
+#     python:3.12.13-slim-bookworm
+#     node:24.14.1-bookworm-slim
+#     ghcr.io/astral-sh/uv:0.12.5
+# TODO(browser-provenance): `playwright install` downloads Chrome Headless Shell from Playwright's CDN
+#   over HTTPS without a checksum we control. The build is pinned to one browser revision through the
+#   playwright wheel in uv.lock (1.65.2 -> chromium-headless-shell 159.0.8154.6, revision 1255).
+#   Optional hardening: mirror the zip to our ACR/Blob and verify a pinned SHA-256 before install.
+
+ARG PYTHON_IMAGE=python:3.12.13-slim-bookworm
+ARG NODE_IMAGE=node:24.14.1-bookworm-slim
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.5
+
+FROM ${UV_IMAGE} AS uv
+
+# --- Stage 1: pinned Mermaid bundles. npm ci verifies package-lock integrity hashes; we re-check the
+# two files we ship against the SHA-256 values pinned in src/render/settings.py. Only those two files
+# reach the runtime image (no node_modules, no Node runtime: the playwright wheel bundles its driver).
+FROM ${NODE_IMAGE} AS mermaid
+WORKDIR /vendor
+COPY vendor/package.json vendor/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund \
+ && printf '%s  %s\n' \
+      c41f5236091b83f524c4940f97a16b2b14a76f21ff84aea4fd6b66421d8a2a9a node_modules/@mermaid-js/tiny/dist/mermaid.tiny.js \
+      336df803d87a38b70a01e736e666c8f7601d2ce42f5e47c8fafe5d721074b9a3 node_modules/mermaid/dist/mermaid.min.js \
+    | sha256sum -c - \
+ && mkdir -p /out \
+ && cp node_modules/@mermaid-js/tiny/dist/mermaid.tiny.js node_modules/mermaid/dist/mermaid.min.js /out/
+
+# --- Stage 2: runtime.
+FROM ${PYTHON_IMAGE} AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH=/opt/venv/bin:$PATH \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    BW_RENDER_MERMAID_JS=/opt/vendor/mermaid.tiny.js \
+    BW_RENDER_MERMAID_FULL_JS=/opt/vendor/mermaid.min.js \
+    BW_RENDER_MAX_CONCURRENT_JOBS=1 \
+    BW_RENDER_CHROMIUM_SANDBOX=1
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+
+# tini is PID 1: forwards SIGTERM to uvicorn and reaps Chromium's zombie processes.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Locked dependencies first (cached layer), then the browser, then the project itself.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked --no-dev --no-install-project
+
+# Chrome Headless Shell plus exactly the OS libraries it needs (needs root for apt; runs before USER).
+# Fonts: slides embed Inter as data: URIs, so no system fonts are required for our text. Emoji and
+# non-Latin fallback glyphs need e.g. fonts-noto-color-emoji (measure image size before adding).
+RUN playwright install --with-deps --only-shell chromium \
+ && chmod -R a+rX /ms-playwright \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY src ./src
+COPY bench ./bench
+COPY tests/fixtures ./tests/fixtures
+RUN uv sync --locked --no-dev --no-editable
+
+COPY --from=mermaid /out/ /opt/vendor/
+
+RUN groupadd --system --gid 10001 app \
+ && useradd --system --uid 10001 --gid app --home-dir /home/app --create-home --shell /usr/sbin/nologin app
+USER 10001:10001
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+# Spike: measure inside the real container. In v2 this becomes the uvicorn command for server.main.
+CMD ["python", "bench/measure.py", "--runs", "5", "--out", "/tmp/bench.json"]

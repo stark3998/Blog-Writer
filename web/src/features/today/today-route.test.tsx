@@ -5,11 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 import { routes } from '@/app/routes';
 import { getBrowserAppData } from '@/lib/app-data';
+import { server } from '@/test/msw';
 import { findPageHeading } from '@/test/render-app';
 import { ThemeProvider } from '@/theme/theme-provider';
 
+import { todayHandlers } from './testing/handlers';
+
 describe('the Today route', () => {
   it('brings its own data layer when the app does not provide one around the router', async () => {
+    server.use(...todayHandlers());
     // As main.tsx renders it today: no DataProvider above the router.
     render(
       <ThemeProvider>

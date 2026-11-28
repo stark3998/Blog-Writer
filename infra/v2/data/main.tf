@@ -27,20 +27,24 @@ locals {
   # Every v2 container (plan: Data section). default_ttl: null = TTL off,
   # -1 = on with no default (per-item ttl works), n = seconds since last write.
   # TTL is garbage collection only; the app still checks an explicit expiresAt.
+  # extra_excluded_paths: large text and reports nobody filters or sorts on
+  # (style guide body, voice sample text, post texts, pasted comments, gate
+  # reports, served-by records). The app refuses queries on them: keep
+  # server/src/blogwriter/db/base.py UNINDEXED_FIELDS equal to these lists.
   containers = {
     "settings"         = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
-    "stories"          = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
+    "stories"          = { partition_key = "/id", default_ttl = null, extra_excluded_paths = ["/body/*", "/text/*"] }
     "ideas"            = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
     "research"         = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
-    "articles"         = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
+    "articles"         = { partition_key = "/id", default_ttl = null, extra_excluded_paths = ["/gates/*", "/servedBy/*"] }
     "article-versions" = { partition_key = "/articleId", default_ttl = null, extra_excluded_paths = [] }
-    "posts"            = { partition_key = "/id", default_ttl = null, extra_excluded_paths = ["/payload/*"] }
+    "posts"            = { partition_key = "/id", default_ttl = null, extra_excluded_paths = ["/payload/*", "/displayText/*", "/finalText/*", "/aiDraftText/*"] }
     "sources"          = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }
     "signals"          = { partition_key = "/sourceId", default_ttl = 7776000, extra_excluded_paths = [] } # 90 days
     "jobs"             = { partition_key = "/id", default_ttl = -1, extra_excluded_paths = ["/events/*"] }
-    "usage"            = { partition_key = "/month", default_ttl = 34214400, extra_excluded_paths = [] } # ~13 months
-    "engagement"       = { partition_key = "/id", default_ttl = -1, extra_excluded_paths = [] }          # 48 h per-item ttl on third-party text
-    "ephemeral"        = { partition_key = "/id", default_ttl = 86400, extra_excluded_paths = [] }       # OAuth states etc.
+    "usage"            = { partition_key = "/month", default_ttl = 34214400, extra_excluded_paths = [] }       # ~13 months
+    "engagement"       = { partition_key = "/id", default_ttl = -1, extra_excluded_paths = ["/pastedText/*"] } # 48 h per-item ttl on third-party text
+    "ephemeral"        = { partition_key = "/id", default_ttl = 86400, extra_excluded_paths = [] }             # OAuth states etc.
     # published-blogs v2 contract: id == slug, partition key /id (the portfolio
     # point-reads item(slug, slug)). Never change this partition key.
     "published-blogs"         = { partition_key = "/id", default_ttl = null, extra_excluded_paths = [] }

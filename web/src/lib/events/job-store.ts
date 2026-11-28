@@ -1,11 +1,12 @@
-import type {
-  JobAwaiting,
-  JobEventRecord,
-  JobFailure,
-  JobSnapshot,
-  JobStatus,
-  JobStepState,
-  StreamEvent,
+import {
+  JOB_EVENT,
+  type JobAwaiting,
+  type JobEventRecord,
+  type JobFailure,
+  type JobSnapshot,
+  type JobStatus,
+  type JobStepState,
+  type StreamEvent,
 } from './events';
 
 /** A step's streamed text (token deltas). */
@@ -154,6 +155,17 @@ function applyStepEvent(steps: readonly JobStepState[], event: JobEventRecord): 
   }
 }
 
+/**
+ * `draft.reset`: the model router discarded what the step streamed (a refusal, retry, repair or
+ * fallback), so the text shown so far is dropped and the next deltas start over. Without a step,
+ * every step's text goes.
+ */
+function resetText(text: Readonly<Record<string, StepText>>, step: string | null): Readonly<Record<string, StepText>> {
+  if (step === null) return Object.keys(text).length === 0 ? text : {};
+  if (!(step in text)) return text;
+  return Object.fromEntries(Object.entries(text).filter(([name]) => name !== step));
+}
+
 /** After a reconnect, deltas sent while disconnected are lost: mark every live text incomplete. */
 function markGaps(text: Readonly<Record<string, StepText>>): Readonly<Record<string, StepText>> {
   const entries = Object.entries(text);
@@ -246,6 +258,7 @@ export function createJobStore({
       awaiting: status === 'waiting_input' ? job.awaiting : null,
       // Errors come from snapshots; a job that runs again is no longer failed.
       error: status === 'queued' || status === 'running' ? null : job.error,
+      text: event.type === JOB_EVENT.draftReset ? resetText(job.text, event.step) : job.text,
     };
   };
 

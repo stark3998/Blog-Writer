@@ -53,6 +53,7 @@ __all__ = [
     "MOBILE_LINE_CHARS",
     "Finding",
     "Severity",
+    "ai_tell_findings",
     "has_blocking",
     "lint_post",
 ]
@@ -200,6 +201,7 @@ _BAIT_RE: Final = tuple(regex.compile(rf"(?im){p}") for p in ENGAGEMENT_BAIT)
 _OPENER_RE: Final = tuple(regex.compile(rf"(?i)^[\s\W]{{0,4}}{p}") for p in _OPENERS)
 _ANYWHERE_RE: Final = tuple(_phrase(p) for p in _ANYWHERE_BLOCK)
 _AI_TELL_RE: Final = tuple(_phrase(p) for p in AI_TELLS)
+_TLDR_RE: Final = regex.compile(r"(?i)^\s*tl;?dr\b")
 
 
 def lint_post(
@@ -249,6 +251,30 @@ def lint_post(
 
 def has_blocking(findings: Iterable[Finding]) -> bool:
     return any(f.severity is Severity.BLOCK for f in findings)
+
+
+def ai_tell_findings(text: str) -> list[Finding]:
+    """The ``ai-tell`` findings :func:`lint_post` reports for ``text``, sorted by position.
+
+    Every :data:`AI_TELLS` phrase is matched with this module's recipe: case-insensitive, curly
+    apostrophes (U+2018, U+2019) read as ``'``, and whole phrases only (no letter or digit
+    directly before or after, so "deleveraged" and "landscaping" never match). The "starts with
+    TL;DR" check is included. Same codes, severities (``warn``), messages and spans as
+    :func:`lint_post`; the spans index ``text``.
+
+    Unlike :func:`lint_post` it does not parse ``text`` as display text first, so any text can be
+    checked: voice samples, comment drafts, slide text. Pure and deterministic.
+    """
+    normalized = text.translate(_APOSTROPHES)  # same length: offsets stay valid
+    findings: list[Finding] = []
+    for pattern in _AI_TELL_RE:
+        for m in pattern.finditer(normalized):
+            findings.append(
+                Finding("ai-tell", Severity.WARN, f"AI tell: {m.group(0)!r}.", m.start(), m.end())
+            )
+    if _TLDR_RE.match(normalized):
+        findings.append(Finding("ai-tell", Severity.WARN, "Starts with TL;DR.", 0, 5))
+    return sorted(findings, key=lambda f: (f.start, f.end, f.code))
 
 
 # --------------------------------------------------------------------------------------------

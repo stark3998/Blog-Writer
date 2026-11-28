@@ -5,10 +5,13 @@ Everything the router, the providers and their callers exchange is defined here:
 * :class:`Task` names a unit of AI work (the router maps each task to model settings).
 * :class:`Sensitivity` is the data class of a request, ordered ``PUBLIC < ANONYMIZED < PRIVATE``.
 * :class:`ModelSpec` says which deployment serves a call and how (effort, output budget).
-* :class:`Message`, the tool definitions and :class:`Request` describe one model call.
+* :class:`Message`, the tool definitions and :class:`Request` describe one model call. User turns
+  may carry :class:`ImagePart` screenshots (size-capped; the policy allows them only for the
+  tasks in ``blogwriter.ai.policy.IMAGE_TASKS``).
 * :data:`StreamEvent` is the normalized stream: :class:`TextDelta`, :class:`ThinkingSummary`,
   :class:`ToolCall`, :class:`Refusal`, :class:`UsageEvent`, then exactly one :class:`Done`.
 * :class:`Completion` is the result of one call, and :class:`Usage` its token and tool counts.
+* :class:`Embeddings` is the result of one embeddings call (``Task.EMBED``).
 
 The types are frozen dataclasses that validate themselves on construction, so a value that
 exists is well formed. Fields that carry prompt or model text are left out of ``repr`` so an
@@ -19,6 +22,7 @@ tools or provider-side background runs.
 
 from __future__ import annotations
 
+import base64
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
@@ -30,14 +34,20 @@ from pydantic import BaseModel
 __all__ = [
     "ANTHROPIC_EFFORTS",
     "DEFAULT_MAX_TOOL_CALLS",
+    "IMAGE_MEDIA_TYPES",
     "MAX_CACHE_BREAKPOINTS",
+    "MAX_IMAGE_BYTES",
+    "MAX_IMAGE_PARTS",
     "OPENAI_EFFORTS",
     "Citation",
     "Completion",
     "Done",
     "Effort",
+    "Embeddings",
     "FinishReason",
     "FunctionTool",
+    "ImageMediaType",
+    "ImagePart",
     "Message",
     "ModelSpec",
     "NativeItems",
@@ -97,6 +107,17 @@ DEFAULT_MAX_TOOL_CALLS: Final = 8
 
 MAX_CACHE_BREAKPOINTS: Final = 3
 """Message-level cache breakpoints per request. Anthropic allows 4; the system prompt uses one."""
+
+type ImageMediaType = Literal["image/png", "image/jpeg", "image/webp", "image/gif"]
+"""Image formats both providers accept as input (Responses ``input_image``, Claude ``image``)."""
+
+IMAGE_MEDIA_TYPES: Final[frozenset[str]] = frozenset(
+    {"image/png", "image/jpeg", "image/webp", "image/gif"}
+)
+MAX_IMAGE_BYTES: Final = 5 * 1024 * 1024
+"""Largest image part (Claude's per-image limit is 5 MB; OpenAI accepts more)."""
+MAX_IMAGE_PARTS: Final = 4
+"""Most image parts in one request (screenshot extraction needs one to three)."""
 
 _TOOL_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _DOMAIN_LABEL = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)")
@@ -258,7 +279,59 @@ class ToolResultPart:
             raise ValueError("tool results need the call_id they answer")
 
 
-type Part = TextPart | ToolCallPart | ToolResultPart
+def _sniff_image(data: bytes) -> str | None:
+    """The media type the magic bytes say ``data`` is, or ``None``."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    return None
+
+
+@dataclass(frozen=True, slots=True)
+class ImagePart:
+    """An image in a user turn: the owner's own screenshot (for example a LinkedIn comment
+    thread to extract text from).
+
+    At most :data:`MAX_IMAGE_BYTES`; the bytes must really be the declared ``media_type`` (magic
+    bytes are checked, so a mislabelled or truncated upload is refused before anything is
+    sent). The policy accepts images only for the tasks in ``blogwriter.ai.policy.IMAGE_TASKS``.
+    Images cannot be checked against the blocklist the way text is: callers send only the
+    owner's own screenshots and classify them like the text they show (``anonymized`` for
+    other members' comments). ``data`` is left out of ``repr``.
+    """
+
+    data: bytes = field(repr=False)
+    media_type: ImageMediaType
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.data, bytes):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise TypeError("image data must be bytes")
+        if not self.data:
+            raise ValueError("image parts need image bytes")
+        if len(self.data) > MAX_IMAGE_BYTES:
+            raise ValueError(f"image parts may have at most {MAX_IMAGE_BYTES} bytes")
+        if self.media_type not in IMAGE_MEDIA_TYPES:
+            raise ValueError(f"unsupported image media type {self.media_type!r}")
+        if _sniff_image(self.data) != self.media_type:
+            raise ValueError(f"the image bytes are not {self.media_type}")
+
+    @property
+    def base64(self) -> str:
+        """The bytes as standard base64 (no line breaks)."""
+        return base64.b64encode(self.data).decode("ascii")
+
+    @property
+    def data_url(self) -> str:
+        """``data:<media type>;base64,<bytes>`` (the form Responses ``input_image`` takes)."""
+        return f"data:{self.media_type};base64,{self.base64}"
+
+
+type Part = TextPart | ImagePart | ToolCallPart | ToolResultPart
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,8 +356,9 @@ class NativeItems:
 class Message:
     """One conversation turn.
 
-    User turns hold :class:`TextPart` and :class:`ToolResultPart`; assistant turns hold
-    :class:`TextPart` and :class:`ToolCallPart`, plus optional :class:`NativeItems` for replay.
+    User turns hold :class:`TextPart`, :class:`ImagePart` and :class:`ToolResultPart`; assistant
+    turns hold :class:`TextPart` and :class:`ToolCallPart`, plus optional :class:`NativeItems` for
+    replay.
     """
 
     role: Role
@@ -302,6 +376,8 @@ class Message:
                 raise ValueError("tool calls belong to assistant turns")
             if isinstance(part, ToolResultPart) and self.role != "user":
                 raise ValueError("tool results belong to user turns")
+            if isinstance(part, ImagePart) and self.role != "user":
+                raise ValueError("images belong to user turns")
         if self.native is not None and self.role != "assistant":
             raise ValueError("native items belong to assistant turns")
 
@@ -324,6 +400,11 @@ class Message:
     def text(self) -> str:
         """The concatenated text parts."""
         return "".join(part.text for part in self.parts if isinstance(part, TextPart))
+
+    @property
+    def images(self) -> tuple[ImagePart, ...]:
+        """The image parts, in order."""
+        return tuple(part for part in self.parts if isinstance(part, ImagePart))
 
 
 # --------------------------------------------------------------------------------------------
@@ -393,6 +474,8 @@ class Request:
 
     ``max_tool_calls`` caps hosted tool calls (``web_search``); requests with tools get
     :data:`DEFAULT_MAX_TOOL_CALLS` when it is ``None``.
+
+    At most :data:`MAX_IMAGE_PARTS` :class:`ImagePart` in the whole request.
     """
 
     system: str = field(repr=False)
@@ -430,6 +513,8 @@ class Request:
         )
         if breakpoints > MAX_CACHE_BREAKPOINTS:
             raise ValueError(f"at most {MAX_CACHE_BREAKPOINTS} message cache breakpoints")
+        if self.image_count > MAX_IMAGE_PARTS:
+            raise ValueError(f"at most {MAX_IMAGE_PARTS} images per request")
         if self.tools and self.sensitivity is not Sensitivity.PUBLIC:
             raise SensitivityError("only public data may reach a tool-enabled context")
         if self.background and self.sensitivity is not Sensitivity.PUBLIC:
@@ -439,6 +524,11 @@ class Request:
     def tool_call_cap(self) -> int:
         """The hosted tool call cap to send when the request has tools."""
         return self.max_tool_calls if self.max_tool_calls is not None else DEFAULT_MAX_TOOL_CALLS
+
+    @property
+    def image_count(self) -> int:
+        """How many :class:`ImagePart` the messages carry."""
+        return sum(isinstance(part, ImagePart) for m in self.messages for part in m.parts)
 
 
 # --------------------------------------------------------------------------------------------
@@ -587,3 +677,33 @@ class Done:
 
 
 type StreamEvent = TextDelta | ThinkingSummary | ToolCall | Refusal | UsageEvent | Done
+
+
+# --------------------------------------------------------------------------------------------
+# Embeddings
+# --------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Embeddings:
+    """The result of one embeddings call: one vector per input, in input order.
+
+    ``usage.input`` counts the prompt tokens (embeddings have no output tokens). ``model`` is
+    the model the service reports. The vectors are left out of ``repr``.
+    """
+
+    vectors: tuple[tuple[float, ...], ...] = field(repr=False)
+    usage: Usage
+    model: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "vectors", tuple(tuple(vector) for vector in self.vectors))
+        if not self.vectors:
+            raise ValueError("an embeddings result needs at least one vector")
+        width = len(self.vectors[0])
+        if width < 1 or any(len(vector) != width for vector in self.vectors):
+            raise ValueError("embedding vectors must be non-empty and of one size")
+
+    @property
+    def dimensions(self) -> int:
+        return len(self.vectors[0])

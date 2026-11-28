@@ -149,15 +149,22 @@ async def request_cancel(
     store_timeout: float = DEFAULT_TIMEOUT,
 ) -> Job:
     """Cancel a job. Queued or waiting jobs are cancelled at once; a running job gets
-    ``cancelRequested`` and its runner stops it. Finished jobs are returned unchanged."""
+    ``cancelRequested`` and its runner stops it. A quarantined job is dismissed (cancelled), so
+    it stops asking for attention once the owner has dealt with it (for example after a rerun
+    succeeded). Other finished jobs are returned unchanged."""
 
     def change(job: Job, now: str) -> bool:
+        if job.status == "quarantined":
+            job.status = "cancelled"
+            job.add_event("status", at=now, data={"status": "cancelled", "reason": "dismissed"})
+            return True
         if job.is_terminal:
             return False
         if job.status in ("queued", "waiting_input"):
             job.status = "cancelled"
             job.awaiting = None
             job.finished_at = now
+            job.expire_when_finished()
             for step in job.steps:
                 if step.status in ("running", "waiting_input"):
                     step.status = "pending"
@@ -222,7 +229,7 @@ async def retry_job(
     broker: Broker | None = None,
     store_timeout: float = DEFAULT_TIMEOUT,
 ) -> Job:
-    """Re-queue a failed, quarantined or cancelled job with its attempts reset.
+    """Re-queue a failed, quarantined or cancelled job with its attempts and deferrals reset.
 
     Steps that succeeded stay done; the job resumes at the first unfinished step. Raises
     :class:`JobStateError` (``not_retryable``) for jobs that are still active or succeeded.
@@ -233,9 +240,11 @@ async def retry_job(
             raise JobStateError("not_retryable", "only failed, quarantined or cancelled jobs")
         job.status = "queued"
         job.attempt = 0
+        job.deferrals = 0
         job.error = None
         job.cancel_requested = False
         job.finished_at = None
+        job.keep_while_active()
         job.run_after = now
         for step in job.steps:
             if step.status != "succeeded":

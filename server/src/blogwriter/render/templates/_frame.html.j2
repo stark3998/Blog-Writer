@@ -1,0 +1,14 @@
+{#- Shared slide chrome: progress rail, content box, footer. Every text box that can overflow carries
+    data-fit so the renderer can refuse clipped output. Image cards hide the slide number. -#}
+{% macro frame(view, name_in_footer=true) -%}
+<section class="slide slide--{{ view.slide.type }}{% if view.dense %} slide--dense{% endif %} on-{{ view.surface }}" data-slide="{{ view.n }}" aria-label="Slide {{ view.n }} of {{ view.total }}">
+<div class="rail" aria-hidden="true"><div class="rail__fill" style="height:{{ view.progress_pct }}%"></div></div>
+<div class="body" data-fit="body">
+{{ caller() }}
+</div>
+<footer class="foot" data-fit="footer">
+<p class="foot__who">{% if name_in_footer %}<span class="foot__name">{{ view.brand.name_mark }}</span>{% endif %}{% if view.brand.disclaimer %}<span class="foot__note">{{ view.brand.disclaimer }}</span>{% endif %}</p>
+{% if view.show_number %}<p class="foot__num">{{ view.n }} / {{ view.total }}</p>{% endif %}
+</footer>
+</section>
+{%- endmacro %}

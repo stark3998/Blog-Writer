@@ -1,11 +1,12 @@
-# Private Blob storage: media (drafts, carousels, exports), published (assets
-# of published articles; the portfolio build downloads them with Entra ID, so
-# there is no anonymous access) and backups (daily dumps, v1 export).
+# Private Blob storage, new and managed here: media (drafts, carousels,
+# exports), published (assets of published articles; the portfolio build
+# downloads them with Entra ID, so there is no anonymous access) and backups
+# (daily dumps, v1 export).
 
 resource "azurerm_storage_account" "this" {
   name                     = local.names.storage_account
-  resource_group_name      = azurerm_resource_group.this.name
-  location                 = azurerm_resource_group.this.location
+  resource_group_name      = data.azurerm_resource_group.this.name
+  location                 = var.location
   account_kind             = "StorageV2"
   account_tier             = "Standard"
   account_replication_type = var.storage_replication_type

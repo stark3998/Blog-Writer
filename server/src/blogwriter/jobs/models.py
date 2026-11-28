@@ -11,7 +11,8 @@ written by a newer revision survives a write by an older one (revision overlap).
 Status machine::
 
     queued -> running -> succeeded | failed | quarantined | cancelled
-    running -> queued            retry after an error (backoff), or released at shutdown
+    running -> queued            retry after an error (backoff), a deferral (``JobDeferred``),
+                                 or released at shutdown
     running -> waiting_input     claim and slot released; the owner's answer re-queues it
     running -> running           lease expired, another owner took over (attempt + 1)
     queued | waiting_input -> cancelled
@@ -24,6 +25,11 @@ claim write, which makes writes with an unknown outcome idempotent).
 Events: every transition and every ``emit`` appends a :class:`JobEvent` with the next ``seq``.
 Only the last :data:`MAX_EVENTS` are kept; ``seq`` keeps counting, so ``<jobId>:<seq>`` is a
 stable SSE event id.
+
+Garbage collection: a job that reaches a terminal status gets ``ttl`` =
+:data:`FINISHED_JOB_TTL_SECONDS` (30 days after its last write; :meth:`Job.expire_when_finished`)
+unless it already carries a shorter one, and loses that TTL again when the owner retries it
+(:meth:`Job.keep_while_active`). Active jobs never expire. TTL is garbage collection only.
 """
 
 from __future__ import annotations
@@ -52,6 +58,7 @@ from blogwriter.jobs.clock import parse_iso
 __all__ = [
     "ACTIVE_STATUSES",
     "DEFAULT_MAX_ATTEMPTS",
+    "FINISHED_JOB_TTL_SECONDS",
     "JOBS_CONTAINER",
     "JOB_KIND",
     "MAX_DETAIL_CHARS",
@@ -87,6 +94,8 @@ MAX_PROMPT_CHARS: Final = 4000
 MAX_DETAIL_CHARS: Final = 500
 MAX_REMOTE_ID_CHARS: Final = 2048
 DEFAULT_MAX_ATTEMPTS: Final = 3
+FINISHED_JOB_TTL_SECONDS: Final = 30 * 86_400
+"""Cosmos TTL of a finished job (succeeded, failed, quarantined, cancelled): 30 days."""
 NAME_PATTERN: Final = r"^[a-z][a-z0-9_.-]{0,63}$"
 """Job types, step names, event types and keys: lowercase identifiers (dots and dashes allowed)."""
 
@@ -211,8 +220,12 @@ class Job(DocModel):
     steps: list[StepState] = Field(default_factory=list[StepState])
     attempt: int = Field(default=0, ge=0)
     """Claims of this job that did not end in a clean release (crashes, failures) plus the
-    current one. Releases at shutdown and waits for input give the attempt back."""
+    current one. Releases at shutdown, deferrals and waits for input give the attempt back."""
     max_attempts: int = Field(default=DEFAULT_MAX_ATTEMPTS, ge=1, le=20)
+    deferrals: int = Field(default=0, ge=0)
+    """Deferrals in a row (``JobDeferred``). A succeeded step, a retry, an input wait and the
+    owner's retry reset it; the runner quarantines a job that would exceed
+    ``runner.MAX_DEFERRALS``."""
     owner: str | None = None
     lease_until: Timestamp | None = None
     fence: int = Field(default=0, ge=0)
@@ -261,6 +274,20 @@ class Job(DocModel):
     @property
     def is_active(self) -> bool:
         return self.status in ACTIVE_STATUSES
+
+    def expire_when_finished(self) -> None:
+        """Give a job that just reached a terminal status its garbage-collection TTL.
+
+        A shorter TTL set at enqueue time (live tests use one hour) and an explicit ``-1``
+        ("never expire") are kept.
+        """
+        if self.ttl is None or self.ttl > FINISHED_JOB_TTL_SECONDS:
+            self.ttl = FINISHED_JOB_TTL_SECONDS
+
+    def keep_while_active(self) -> None:
+        """Drop the finished-job TTL from a job that becomes active again (an owner retry)."""
+        if self.ttl == FINISHED_JOB_TTL_SECONDS:
+            self.ttl = None
 
     @property
     def is_terminal(self) -> bool:

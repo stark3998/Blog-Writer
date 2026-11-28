@@ -1,0 +1,18 @@
+{
+  "title": "Governance Bulletin",
+  "format": "rss20",
+  "items": [
+    {
+      "url": "https://bulletin.example.com/nist-ai-rmf-profile",
+      "title": "NIST publishes AI RMF profile update",
+      "published_at": "2026-11-24T16:00:00.000000Z",
+      "publisher": "Governance Bulletin"
+    },
+    {
+      "url": "https://bulletin.example.com/broken-entities",
+      "title": "Unescaped ampersand & a broken entity in the title",
+      "published_at": null,
+      "publisher": "Governance Bulletin"
+    }
+  ]
+}

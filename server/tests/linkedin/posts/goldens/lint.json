@@ -1,0 +1,58 @@
+[
+  {
+    "code": "text-length",
+    "severity": "warn",
+    "field": "displayText",
+    "start": null,
+    "end": null
+  },
+  {
+    "code": "formula-opener",
+    "severity": "block",
+    "field": "displayText",
+    "start": 0,
+    "end": 17
+  },
+  {
+    "code": "ai-tell",
+    "severity": "warn",
+    "field": "displayText",
+    "start": 22,
+    "end": 30
+  },
+  {
+    "code": "domain-like",
+    "severity": "block",
+    "field": "displayText",
+    "start": 45,
+    "end": 54
+  },
+  {
+    "code": "external-link",
+    "severity": "block",
+    "field": "displayText",
+    "start": 59,
+    "end": 81
+  },
+  {
+    "code": "blocklisted-term",
+    "severity": "block",
+    "field": "displayText",
+    "start": 82,
+    "end": 90
+  },
+  {
+    "code": "engagement-bait",
+    "severity": "block",
+    "field": "displayText",
+    "start": 100,
+    "end": 106
+  },
+  {
+    "code": "unapproved-hashtag",
+    "severity": "warn",
+    "field": "displayText",
+    "start": 120,
+    "end": 126
+  }
+]

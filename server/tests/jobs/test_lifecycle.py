@@ -164,6 +164,62 @@ async def test_exiting_safe_mode_twice_at_once_starts_the_loops_once(store: Memo
         assert service.scheduler.running
 
 
+@asynccontextmanager
+async def held_lifespan(
+    store: Store, registry: JobRegistry, settings: JobsSettings
+) -> AsyncGenerator[JobsService]:
+    """The app's wiring: the scheduler waits for the first schedule reseed."""
+    lifecycle = JobsLifecycle(registry, settings=settings, stop_requested=None, hold_scheduler=True)
+    app = create_app(make_settings(), lifecycles=[lifecycle])
+    app.state.store = store
+    async with app.router.lifespan_context(app):
+        service: object = app.state.jobs
+        assert isinstance(service, JobsService)
+        yield service
+
+
+async def test_a_held_scheduler_starts_only_when_released(store: MemoryStore) -> None:
+    """The runner starts at boot; the scheduler waits until the schedules are reseeded, so an
+    item of an earlier cadence cannot fire before its new definition is written."""
+    async with held_lifespan(store, JobRegistry(), fast_settings()) as service:
+        assert service.runner.claiming
+        assert service.scheduler_held
+        assert not service.scheduler.running
+        await service.release_scheduler()
+        assert not service.scheduler_held
+        assert service.scheduler.running
+        await service.release_scheduler()  # released already: no second start
+        assert service.scheduler.running
+    assert not service.scheduler.running
+
+
+async def test_a_scheduler_released_in_safe_mode_starts_with_the_loops(
+    store: MemoryStore,
+) -> None:
+    guard = BootGuard(store, max_boots=1, window=timedelta(hours=1))
+    await guard.record_boot("earlier:0")
+    settings = fast_settings(crash_loop_max_boots=1)
+    async with held_lifespan(store, JobRegistry(), settings) as service:
+        assert service.safe_mode
+        await service.release_scheduler()  # the reseed landed while in safe mode
+        assert not service.scheduler.running  # nothing runs in safe mode
+        await service.exit_safe_mode()
+        assert service.runner.claiming
+        assert service.scheduler.running
+
+
+async def test_leaving_safe_mode_keeps_a_held_scheduler_held(store: MemoryStore) -> None:
+    guard = BootGuard(store, max_boots=1, window=timedelta(hours=1))
+    await guard.record_boot("earlier:0")
+    settings = fast_settings(crash_loop_max_boots=1)
+    async with held_lifespan(store, JobRegistry(), settings) as service:
+        await service.exit_safe_mode()
+        assert service.runner.claiming
+        assert not service.scheduler.running  # still waiting for the first reseed
+        await service.release_scheduler()
+        assert service.scheduler.running
+
+
 class BootLogDown(DelegatingStore):
     """The ``settings`` container (the boot log) fails until ``down`` is cleared."""
 

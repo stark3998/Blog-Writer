@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { isLoggedOutResponse, loginUrl, logoutUrl, pathOf, safeReturnPath } from './session';
+import { isLoggedOutResponse, loginUrl, logoutUrl, pathOf, safeReturnPath, SHARE_TARGET_PARAMS } from './session';
 
 /** Browsers report a manual redirect as an opaque response; Node cannot build one, so fake its two fields. */
 const opaqueRedirect = { status: 0, type: 'opaqueredirect' } as const;
@@ -43,6 +43,17 @@ describe('sign-in and sign-out URLs', () => {
   ])('only returns to same-origin app paths: %s becomes %s', (path, expected) => {
     expect(safeReturnPath(path)).toBe(expected);
     expect(loginUrl(path)).toBe(`/.auth/login/aad?post_login_redirect_uri=${encodeURIComponent(expected)}`);
+  });
+
+  it('drops the share target’s text from the way back, keeping the rest of the address', () => {
+    // Contract section 10: other members' shared text never travels through the sign-in page.
+    expect(loginUrl('/today?share=Someone%E2%80%99s%20words&share_url=https%3A%2F%2Fexample.org%2Fp%2F1')).toBe(
+      '/.auth/login/aad?post_login_redirect_uri=%2Ftoday',
+    );
+    expect(safeReturnPath('/today?engage=post-1&share=words#top')).toBe('/today?engage=post-1#top');
+    expect(safeReturnPath('/today?share_url=x')).toBe('/today');
+    expect(safeReturnPath('/calendar/ideas?take=slot-1')).toBe('/calendar/ideas?take=slot-1');
+    expect(SHARE_TARGET_PARAMS).toEqual({ text: 'share', url: 'share_url' });
   });
 
   it('reads the path, query and fragment from a location', () => {

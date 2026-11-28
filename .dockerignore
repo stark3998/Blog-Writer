@@ -1,0 +1,44 @@
+# Build context of the v2 image (the root Dockerfile), as an allowlist: exclude everything, then
+# re-include only what the Dockerfile copies. Secrets (.env, tfvars), v1 code, infra, docs, local
+# virtualenvs, node_modules and build output therefore never leave the machine.
+#
+# Two implementations read this file: `az acr build` applies it itself before uploading the
+# context, and Docker/BuildKit applies it in CI. The Azure CLI's matcher is simpler than Docker's,
+# so every rule stays in the subset both read the same way: no leading or trailing "/" on any line,
+# "**" only as a whole path segment, and every "!" exception spelled from the repository root.
+# Exclusions that refine a re-included tree come after it (the last matching line wins).
+#
+# v1 note: Dockerfile.webapp and Dockerfile.dev-* build from the repository root and need
+# backend/ and frontend/, which this file excludes. To rebuild v1 before cutover, add an empty
+# <name>.dockerignore next to that Dockerfile (both az acr build and BuildKit prefer it).
+*
+
+# Server: dependency manifests (the cached layer), the readme the wheel build needs, the package.
+!server/pyproject.toml
+!server/uv.lock
+!server/README.md
+!server/src
+
+# Mermaid browser bundle for the renderer (npm ci in a build stage).
+!server/vendor/package.json
+!server/vendor/package-lock.json
+
+# Web app: sources and configs. Dependencies and build output are excluded again below.
+!web
+
+# The contract files the server reads at runtime (blogwriter.publish.contract).
+!contracts/published-blogs.v2.schema.json
+!contracts/sanitizer-profile.json
+
+# Local state inside the re-included trees.
+web/node_modules
+web/dist
+web/coverage
+web/test-results
+web/playwright-report
+web/.env*
+web/*.local
+web/*.tsbuildinfo
+**/__pycache__
+**/*.pyc
+**/.DS_Store

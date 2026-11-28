@@ -1,14 +1,16 @@
 # Azure RBAC and Cosmos DB data-plane role assignments. Every principal is a
 # managed identity created here or the owner; no keys or client secrets.
-# (Lab policy only denies the 'BizTalk Contributor' role.)
+# (Lab policy only denies the 'BizTalk Contributor' role.) The owner's Cosmos
+# DB role lives in infra/v2/data.
 
 # ---------------------------------------------------------------------------
-# App identity: Foundry User, Cosmos Data Contributor (database scope),
-# Storage Blob Data Contributor, Key Vault Secrets User, AcrPull.
+# App identity: AcrPull (shared registry), Cosmos Data Contributor (database
+# scope, data-root account), Foundry User, Storage Blob Data Contributor, Key
+# Vault Secrets User.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "app_acr_pull" {
-  scope              = azurerm_container_registry.this.id
+  scope              = local.registry_id
   role_definition_id = local.role_definition_ids.acr_pull
   principal_id       = azurerm_user_assigned_identity.this["app"].principal_id
   principal_type     = "ServicePrincipal"
@@ -44,27 +46,27 @@ resource "azurerm_role_assignment" "app_foundry_user_images" {
   principal_type     = "ServicePrincipal"
 }
 
+# A child of the data root's account. Its CanNotDelete lock allows creating
+# this but blocks deleting it (README, Locks).
 resource "azurerm_cosmosdb_sql_role_assignment" "app_data_contributor" {
-  resource_group_name = azurerm_resource_group.this.name
-  account_name        = azurerm_cosmosdb_account.this.name
-  role_definition_id  = "${azurerm_cosmosdb_account.this.id}/sqlRoleDefinitions/${local.cosmos_data_contributor_role}"
+  resource_group_name = data.azurerm_resource_group.this.name
+  account_name        = var.cosmos_account_name
+  role_definition_id  = "${local.cosmos_account_id}/sqlRoleDefinitions/${local.cosmos_data_contributor_role}"
   principal_id        = azurerm_user_assigned_identity.this["app"].principal_id
-  scope               = "${azurerm_cosmosdb_account.this.id}/dbs/${azurerm_cosmosdb_sql_database.this.name}"
+  scope               = local.cosmos_database_scope
 }
 
 # ---------------------------------------------------------------------------
-# Portfolio build (GitHub OIDC): read only the published containers and the
-# 'published' blob container. Nothing else.
+# Portfolio build (GitHub OIDC): read only the published-blogs container and
+# the 'published' blob container. Nothing else.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_cosmosdb_sql_role_assignment" "portfolio_reader" {
-  for_each = toset(local.portfolio_readable_containers)
-
-  resource_group_name = azurerm_resource_group.this.name
-  account_name        = azurerm_cosmosdb_account.this.name
-  role_definition_id  = "${azurerm_cosmosdb_account.this.id}/sqlRoleDefinitions/${local.cosmos_data_reader_role}"
+  resource_group_name = data.azurerm_resource_group.this.name
+  account_name        = var.cosmos_account_name
+  role_definition_id  = "${local.cosmos_account_id}/sqlRoleDefinitions/${local.cosmos_data_reader_role}"
   principal_id        = azurerm_user_assigned_identity.this["portfolio_build"].principal_id
-  scope               = "${azurerm_cosmosdb_account.this.id}/dbs/${azurerm_cosmosdb_sql_database.this.name}/colls/${azurerm_cosmosdb_sql_container.this[each.value].name}"
+  scope               = local.cosmos_portfolio_scope
 }
 
 resource "azurerm_role_assignment" "portfolio_published_reader" {
@@ -75,20 +77,22 @@ resource "azurerm_role_assignment" "portfolio_published_reader" {
 }
 
 # ---------------------------------------------------------------------------
-# CI deploy (deploy.yml): build in ACR, then update the image of this one app.
-# AcrPush alone cannot queue `az acr build` (scheduleRun/action and
-# listBuildSourceUploadUrl/action), hence Container Registry Tasks Contributor.
+# CI deploy (deploy.yml): build in the shared registry, then update the image
+# of the v2 app only. AcrPush alone cannot queue `az acr build`
+# (scheduleRun/action and listBuildSourceUploadUrl/action), hence Container
+# Registry Tasks Contributor. Both roles cover the whole shared registry
+# (README, CI).
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "ci_deploy_acr_push" {
-  scope              = azurerm_container_registry.this.id
+  scope              = local.registry_id
   role_definition_id = local.role_definition_ids.acr_push
   principal_id       = azurerm_user_assigned_identity.this["ci_deploy"].principal_id
   principal_type     = "ServicePrincipal"
 }
 
 resource "azurerm_role_assignment" "ci_deploy_acr_tasks" {
-  scope              = azurerm_container_registry.this.id
+  scope              = local.registry_id
   role_definition_id = local.role_definition_ids.acr_tasks_contributor
   principal_id       = azurerm_user_assigned_identity.this["ci_deploy"].principal_id
   principal_type     = "ServicePrincipal"
@@ -102,14 +106,17 @@ resource "azurerm_role_assignment" "ci_deploy_container_app" {
 }
 
 # ---------------------------------------------------------------------------
-# CI infra (infra.yml): Contributor on this resource group only. Contributor
-# cannot write role assignments or locks: plans work, but applies that change
-# role assignments need ci_infra_rbac_admin_enabled (below) or a local apply
-# by the owner. State access is granted in the bootstrap root.
+# CI infra (infra.yml): Contributor on the resource group. The group is SHARED
+# (v1, its state account, the registry and another app live there), so this
+# is in effect admin access to all of it. Contributor cannot write role
+# assignments or locks: plans work, but applies that change role assignments
+# need ci_infra_rbac_admin_enabled (below) or a local apply by the owner. It
+# can list the state account's keys, which is how the key-based backend
+# authenticates in CI.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "ci_infra_contributor" {
-  scope              = azurerm_resource_group.this.id
+  scope              = data.azurerm_resource_group.this.id
   role_definition_id = local.role_definition_ids.contributor
   principal_id       = azurerm_user_assigned_identity.this["ci_infra"].principal_id
   principal_type     = "ServicePrincipal"
@@ -168,7 +175,7 @@ locals {
 resource "azurerm_role_assignment" "ci_infra_rbac_admin" {
   count = var.ci_infra_rbac_admin_enabled ? 1 : 0
 
-  scope              = azurerm_resource_group.this.id
+  scope              = data.azurerm_resource_group.this.id
   role_definition_id = local.role_definition_ids.rbac_administrator
   principal_id       = azurerm_user_assigned_identity.this["ci_infra"].principal_id
   principal_type     = "ServicePrincipal"
@@ -197,14 +204,4 @@ resource "azurerm_role_assignment" "owner_blob_data_contributor" {
   role_definition_id = local.role_definition_ids.storage_blob_data_contributor
   principal_id       = var.owner_object_id
   principal_type     = "User"
-}
-
-resource "azurerm_cosmosdb_sql_role_assignment" "owner_data_contributor" {
-  count = var.owner_data_access_enabled ? 1 : 0
-
-  resource_group_name = azurerm_resource_group.this.name
-  account_name        = azurerm_cosmosdb_account.this.name
-  role_definition_id  = "${azurerm_cosmosdb_account.this.id}/sqlRoleDefinitions/${local.cosmos_data_contributor_role}"
-  principal_id        = var.owner_object_id
-  scope               = "${azurerm_cosmosdb_account.this.id}/dbs/${azurerm_cosmosdb_sql_database.this.name}"
 }

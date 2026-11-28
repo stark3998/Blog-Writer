@@ -31,3 +31,16 @@ export const PILLAR_THREAD_CLASS: Record<PillarId, string> = {
   identity: 'bg-identity',
   governance: 'bg-governance',
 };
+
+/** True for the three plan pillars, the ones with their own colour tokens. */
+export function isPlanPillar(id: string | null | undefined): id is PillarId {
+  return typeof id === 'string' && Object.hasOwn(PILLAR_THREAD_CLASS, id);
+}
+
+/**
+ * The thread class of a pillar (`bg-agents`). A pillar the owner added later, or none, is drawn
+ * in ink: always next to the pillar's name, so the colour never stands alone.
+ */
+export function pillarThreadClass(id: string | null | undefined): string {
+  return isPlanPillar(id) ? PILLAR_THREAD_CLASS[id] : 'bg-ink-subtle';
+}

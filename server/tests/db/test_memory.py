@@ -142,3 +142,26 @@ async def test_stored_documents_are_isolated_from_returned_docs() -> None:
     found[0].body["tags"].append("b")
     created.body["tags"].append("c")
     assert (await store.read("ideas", "i1")).body["tags"] == ["a"]
+
+
+async def test_projections_keep_the_partition_key_of_partitioned_containers() -> None:
+    store = MemoryStore()
+    first = await store.create(
+        "article-versions",
+        {"id": "a1-v1", "articleId": "a1", "version": 1, "markdown": "x" * 1000, "meta": {}},
+    )
+    await store.create("article-versions", {"id": "a2-v1", "articleId": "a2", "version": 1})
+    (doc,) = await store.find(
+        "article-versions",
+        [Filter("version", "==", 1)],
+        partition_key="a1",
+        fields=["version", "missing"],
+    )
+    assert doc == Doc(
+        id="a1-v1",
+        partition_key="a1",
+        body={"id": "a1-v1", "articleId": "a1", "version": 1},
+        etag=first.etag,
+    )
+    doc.body["version"] = 99  # a fresh copy: the store is untouched
+    assert (await store.read("article-versions", "a1-v1", partition_key="a1")).body["version"] == 1

@@ -1,0 +1,138 @@
+[
+  {
+    "name": "generic-ai-comment",
+    "draft": "Great insights! In today\u2019s rapidly evolving landscape, it\u2019s crucial to leverage robust guardrails. Agree?",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": [
+      [
+        "generic-opener",
+        "warn",
+        0,
+        14
+      ],
+      [
+        "ai-tell",
+        "warn",
+        16,
+        43
+      ],
+      [
+        "ai-tell",
+        "warn",
+        44,
+        53
+      ],
+      [
+        "ai-tell",
+        "warn",
+        60,
+        67
+      ],
+      [
+        "ai-tell",
+        "warn",
+        71,
+        79
+      ],
+      [
+        "ai-tell",
+        "warn",
+        80,
+        86
+      ],
+      [
+        "engagement-bait",
+        "block",
+        99,
+        105
+      ]
+    ]
+  },
+  {
+    "name": "restates-the-post",
+    "draft": "So true, the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs.",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": [
+      [
+        "generic-opener",
+        "warn",
+        0,
+        7
+      ],
+      [
+        "restates-post",
+        "block",
+        9,
+        111
+      ]
+    ]
+  },
+  {
+    "name": "specific-reply",
+    "draft": "Our nightly export ran 40 minutes, so a five minute token died halfway. We gave each batch job its own principal with a one-hour token and an alert on renewal failures.",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": []
+  },
+  {
+    "name": "links-and-blocklist",
+    "draft": "We wrote this up for Contoso at https://example.com/agents and on notes.example.dev, ping me at me@example.com.",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": [
+      [
+        "blocklisted-term",
+        "block",
+        21,
+        28
+      ],
+      [
+        "external-link",
+        "block",
+        32,
+        58
+      ],
+      [
+        "domain-like",
+        "block",
+        66,
+        83
+      ],
+      [
+        "email-address",
+        "block",
+        96,
+        110
+      ]
+    ]
+  },
+  {
+    "name": "too-long",
+    "draft": "We hit the same wall with batch jobs. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. Our nightly export ran for 40 minutes, so a five minute token died halfway through and the job retried from the start, three times a night. We fixed it with a separate principal per job and a one-hour lifetime.",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": [
+      [
+        "too-long",
+        "warn",
+        1000,
+        1088
+      ]
+    ]
+  },
+  {
+    "name": "question-reply",
+    "draft": "How long did the batch jobs run before you split their tokens? Ours ran 40 minutes, so the five minute default broke them on day one.",
+    "sources": [
+      "We rolled out per-tool tokens for our agents last quarter and the hardest part was convincing app owners that five minute lifetimes would not break their batch jobs."
+    ],
+    "findings": []
+  }
+]

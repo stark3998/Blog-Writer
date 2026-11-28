@@ -1,0 +1,106 @@
+{
+  "text": {
+    "author": "urn:li:person:abcDEF123",
+    "commentary": "We scope every token to one tool call \\(C\\# and snake\\_case\\_names\\).\n\nHow: 3 steps \\| \\{no\\} \\@mentions \\[x\\] \\(y\\) \\<z\\> \\~ \\* \\_ \\\\ #AISecurity",
+    "visibility": "PUBLIC",
+    "distribution": {
+      "feedDistribution": "MAIN_FEED",
+      "targetEntities": [],
+      "thirdPartyDistributionChannels": []
+    },
+    "lifecycleState": "PUBLISHED",
+    "isReshareDisabledByAuthor": false
+  },
+  "carousel": {
+    "author": "urn:li:person:abcDEF123",
+    "commentary": "Five checks before an agent gets a token.",
+    "visibility": "PUBLIC",
+    "distribution": {
+      "feedDistribution": "MAIN_FEED",
+      "targetEntities": [],
+      "thirdPartyDistributionChannels": []
+    },
+    "lifecycleState": "PUBLISHED",
+    "isReshareDisabledByAuthor": false,
+    "content": {
+      "media": {
+        "title": "Agent tokens: 5 checks",
+        "id": "urn:li:document:D4E10AQHdoc1"
+      }
+    }
+  },
+  "image": {
+    "author": "urn:li:person:abcDEF123",
+    "commentary": "One diagram, one decision.",
+    "visibility": "PUBLIC",
+    "distribution": {
+      "feedDistribution": "MAIN_FEED",
+      "targetEntities": [],
+      "thirdPartyDistributionChannels": []
+    },
+    "lifecycleState": "PUBLISHED",
+    "isReshareDisabledByAuthor": false,
+    "content": {
+      "media": {
+        "id": "urn:li:image:D4E10AQHimg1",
+        "altText": "A flow from user to agent to tool, each hop with its own token."
+      }
+    }
+  },
+  "multi_image": {
+    "author": "urn:li:person:abcDEF123",
+    "commentary": "Before and after.",
+    "visibility": "PUBLIC",
+    "distribution": {
+      "feedDistribution": "MAIN_FEED",
+      "targetEntities": [],
+      "thirdPartyDistributionChannels": []
+    },
+    "lifecycleState": "PUBLISHED",
+    "isReshareDisabledByAuthor": false,
+    "content": {
+      "multiImage": {
+        "images": [
+          {
+            "id": "urn:li:image:D4E10AQHimg1",
+            "altText": "Before: one shared token."
+          },
+          {
+            "id": "urn:li:image:D4E10AQHimg2"
+          }
+        ]
+      }
+    }
+  },
+  "poll": {
+    "author": "urn:li:person:abcDEF123",
+    "commentary": "Quick poll for agent builders.",
+    "visibility": "PUBLIC",
+    "distribution": {
+      "feedDistribution": "MAIN_FEED",
+      "targetEntities": [],
+      "thirdPartyDistributionChannels": []
+    },
+    "lifecycleState": "PUBLISHED",
+    "isReshareDisabledByAuthor": false,
+    "content": {
+      "poll": {
+        "question": "How do your agents authenticate to tools?",
+        "options": [
+          {
+            "text": "Shared service account"
+          },
+          {
+            "text": "Per-user OAuth"
+          },
+          {
+            "text": "Per-call tokens"
+          }
+        ],
+        "settings": {
+          "duration": "SEVEN_DAYS"
+        }
+      }
+    }
+  }
+}

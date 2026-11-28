@@ -489,3 +489,89 @@ async def test_values_are_parameters_not_sql(dataset: Store, token: str) -> None
     hostile = '" OR 1=1 OR c["s"] = "apple'
     assert await find_names(dataset, token, Filter("s", "==", hostile)) == []
     assert await find_names(dataset, token, Filter("s", "in", [hostile, "date"])) == ["d"]
+
+
+# --------------------------------------------------------------------------------------------
+# find: projections (contract I-10)
+# --------------------------------------------------------------------------------------------
+
+
+async def test_a_projection_returns_only_the_listed_fields(dataset: Store, token: str) -> None:
+    docs = await dataset.find(
+        JOBS,
+        [Filter("suite", "==", token)],
+        order_by=OrderBy("s"),
+        fields=["n", "flag", "nested", "maybe"],
+    )
+    assert [doc.body for doc in docs] == [
+        {"id": f"{token}-a", "n": 1, "flag": True, "nested": {"k": 1}, "maybe": None},
+        {"id": f"{token}-b", "n": 2, "flag": False, "nested": {"k": 2}},
+        {"id": f"{token}-c", "n": 3.5, "nested": {"k": "1"}},
+        {"id": f"{token}-d", "n": "3", "flag": 1},
+        {"id": f"{token}-e", "n": None},
+    ]
+
+
+async def test_projected_documents_carry_the_whole_documents_etag(
+    dataset: Store, token: str
+) -> None:
+    (doc,) = await dataset.find(
+        JOBS, [Filter("suite", "==", token), Filter("s", "==", "apple")], fields=["s"]
+    )
+    whole = await dataset.read(JOBS, doc.id)
+    assert (doc.id, doc.partition_key, doc.etag) == (whole.id, whole.partition_key, whole.etag)
+    assert doc.body == {"id": whole.id, "s": "apple"}
+    assert not SYSTEM_PROPERTIES & doc.body.keys()
+    replaced = await dataset.replace(JOBS, {**whole.body, "n": 10}, if_match=doc.etag)
+    assert replaced.body["n"] == 10
+
+
+async def test_filters_order_and_limit_still_see_the_whole_document(
+    dataset: Store, token: str
+) -> None:
+    docs = await dataset.find(
+        JOBS,
+        [Filter("suite", "==", token), Filter("tag", "==", "x")],
+        order_by=OrderBy("n", descending=True),
+        limit=1,
+        fields=["s"],
+    )
+    assert [doc.body for doc in docs] == [{"id": f"{token}-c", "s": "cherry"}]
+
+
+async def test_an_empty_projection_returns_ids_only(dataset: Store, token: str) -> None:
+    docs = await dataset.find(JOBS, [Filter("suite", "==", token)], fields=[])
+    assert sorted(names(token, docs)) == ["a", "b", "c", "d", "e"]
+    assert all(doc.body == {"id": doc.id} for doc in docs)
+    again = await dataset.find(JOBS, [Filter("suite", "==", token)], fields=["id", "id"])
+    assert sorted(doc.body["id"] for doc in again) == sorted(doc.id for doc in docs)
+
+
+async def test_unindexed_fields_can_be_read_but_not_filtered(store: Store, token: str) -> None:
+    created = await store.create(JOBS, body(token, "a", events=[{"seq": 1}], other="x"))
+    (doc,) = await store.find(JOBS, [Filter("suite", "==", token)], fields=["events"])
+    assert doc.body == {"id": created.id, "events": [{"seq": 1}]}
+    with pytest.raises(InvalidRequest):
+        await store.find(JOBS, [Filter("events", "exists", True)], fields=["id"])
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        pytest.param("status", id="a-string"),
+        pytest.param(b"status", id="bytes"),
+        pytest.param({"status": 1}, id="a-mapping"),
+        pytest.param(7, id="not-iterable"),
+        pytest.param([""], id="empty-name"),
+        pytest.param(["a.b"], id="nested-path"),
+        pytest.param(["a-b"], id="not-an-identifier"),
+        pytest.param(["_etag"], id="system-property"),
+        pytest.param(["_ts"], id="system-property-ts"),
+        pytest.param([None], id="none"),
+        pytest.param([1], id="int"),
+        pytest.param(['s"] FROM c --'], id="sql"),
+    ],
+)
+async def test_invalid_projections_are_rejected(store: Store, fields: object) -> None:
+    with pytest.raises(InvalidRequest):
+        await store.find(JOBS, fields=fields)  # pyright: ignore[reportArgumentType]

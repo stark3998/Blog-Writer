@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from typing import cast
 
 import httpx2
 import pytest
@@ -410,6 +411,52 @@ async def test_structured_output_uses_the_compiled_schema(
     assert compile_schema("anthropic", Draft).validate_json(completion.text) == Draft(
         title="Passkeys", body="They are here."
     )
+
+
+def grammar_too_large() -> httpx2.Response:
+    body = {
+        "type": "error",
+        "error": {
+            "type": "invalid_request_error",
+            "message": "The compiled grammar is too large, which would cause performance issues. "
+            "Simplify your tool schemas or reduce the number of strict tools.",
+        },
+    }
+    return httpx2.Response(400, headers={"request-id": "req_grammar"}, json=body)
+
+
+async def test_a_schema_too_large_for_the_grammar_falls_back_to_prompted_json(
+    api: MockAPI, provider: AnthropicFoundryProvider
+) -> None:
+    answer = json.dumps({"title": "Passkeys", "body": "They are here."})
+    api.queue(grammar_too_large())
+    api.queue(
+        sse([message_start(), *text_block(0, "```json\n" + answer + "\n```"), *finish("end_turn")])
+    )
+    completion = await provider.complete(OPUS, request(output_schema=Draft))
+    first, second = api.body(0), api.body(1)
+    assert "format" in cast(dict[str, object], first["output_config"])
+    assert "format" not in cast(dict[str, object], second.get("output_config", {}))
+    system = cast(list[dict[str, object]], second["system"])
+    assert any("JSON Schema" in str(block["text"]) for block in system)
+    # Fences and prose around the object are dropped before the router validates it.
+    assert compile_schema("anthropic", Draft).validate_json(completion.text) == Draft(
+        title="Passkeys", body="They are here."
+    )
+    # The provider remembers the schema: the next call goes straight to prompted JSON.
+    api.queue(sse([message_start(), *text_block(0, answer), *finish("end_turn")]))
+    await provider.complete(OPUS, request(output_schema=Draft))
+    assert len(api.requests) == 3
+    assert "format" not in cast(dict[str, object], api.body(2).get("output_config", {}))
+
+
+async def test_other_bad_requests_are_not_retried(
+    api: MockAPI, provider: AnthropicFoundryProvider
+) -> None:
+    api.queue(error_response(400, "invalid_request_error"))
+    with pytest.raises(ProviderRequestError):
+        await provider.complete(OPUS, request(output_schema=Draft))
+    assert len(api.requests) == 1
 
 
 async def test_messages_cover_breakpoints_tool_use_and_results(

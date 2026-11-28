@@ -5,6 +5,8 @@ The owner's workspace: Today, Calendar, Studio, Library and Settings. Vite, Reac
 shadcn-style components, Sonner, cmdk and self-hosted fonts. An installable PWA.
 
 Design notes, tokens, routes and decisions: [`docs/v2/phase1/web.md`](../docs/v2/phase1/web.md).
+Who owns which files, the shared primitives and data helpers, and the testing, phone-first and
+accessibility rules for feature work: [`docs/v2/build/web-wave.md`](../docs/v2/build/web-wave.md).
 
 ## Scripts
 

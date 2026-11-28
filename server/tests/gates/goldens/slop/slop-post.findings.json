@@ -1,0 +1,62 @@
+[
+  {
+    "code": "ai-tell",
+    "start": 0,
+    "end": 27,
+    "text": "In today's rapidly evolving"
+  },
+  {
+    "code": "ai-tell",
+    "start": 28,
+    "end": 37,
+    "text": "landscape"
+  },
+  {
+    "code": "isnt-x-its-y",
+    "start": 73,
+    "end": 91,
+    "text": "isn't a tool, it's"
+  },
+  {
+    "code": "rule-of-three",
+    "start": 104,
+    "end": 144,
+    "text": "Teams need clarity, alignment, and trust"
+  },
+  {
+    "code": "colon-reveal",
+    "start": 147,
+    "end": 158,
+    "text": "The result?"
+  },
+  {
+    "code": "rhetorical-opener",
+    "start": 177,
+    "end": 222,
+    "text": "What if your identity platform could do more?"
+  },
+  {
+    "code": "colon-reveal",
+    "start": 247,
+    "end": 287,
+    "text": "Here's the thing: nobody reads policies."
+  },
+  {
+    "code": "rule-of-three",
+    "start": 289,
+    "end": 312,
+    "text": "Faster. Cheaper. Safer."
+  },
+  {
+    "code": "formulaic-closer",
+    "start": 314,
+    "end": 364,
+    "text": "Ultimately, the future belongs to those who adapt."
+  },
+  {
+    "code": "formulaic-closer",
+    "start": 365,
+    "end": 383,
+    "text": "What do you think?"
+  }
+]

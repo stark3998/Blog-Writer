@@ -1,0 +1,6 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<p class="statement" style="font-size:{{ fit(s.statement, 'statement') }}px">{{ s.statement }}</p>
+{% if s.note %}<p class="statement__note">{{ s.note }}</p>{% endif %}
+{% endcall %}

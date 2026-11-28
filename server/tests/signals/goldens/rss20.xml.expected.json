@@ -1,0 +1,30 @@
+{
+  "title": "Identity & Access Weekly",
+  "format": "rss20",
+  "items": [
+    {
+      "url": "https://news.example.org/posts/passkeys",
+      "title": "Passkeys rollout lessons",
+      "published_at": "2026-11-26T13:15:00.000000Z",
+      "publisher": "Identity & Access Weekly"
+    },
+    {
+      "url": "https://news.example.org/posts/oauth-21-redirects?utm_source=rss&utm_medium=feed",
+      "title": "OAuth 2.1 draft tightens redirect URI matching",
+      "published_at": "2026-11-25T14:30:00.000000Z",
+      "publisher": "Identity & Access Weekly"
+    },
+    {
+      "url": "https://news.example.org/posts/token-binding",
+      "title": "Older note on token binding",
+      "published_at": "2026-11-02T09:00:00.000000Z",
+      "publisher": "Identity & Access Weekly"
+    },
+    {
+      "url": "https://news.example.org/posts/undated",
+      "title": "Undated entry keeps its place",
+      "published_at": null,
+      "publisher": "Identity & Access Weekly"
+    }
+  ]
+}

@@ -35,6 +35,23 @@ export const STREAM_EVENT_TYPES = ['snapshot', 'job', 'delta', 'close'] as const
 export type StreamEventType = (typeof STREAM_EVENT_TYPES)[number];
 
 /**
+ * Durable job event types the web acts on (contract section 9; `blogwriter.domain.jobtypes`).
+ * The runner's own (`step.started`, `input.requested`, …) are handled by the job store.
+ */
+export const JOB_EVENT = {
+  /** `data.status`: the job's new status. */
+  status: 'status',
+  /** `data = {entity, id}`: a step wrote that document (ids only). */
+  entityChanged: 'entity.changed',
+  /** The router discarded the step's streamed text (refusal, retry, repair, fallback): start over. */
+  draftReset: 'draft.reset',
+  /** A child job's outcome (`ok`, `ref`, `errorCode`); timeline only. */
+  childResult: 'child.result',
+  /** `data = {done, total, label?}` from a long step. */
+  progress: 'progress',
+} as const;
+
+/**
  * True while a job may still send events: not known yet, or active as the server counts it
  * (`ACTIVE_STATUSES`: queued, running, waiting_input). A job waiting for the owner is live too:
  * answering it re-queues it (`input.received`, then `status: queued`), and the event stream is the

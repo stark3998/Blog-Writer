@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 
 import { useAppData } from '@/lib/app-data';
 import type { EventStreamStatus } from '@/lib/events/event-stream';
-import type { JobAwaiting, JobFailure, JobStatus, JobStepState } from '@/lib/events/events';
+import type { JobAwaiting, JobEventRecord, JobFailure, JobStatus, JobStepState } from '@/lib/events/events';
+import { latestProgressEvent, parseProgress, type JobProgress } from '@/lib/events/job-progress';
 import type { JobView, StepText } from '@/lib/events/job-store';
 
 const NO_STEPS: readonly JobStepState[] = [];
+const NO_EVENTS: readonly JobEventRecord[] = [];
 
 /**
  * Reads one field of a job from the store. Re-renders only when that field changes, so a timeline
@@ -42,9 +44,24 @@ export function useJobAttempt(jobId: string): readonly [attempt: number, maxAtte
   return [attempt, maxAttempts];
 }
 
-/** One step's streamed text (token deltas) so far. */
+/** One step's streamed text (token deltas) so far. `undefined` before the first delta and after a `draft.reset`. */
 export function useJobStepText(jobId: string, step: string): StepText | undefined {
   return useJobField(jobId, (job) => job?.text[step]);
+}
+
+/** The job's retained events (at most 50, oldest first): for a history view, not for state. */
+export function useJobEvents(jobId: string): readonly JobEventRecord[] {
+  return useJobField(jobId, (job) => job?.events ?? NO_EVENTS);
+}
+
+/**
+ * The newest progress a long step reported (`progress` events: `{done, total, label?}`), of
+ * `step` when given. `undefined` until a step reports any. It stays after the step ends; show it
+ * while the step runs (`useJobSteps`), as `JobTimeline` does.
+ */
+export function useJobProgress(jobId: string, step?: string): JobProgress | undefined {
+  const event = useJobField(jobId, (job) => latestProgressEvent(job, step));
+  return useMemo(() => (event ? parseProgress(event) : undefined), [event]);
 }
 
 /** Keeps the app-wide event stream open while `live` is true and the component is mounted. */

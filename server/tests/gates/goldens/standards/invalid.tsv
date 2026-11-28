@@ -1,0 +1,18 @@
+# sample<TAB>code<TAB>ref<TAB>severity while the catalog is fresh
+LLM11 is not an OWASP id.	standard-id-unknown	LLM11	block
+See LLM00 for details.	standard-id-unknown	LLM00	block
+ASI12 is invented.	standard-id-unknown	ASI12	block
+AML.T51 is malformed.	standard-id-malformed	AML.T51	block
+AML.T9999 does not exist.	standard-id-unknown	AML.T9999	warn
+GOVERN 1.9 is not a subcategory.	standard-id-unknown	GOVERN-1.9	block
+MEASURE 2.14 is not a subcategory.	standard-id-unknown	MEASURE-2.14	block
+MS-9.1-001 is not a profile action of a real subcategory.	standard-id-unknown	MS-9.1-001	block
+SP 800-63D-4 does not exist.	standard-id-unknown	SP-800-63D-4	block
+NIST 800-63-5 is not published.	standard-id-unknown	800-63-5	block
+AAL4 is not an assurance level.	standard-id-unknown	AAL4	block
+IAL0 is not an assurance level.	standard-id-unknown	IAL0	block
+SP 800-63B-3 is the old revision.	standard-id-superseded	SP-800-63B-3	warn
+CVE-24-1234 has a two-digit year.	standard-id-malformed	CVE-24-1234	block
+CVE-2024-12 has a short sequence.	standard-id-malformed	CVE-2024-12	block
+CVE-1998-1234 predates CVE.	standard-id-malformed	CVE-1998-1234	block
+CVE–2024–3094 uses en dashes.	standard-id-malformed	CVE20243094	block

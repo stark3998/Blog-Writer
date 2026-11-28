@@ -241,4 +241,24 @@ describe('createJobStore', () => {
     store.apply(delta(''));
     expect(store.get('job-1')).toBeUndefined();
   });
+
+  it('drops a step’s streamed text on draft.reset, so the next deltas start over', () => {
+    const store = createJobStore();
+    store.apply(jobEvent(1, 'step.started', { step: 'draft' }));
+    store.apply(delta('A refused start', { step: 'draft' }));
+    store.apply(delta('Brief notes', { step: 'brief' }));
+    store.apply(jobEvent(2, 'draft.reset', { step: 'draft' }));
+    expect(store.get('job-1')?.text.draft).toBeUndefined();
+    expect(store.get('job-1')?.text.brief?.text).toBe('Brief notes');
+    expect(store.get('job-1')?.events.at(-1)?.type).toBe('draft.reset');
+    store.apply(delta('The real draft', { step: 'draft' }));
+    expect(store.get('job-1')?.text.draft).toEqual({ text: 'The real draft', gap: false, truncated: false });
+
+    // Without a step, every step's text goes; a replay changes nothing.
+    store.apply(jobEvent(3, 'draft.reset'));
+    expect(store.get('job-1')?.text).toEqual({});
+    const before = store.get('job-1');
+    store.apply(jobEvent(3, 'draft.reset'));
+    expect(store.get('job-1')).toBe(before);
+  });
 });

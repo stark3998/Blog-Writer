@@ -292,6 +292,43 @@ async def test_find_sends_parameterized_sql_and_maps_items() -> None:
     ]
 
 
+async def test_find_with_a_projection_selects_and_maps_only_those_fields() -> None:
+    store, db, _ = make_store()
+    container = db.get_container_client("article-versions")
+    container.query_results = [
+        {"id": "a1-v00002", "_etag": '"e2"', "articleId": "a1", "version": 2},
+        {"id": "a1-v00001", "_etag": '"e1"', "articleId": "a1", "version": 1, "note": None},
+    ]
+    docs = await store.find(
+        "article-versions",
+        [Filter("articleId", "==", "a1")],
+        order_by=OrderBy("version", descending=True),
+        partition_key="a1",
+        fields=["version", "note"],
+    )
+    assert container.calls == [
+        (
+            "query_items",
+            {
+                "query": 'SELECT c["id"], c["_etag"], c["articleId"], c["version"], c["note"] '
+                'FROM c WHERE c["articleId"] = @p0 AND IS_PRIMITIVE(c["version"]) '
+                'ORDER BY c["version"] DESC',
+                "parameters": [{"name": "@p0", "value": "a1"}],
+                "partition_key": "a1",
+            },
+        )
+    ]
+    assert [(doc.id, doc.partition_key, doc.etag, doc.body) for doc in docs] == [
+        ("a1-v00002", "a1", '"e2"', {"id": "a1-v00002", "articleId": "a1", "version": 2}),
+        (
+            "a1-v00001",
+            "a1",
+            '"e1"',
+            {"id": "a1-v00001", "articleId": "a1", "version": 1, "note": None},
+        ),
+    ]
+
+
 async def test_find_passes_the_partition_key_when_scoped() -> None:
     store, db, _ = make_store()
     await store.find("article-versions", partition_key="a1")
@@ -324,6 +361,10 @@ async def test_validation_happens_before_any_sdk_call() -> None:
         await store.find("jobs", limit=0)
     with pytest.raises(InvalidRequest):
         await store.find("jobs", [Filter("events", "exists", True)])
+    with pytest.raises(InvalidRequest):
+        await store.find("jobs", fields=["lease.until"])
+    with pytest.raises(InvalidRequest):
+        await store.find("jobs", fields=["_etag"])
     assert db.lookups == []
 
 

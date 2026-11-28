@@ -15,6 +15,7 @@ from blogwriter.ai.providers.auth import FOUNDRY_SCOPE, entra_token_provider
 from blogwriter.ai.providers.base import (
     BackgroundPoll,
     BackgroundStatus,
+    EmbeddingProvider,
     Provider,
     ProviderAuthError,
     ProviderError,
@@ -37,6 +38,7 @@ __all__ = [
     "AnthropicFoundryProvider",
     "BackgroundPoll",
     "BackgroundStatus",
+    "EmbeddingProvider",
     "OpenAIResponsesProvider",
     "Provider",
     "ProviderAuthError",

@@ -1,4 +1,4 @@
-# Easy Auth (Microsoft Entra ID) in front of the container app.
+# Easy Auth (Microsoft Entra ID) in front of the v2 container app.
 #
 # azapi because azurerm has no resource for Microsoft.App/containerApps/authConfigs.
 # The body below validates against azapi's embedded schema for 2026-07-01.
@@ -37,6 +37,10 @@ resource "azapi_resource" "easy_auth" {
           }
 
           validation = {
+            # The client ID (browser sign-in) and, with easyauth_cli_access_enabled,
+            # api://<client id> for bearer tokens the Azure CLI gets.
+            allowedAudiences = local.easyauth_allowed_audiences
+
             defaultAuthorizationPolicy = {
               allowedPrincipals = {
                 identities = [var.owner_object_id]
@@ -67,7 +71,7 @@ resource "azapi_resource" "easy_auth" {
   lifecycle {
     precondition {
       condition     = var.create_entra_app || var.easyauth_client_id != null
-      error_message = "Set easyauth_client_id to the owner-created Entra app registration's client ID (or set create_entra_app = true). Without it the app would be exposed without authentication."
+      error_message = "Set easyauth_client_id to the owner-created Entra app registration's client ID (or keep create_entra_app = true). Without it the app would be exposed without authentication."
     }
 
     precondition {
@@ -80,14 +84,16 @@ resource "azapi_resource" "easy_auth" {
   depends_on = [
     azuread_app_role_assignment.owner,
     azuread_application_federated_identity_credential.easyauth,
+    azuread_application_identifier_uri.easyauth,
+    azuread_application_pre_authorized.azure_cli,
   ]
 }
 
 # ---------------------------------------------------------------------------
-# Optional (create_entra_app = true, default off): the Entra side of Easy Auth.
-# Otherwise the owner does the same in the portal (README, owner step 1).
-# For owner-local applies only: the CI identities have no Microsoft Graph
-# permissions, so infra.yml cannot even refresh these resources.
+# The Entra side of Easy Auth (create_entra_app = true, the default). The
+# owner, a tenant admin, applies this locally. The CI identities have no
+# Microsoft Graph permissions, so infra.yml cannot refresh these resources
+# (see README, CI).
 # ---------------------------------------------------------------------------
 
 resource "azuread_application" "easyauth" {
@@ -98,6 +104,26 @@ resource "azuread_application" "easyauth" {
   # The owner, not "whoever runs Terraform", so a run under another identity
   # does not try to rewrite ownership.
   owners = [var.owner_object_id]
+
+  api {
+    # v2 access tokens: issuer .../v2.0 (matches openIdIssuer) and aud = the
+    # client ID, which Easy Auth accepts.
+    requested_access_token_version = 2
+
+    # Always declared, enabled only with easyauth_cli_access_enabled: Entra
+    # refuses to delete an enabled scope, so turning CLI access off just
+    # disables it.
+    oauth2_permission_scope {
+      id                         = local.easyauth_scope_id
+      value                      = "user_impersonation"
+      type                       = "User"
+      enabled                    = var.easyauth_cli_access_enabled
+      admin_consent_display_name = "Access Blog Writer v2"
+      admin_consent_description  = "Lets the signed-in owner call the Blog Writer v2 app with a bearer token (live testing from the Azure CLI)."
+      user_consent_display_name  = "Access Blog Writer v2"
+      user_consent_description   = "Lets you call the Blog Writer v2 app with a bearer token."
+    }
+  }
 
   web {
     redirect_uris = local.easyauth_redirect_uris
@@ -116,6 +142,12 @@ resource "azuread_application" "easyauth" {
       type = "Scope"
     }
   }
+
+  lifecycle {
+    # azuread_application_identifier_uri owns identifier_uris: api://<client id>
+    # cannot be set here without the application referencing itself.
+    ignore_changes = [identifier_uris]
+  }
 }
 
 resource "azuread_service_principal" "easyauth" {
@@ -124,7 +156,8 @@ resource "azuread_service_principal" "easyauth" {
   client_id = azuread_application.easyauth[0].client_id
   owners    = [var.owner_object_id]
 
-  # "Assignment required": only assigned principals can sign in at all.
+  # "Assignment required": only assigned principals can sign in or get a token
+  # for this app at all.
   app_role_assignment_required = true
 }
 
@@ -147,4 +180,26 @@ resource "azuread_application_federated_identity_credential" "easyauth" {
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = local.entra_v2_issuer
   subject        = azurerm_user_assigned_identity.this["easyauth"].principal_id
+}
+
+# ---------------------------------------------------------------------------
+# Programmatic owner access for live testing (easyauth_cli_access_enabled):
+#   az account get-access-token --resource api://<client id> --query accessToken -o tsv
+# then call the app with "Authorization: Bearer <token>".
+# ---------------------------------------------------------------------------
+
+resource "azuread_application_identifier_uri" "easyauth" {
+  count = local.easyauth_create_cli_access ? 1 : 0
+
+  application_id = azuread_application.easyauth[0].id
+  identifier_uri = "api://${azuread_application.easyauth[0].client_id}"
+}
+
+# The Azure CLI may request user_impersonation without a consent prompt.
+resource "azuread_application_pre_authorized" "azure_cli" {
+  count = local.easyauth_create_cli_access ? 1 : 0
+
+  application_id       = azuread_application.easyauth[0].id
+  authorized_client_id = local.azure_cli_client_id
+  permission_ids       = [local.easyauth_scope_id]
 }

@@ -14,13 +14,14 @@ codes and request ids only, never prompt or completion text. Requests a provider
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final, Literal, Protocol
+from typing import Final, Literal, Protocol, runtime_checkable
 
 from blogwriter.ai.types import (
     Completion,
     Done,
+    Embeddings,
     ModelSpec,
     ProviderName,
     Request,
@@ -31,6 +32,7 @@ from blogwriter.ai.types import (
 __all__ = [
     "BackgroundPoll",
     "BackgroundStatus",
+    "EmbeddingProvider",
     "Provider",
     "ProviderAuthError",
     "ProviderError",
@@ -146,6 +148,20 @@ class Provider(Protocol):
 
     async def aclose(self) -> None:
         """Close the underlying client."""
+        ...
+
+
+@runtime_checkable
+class EmbeddingProvider(Protocol):
+    """A provider that also serves embeddings (the OpenAI provider)."""
+
+    @property
+    def name(self) -> ProviderName: ...
+
+    async def embed(
+        self, spec: ModelSpec, texts: Sequence[str], *, dimensions: int | None = None
+    ) -> Embeddings:
+        """One embeddings call: a vector per text, in input order."""
         ...
 
 

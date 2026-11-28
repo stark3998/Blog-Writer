@@ -1,0 +1,7 @@
+Ultimately, we kept Okta for 37 apps.
+
+The rest moved in waves of 200.
+
+Next month I will publish the attribute map we used, with the 12 fields that mattered.
+---8<---
+Rotate the keys every 90 days, and log every token exchange.

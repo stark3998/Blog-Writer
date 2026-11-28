@@ -171,6 +171,36 @@ def test_find_spec_rejects_unknown_containers() -> None:
         find_spec("drafts", (), None, None, None)
 
 
+@pytest.mark.parametrize(
+    "fields",
+    ["status", b"status", {"status": 1}, 3, [""], ["a.b"], ["a b"], ["_rid"], [None], [("a",)]],
+)
+def test_find_spec_rejects_bad_projections(fields: object) -> None:
+    with pytest.raises(InvalidRequest):
+        find_spec("jobs", (), None, None, None, fields)
+
+
+def test_projections_always_keep_the_id_and_the_partition_key() -> None:
+    assert find_spec("jobs", (), None, None, None).fields is None
+    assert find_spec("jobs", (), None, None, None, []).fields == ("id",)
+    assert find_spec("jobs", (), None, None, None, ("status", "id", "status")).fields == (
+        "id",
+        "status",
+    )
+    versions = find_spec("article-versions", (), None, None, None, iter(["version", "articleId"]))
+    assert versions.fields == ("id", "articleId", "version")
+    assert find_spec("signals", (), None, None, None, ["title"]).fields == (
+        "id",
+        "sourceId",
+        "title",
+    )
+
+
+def test_projections_may_name_unindexed_fields() -> None:
+    projected = find_spec("articles", (), None, None, None, ["markdown", "gates", "servedBy"])
+    assert projected.fields == ("id", "markdown", "gates", "servedBy")
+
+
 def test_find_spec_accepts_any_iterable_of_filters() -> None:
     items = [Filter("a", "==", 1), Filter("b", "exists", True)]
     assert find_spec("jobs", iter(items), None, None, None).filters == tuple(items)
@@ -186,6 +216,14 @@ def test_find_spec_accepts_any_iterable_of_filters() -> None:
         ("published-blogs", "mdxContent"),
         ("posts", "payload.text"),
         ("jobs", "events"),
+        ("stories", "body"),
+        ("stories", "text"),
+        ("posts", "displayText"),
+        ("posts", "finalText"),
+        ("posts", "aiDraftText"),
+        ("engagement", "pastedText"),
+        ("articles", "gates.contentSha256"),
+        ("articles", "servedBy"),
     ],
 )
 def test_unindexed_fields_cannot_be_filtered_or_sorted(container: str, field: str) -> None:
@@ -301,6 +339,31 @@ def test_limit_is_a_parameter() -> None:
     assert query.parameters == (("@limit", 10),)
 
 
+def test_a_projection_selects_the_id_the_etag_and_the_fields() -> None:
+    query = compile_query(find_spec("jobs", (), None, None, None, ["status", "value"]))
+    assert query.text == 'SELECT c["id"], c["_etag"], c["status"], c["value"] FROM c'
+    assert query.parameters == ()
+
+
+def test_a_projection_with_everything_together() -> None:
+    query = compile_query(
+        find_spec(
+            "article-versions",
+            [Filter("articleId", "==", "art-1"), Filter("version", "<", 9)],
+            OrderBy("version", descending=True),
+            21,
+            "art-1",
+            ["version", "source"],
+        )
+    )
+    assert query.text == (
+        'SELECT TOP @limit c["id"], c["_etag"], c["articleId"], c["version"], c["source"] '
+        'FROM c WHERE c["articleId"] = @p0 AND (IS_NUMBER(c["version"]) AND c["version"] < @p1) '
+        'AND IS_PRIMITIVE(c["version"]) ORDER BY c["version"] DESC'
+    )
+    assert query.parameters == (("@p0", "art-1"), ("@p1", 9), ("@limit", 21))
+
+
 def test_everything_together() -> None:
     query = compiled(
         Filter("state", "==", "queued"),
@@ -413,6 +476,43 @@ def test_partition_scope_and_limit() -> None:
     assert [d.id for d in apply(find_spec("jobs", (), None, None, "b"), docs)] == ["b"]
     descending = find_spec("jobs", (), OrderBy("n", True), 2, None)
     assert [d.id for d in apply(descending, docs)] == ["c", "b"]
+
+
+def test_projections_keep_present_fields_and_drop_missing_ones() -> None:
+    docs = [doc("a", n=1, s=None, deep={"k": [1]}), doc("b", s="x"), doc("c")]
+    projected = apply(find_spec("jobs", (), OrderBy("id"), None, None, ["n", "s", "deep"]), docs)
+    assert [found.body for found in projected] == [
+        {"id": "a", "n": 1, "s": None, "deep": {"k": [1]}},
+        {"id": "b", "s": "x"},
+        {"id": "c"},
+    ]
+    assert [(found.id, found.partition_key, found.etag) for found in projected] == [
+        ("a", "a", '"e"'),
+        ("b", "b", '"e"'),
+        ("c", "c", '"e"'),
+    ]
+
+
+def test_projections_filter_and_order_on_fields_they_leave_out() -> None:
+    docs = [doc("a", n=1, s="x"), doc("b", n=2, s="y"), doc("c", n=3, s="x")]
+    spec = find_spec("jobs", [Filter("s", "==", "x")], OrderBy("n", True), 1, None, ["s"])
+    assert [found.body for found in apply(spec, docs)] == [{"id": "c", "s": "x"}]
+
+
+def test_a_str_subclass_cannot_smuggle_sql_through_a_projection() -> None:
+    """Field names reach the SQL text only as the plain segments ``parse_field_path`` split."""
+
+    class Sneaky(str):
+        __slots__ = ()
+
+        def __format__(self, format_spec: str) -> str:
+            return 'x"] FROM c WHERE true OR c["x'
+
+        def __str__(self) -> str:
+            return 'x"] FROM c WHERE true OR c["x'
+
+    query = compile_query(find_spec("jobs", (), None, None, None, [Sneaky("status")]))
+    assert query.text == 'SELECT c["id"], c["_etag"], c["status"] FROM c'
 
 
 def test_a_filter_subclass_cannot_smuggle_sql_through_its_path() -> None:

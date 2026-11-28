@@ -1,0 +1,100 @@
+name: Deploy
+
+# Builds the v2 image in ACR, rolls the container app to it (Terraform ignores the image) and
+# smoke-tests the result. Every step is a command of scripts/deploy-v2.sh, the same script the
+# owner runs locally, so the freeze windows and smoke checks live in one place.
+#
+# GitHub OIDC only, no secrets: the job runs in the GitHub environment "deploy", whose federated
+# credential belongs to the ci_deploy identity (AcrPush and Container Registry Tasks Contributor
+# on the registry, Container Apps Contributor on the app).
+#
+# Environment "deploy" variables:
+#   AZURE_CLIENT_ID (ci_deploy), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, ACR_NAME, RESOURCE_GROUP,
+#   CONTAINER_APP; optional ACR_RESOURCE_GROUP (default RESOURCE_GROUP) and CONTAINER_NAME (only
+#   if the app runs more than one container).
+#   This repository is public and GitHub prints variable values in its logs, so the three IDs may
+#   instead be environment secrets with the same names: a secret wins over a variable and is masked.
+#
+# Rollback: run the workflow with rollback_to set to an existing image tag (a previous commit SHA;
+# every deploy prints the tag it replaced). The build is skipped. Inside a publish window (Monday
+# 08:30-09:30, Tuesday-Thursday 09:30-12:30 America/New_York) the run fails unless force is set.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "web/**"
+      - "contracts/**"
+      - "Dockerfile"
+      - ".dockerignore"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Deploy even inside a publish window (skips the deploy-freeze check)"
+        type: boolean
+        default: false
+      rollback_to:
+        description: "Roll back to this existing image tag (a previous commit SHA) instead of building"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# Deploys never overlap and are never cancelled half-way; a newer run waits for the current one.
+concurrency:
+  group: deploy-v2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, deploy and smoke-test
+    # Only main is ever deployed (also enforce it with the environment's branch policy).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: deploy
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      ACR_RESOURCE_GROUP: ${{ vars.ACR_RESOURCE_GROUP || vars.RESOURCE_GROUP }}
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+      CONTAINER_APP: ${{ vars.CONTAINER_APP }}
+      CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+      # The full commit SHA, or the rollback tag. The script validates it before any use.
+      IMAGE_TAG: ${{ inputs.rollback_to || github.sha }}
+      DEPLOY_FORCE: ${{ inputs.force && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Deploy-freeze check
+        run: bash scripts/deploy-v2.sh freeze
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build the image in ACR
+        if: ${{ !inputs.rollback_to }}
+        run: bash scripts/deploy-v2.sh build
+
+      - name: Check the rollback image exists
+        if: ${{ inputs.rollback_to }}
+        run: bash scripts/deploy-v2.sh image-exists
+
+      - name: Update the container app
+        run: bash scripts/deploy-v2.sh update
+
+      - name: Wait for the new revision
+        run: bash scripts/deploy-v2.sh wait
+
+      - name: Smoke test
+        run: bash scripts/deploy-v2.sh smoke

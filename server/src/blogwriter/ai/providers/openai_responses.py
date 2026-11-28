@@ -26,6 +26,13 @@ text; they are still replayed verbatim in tool loops.
 Refusals are results, not errors: a ``refusal`` content part, an ``incomplete`` response with
 reason ``content_filter``, a ``failed`` response with a policy code, or an HTTP 400 with code
 ``content_filter`` (Azure's prompt filter) become a :class:`~blogwriter.ai.types.Refusal`.
+
+Image parts (:class:`~blogwriter.ai.types.ImagePart`) go out as ``input_image`` content with a
+``data:`` URL, grouped with the turn's text in one message (a turn without images keeps one
+message per text part).
+
+Embeddings (:meth:`OpenAIResponsesProvider.embed`) call ``POST /embeddings`` with explicit
+``dimensions`` and ``encoding_format="float"``; the router prices and records them.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ from openai import (
     NotFoundError,
     OpenAIError,
     not_given,
+    omit,
 )
 from openai.types.responses import (
     EasyInputMessageParam,
@@ -54,11 +62,16 @@ from openai.types.responses import (
     ResponseFunctionToolCallParam,
     ResponseIncludable,
     ResponseIncompleteEvent,
+    ResponseInputImageParam,
+    ResponseInputTextParam,
     ResponseTextConfigParam,
     ToolParam,
     WebSearchToolParam,
 )
 from openai.types.responses.response_create_params import ResponseCreateParamsBase
+from openai.types.responses.response_input_message_content_list_param import (
+    ResponseInputContentParam,
+)
 from openai.types.responses.response_input_param import (
     FunctionCallOutput,
     ResponseInputItemParam,
@@ -86,8 +99,10 @@ from blogwriter.ai.types import (
     Citation,
     Completion,
     Done,
+    Embeddings,
     FinishReason,
     FunctionTool,
+    ImagePart,
     Message,
     ModelSpec,
     NativeItems,
@@ -175,35 +190,73 @@ def create_openai_client(
 # --------------------------------------------------------------------------------------------
 
 
-def _input_items(messages: Sequence[Message]) -> ResponseInputParam:
+def _image_content(part: ImagePart) -> ResponseInputImageParam:
+    return {"type": "input_image", "image_url": part.data_url, "detail": "auto"}
+
+
+def _message_items(message: Message) -> list[ResponseInputItemParam]:
+    """One message's input items, in part order.
+
+    Without images every text part is its own message item (string content). With images, the
+    text and image parts between tool items share one message with a content list, so the model
+    reads the screenshot together with the words around it.
+    """
     items: list[ResponseInputItemParam] = []
-    for message in messages:
-        if message.native is not None and message.native.provider == _PROVIDER:
-            items.extend(cast(ResponseInputItemParam, dict(item)) for item in message.native.items)
-            continue
-        for part in message.parts:
-            if isinstance(part, TextPart):
+    grouped = bool(message.images)
+    content: list[ResponseInputContentParam] = []
+
+    def flush() -> None:
+        if content:
+            group: EasyInputMessageParam = {
+                "type": "message",
+                "role": message.role,
+                "content": list(content),
+            }
+            items.append(group)
+            content.clear()
+
+    for part in message.parts:
+        if isinstance(part, TextPart):
+            if grouped:
+                text_content: ResponseInputTextParam = {"type": "input_text", "text": part.text}
+                content.append(text_content)
+            else:
                 text_item: EasyInputMessageParam = {
                     "type": "message",
                     "role": message.role,
                     "content": part.text,
                 }
                 items.append(text_item)
-            elif isinstance(part, ToolCallPart):
-                call_item: ResponseFunctionToolCallParam = {
-                    "type": "function_call",
-                    "call_id": part.call_id,
-                    "name": part.name,
-                    "arguments": part.arguments,
-                }
-                items.append(call_item)
-            else:
-                output_item: FunctionCallOutput = {
-                    "type": "function_call_output",
-                    "call_id": part.call_id,
-                    "output": f"Error: {part.output}" if part.is_error else part.output,
-                }
-                items.append(output_item)
+        elif isinstance(part, ImagePart):
+            content.append(_image_content(part))
+        elif isinstance(part, ToolCallPart):
+            flush()
+            call_item: ResponseFunctionToolCallParam = {
+                "type": "function_call",
+                "call_id": part.call_id,
+                "name": part.name,
+                "arguments": part.arguments,
+            }
+            items.append(call_item)
+        else:
+            flush()
+            output_item: FunctionCallOutput = {
+                "type": "function_call_output",
+                "call_id": part.call_id,
+                "output": f"Error: {part.output}" if part.is_error else part.output,
+            }
+            items.append(output_item)
+    flush()
+    return items
+
+
+def _input_items(messages: Sequence[Message]) -> ResponseInputParam:
+    items: list[ResponseInputItemParam] = []
+    for message in messages:
+        if message.native is not None and message.native.provider == _PROVIDER:
+            items.extend(cast(ResponseInputItemParam, dict(item)) for item in message.native.items)
+            continue
+        items.extend(_message_items(message))
     return items
 
 
@@ -557,6 +610,59 @@ class OpenAIResponsesProvider:
             )
         for event in _final_events(_completion(final, spec.deployment, during_stream=True)):
             yield event
+
+    # ----------------------------------------------------------------------------------------
+    # Embeddings
+    # ----------------------------------------------------------------------------------------
+
+    async def embed(
+        self, spec: ModelSpec, texts: Sequence[str], *, dimensions: int | None = None
+    ) -> Embeddings:
+        """One ``POST /embeddings`` call: a vector per text, in input order.
+
+        ``dimensions`` shortens ``text-embedding-3`` vectors (the service renormalizes them).
+        A response that does not hold exactly one vector per input, each of the asked size,
+        raises :class:`ProviderRequestError` (never retried, never a partial result).
+        """
+        if spec.provider != _PROVIDER:
+            raise UnsupportedRequestError(f"spec for {spec.provider} sent to the openai provider")
+        inputs = list(texts)
+        if not inputs:
+            raise UnsupportedRequestError("an embeddings call needs at least one input")
+        try:
+            response = await self._client.embeddings.create(
+                model=spec.deployment,
+                input=inputs,
+                dimensions=dimensions if dimensions is not None else omit,
+                encoding_format="float",
+            )
+        except (OpenAIError, httpx2.TransportError) as exc:
+            raise _map_error(exc, during_stream=False) from exc
+        usage = Usage(input=count_attr(response, "usage", "prompt_tokens") or 0)
+
+        def unexpected(problem: str) -> ProviderRequestError:
+            return ProviderRequestError(
+                f"openai embeddings response {problem}",
+                provider=_PROVIDER,
+                retryable=False,
+                usage=usage,
+            )
+
+        by_index = {item.index: item.embedding for item in response.data}
+        vectors = [by_index.get(index) for index in range(len(inputs))]
+        ordered = [vector for vector in vectors if vector]
+        if len(response.data) != len(inputs) or len(ordered) != len(inputs):
+            raise unexpected("does not hold one vector per input")
+        if dimensions is not None and any(len(vector) != dimensions for vector in ordered):
+            raise unexpected("has the wrong dimensions")
+        try:
+            return Embeddings(
+                vectors=tuple(tuple(float(value) for value in vector) for vector in ordered),
+                usage=usage,
+                model=response.model or spec.deployment,
+            )
+        except ValueError:
+            raise unexpected("has vectors of different sizes") from None
 
     # ----------------------------------------------------------------------------------------
     # Background runs

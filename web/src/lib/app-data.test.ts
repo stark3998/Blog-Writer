@@ -133,4 +133,27 @@ describe('createAppData', () => {
     });
     appData.events.stop();
   });
+
+  it('refreshes the changed document’s queries and then tells the feed', async () => {
+    const appData = createTestAppData();
+    const invalidate = vi.spyOn(appData.queryClient, 'invalidateQueries');
+    const heard: string[] = [];
+    appData.feed.subscribe((event) => {
+      heard.push(`${event.type}:${String(appData.jobs.get('job-1')?.seq ?? 0)}`);
+    });
+    appData.events.retain();
+    const source = MockEventSource.latest();
+    source.open();
+    source.emit('job', jobEventPayload(1, 'entity.changed', { step: 'save', data: { entity: 'idea', id: 'idea-1' } }), 'job-1:1');
+    expect(heard).toEqual(['job:1']);
+    await vi.waitFor(() => {
+      expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+        ['today'],
+        ['ideas', 'list'],
+        ['jobs', 'detail', 'job-1'],
+        ['ideas', 'detail', 'idea-1'],
+      ]);
+    });
+    appData.events.stop();
+  });
 });

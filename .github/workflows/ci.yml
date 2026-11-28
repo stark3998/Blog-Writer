@@ -3,7 +3,7 @@ name: CI
 # v2 checks for the server, the web app and the shared contracts. No secrets, read-only token.
 # Pushes run on main only; branches get CI through their pull request (no duplicate runs).
 # The paths are everything the jobs read: the server's db tests check its container registry
-# against the Terraform in infra/v2/data.
+# against the Terraform in infra/v2/data, and the docker job builds the root Dockerfile.
 on:
   push:
     branches: [main]
@@ -12,6 +12,8 @@ on:
       - "web/**"
       - "contracts/**"
       - "infra/v2/data/*.tf"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
@@ -19,6 +21,8 @@ on:
       - "web/**"
       - "contracts/**"
       - "infra/v2/data/*.tf"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -127,3 +131,91 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Docker image (build, smoke test, Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      IMAGE: blog-writer-v2:ci
+      # No build-record artifact: the artifacts of a public repository are downloadable.
+      DOCKER_BUILD_RECORD_UPLOAD: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The runner's default docker driver: the image lands in the local engine for the steps below.
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          provenance: false
+          sbom: false
+          tags: ${{ env.IMAGE }}
+          build-args: BUILD_SHA=${{ github.sha }}
+
+      # blogwriter.main needs Cosmos, so the boot test runs the image's own entrypoint and CMD (tini,
+      # uvicorn and its flags) with the core-only factory swapped in. Also checked: the app user,
+      # the shipped files, the pinned Mermaid hash, the contract files and a Chromium launch.
+      - name: Smoke-test the image
+        run: |
+          set -euo pipefail
+          docker run --rm "$IMAGE" sh -c 'test "$(id -u)" = 10001 && test -s "$BW_SPA_DIR/index.html" && test -s "$BW_RENDER_MERMAID_JS"'
+          docker run --rm -i "$IMAGE" python - <<'EOF'
+          import hashlib
+          import os
+
+          from blogwriter.publish.contract import default_contract
+          from blogwriter.render.settings import MERMAID_TINY_SHA256
+          from playwright.sync_api import sync_playwright
+
+          default_contract()
+          with open(os.environ["BW_RENDER_MERMAID_JS"], "rb") as bundle:
+              digest = hashlib.sha256(bundle.read()).hexdigest()
+          assert digest == MERMAID_TINY_SHA256, "mermaid.tiny.js does not match MERMAID_TINY_SHA256"
+          with sync_playwright() as playwright:
+              browser = playwright.chromium.launch()
+              page = browser.new_page()
+              page.set_content("<p id='probe'>ok</p>")
+              assert page.inner_text("#probe") == "ok"
+              browser.close()
+          print("contract files, Mermaid bundle and Chromium headless shell: ok")
+          EOF
+
+          cmd=$(docker image inspect "$IMAGE" --format '{{json .Config.Cmd}}')
+          jq -e 'index("blogwriter.main:app") != null' <<<"$cmd" >/dev/null
+          args=$(jq -r 'map(if . == "blogwriter.main:app" then "blogwriter.core.app:app" else . end) | @sh' <<<"$cmd")
+          eval "docker run -d --name bw-smoke -p 127.0.0.1:8080:8080 \"\$IMAGE\" $args"
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 -o "$RUNNER_TEMP/health.json" http://127.0.0.1:8080/api/health; then break; fi
+            if [ "$attempt" -eq 30 ]; then docker logs bw-smoke; echo "::error::no answer on /api/health"; exit 1; fi
+            sleep 2
+          done
+          jq -e --arg sha "$GITHUB_SHA" '. == {"status": "ok", "sha": $sha}' "$RUNNER_TEMP/health.json"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/)" = 401
+          test "$(docker exec bw-smoke cat /proc/1/comm)" = tini
+          test "$(docker exec bw-smoke id -u)" = 10001
+          # SIGTERM reaches uvicorn through tini and the app stops gracefully (exit 0, not 137).
+          docker stop --time 30 bw-smoke
+          test "$(docker inspect --format '{{.State.ExitCode}}' bw-smoke)" = 0
+
+      - name: Container logs
+        if: failure()
+        run: docker logs bw-smoke || true
+
+      - name: Scan (Trivy; fixed CRITICAL findings fail the build)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.2
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}
+          scanners: vuln
+          vuln-type: os,library
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table

@@ -1,4 +1,4 @@
-# Local backend settings (generated from the bootstrap output).
+# Local backend settings (copied from backend.hcl.example).
 backend.hcl
 *.backend.hcl
 

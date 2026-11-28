@@ -1,9 +1,10 @@
 # Invariant checks. They run on every plan and apply and report warnings
 # (they never block). infra.yml should fail the job when an INVARIANT check
-# fails, i.e. any check except the two reminders at the end of this file
-# (health_probes_mode, lab_expiry_tag), which fail by design for a while.
-# Read the statuses from `terraform show -json` (see README, CI step 5); a
-# grep for "Check block assertion failed" would also trip on the reminders.
+# fails, i.e. any check except the reminders at the end of this file
+# (health_probes_mode, scheduler_tick_alert, lab_expiry_tag), which fail by
+# design for a while. Read the statuses from `terraform show -json` (see
+# README, CI); a grep for "Check block assertion failed" would also trip on
+# the reminders.
 
 check "easy_auth" {
   # Live read of the deployed auth config, so portal changes are caught too.
@@ -21,15 +22,16 @@ check "easy_auth" {
     }
   }
 
-  # Planned configuration: auth required, exactly one excluded path.
+  # Planned configuration: auth required, exactly one excluded path, owner only.
   assert {
     condition = (
       azapi_resource.easy_auth.body.properties.platform.enabled == true &&
       azapi_resource.easy_auth.body.properties.globalValidation.unauthenticatedClientAction == "RedirectToLoginPage" &&
       jsonencode(azapi_resource.easy_auth.body.properties.globalValidation.excludedPaths) == jsonencode(["/api/health"]) &&
-      azapi_resource.easy_auth.body.properties.login.tokenStore.enabled == false
+      azapi_resource.easy_auth.body.properties.login.tokenStore.enabled == false &&
+      jsonencode(azapi_resource.easy_auth.body.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy.allowedPrincipals.identities) == jsonencode([var.owner_object_id])
     )
-    error_message = "Easy Auth config must require authentication (RedirectToLoginPage), exclude exactly [\"/api/health\"] and keep the token store off."
+    error_message = "Easy Auth config must require authentication (RedirectToLoginPage), exclude exactly [\"/api/health\"], keep the token store off and allow only owner_object_id."
   }
 
   # Deployed state (missing fields count as a failure).
@@ -58,20 +60,35 @@ check "single_replica" {
 }
 
 check "consumption_only_environment" {
+  # Live read of the shared environment: a legacy Consumption-only environment
+  # has no workloadProfiles at all; a workload-profiles one may only have the
+  # Consumption profile. No VNet either.
+  data "azapi_resource" "live_environment" {
+    type        = "Microsoft.App/managedEnvironments@2024-03-01"
+    resource_id = data.azurerm_container_app_environment.this.id
+
+    response_export_values = {
+      workload_profiles = "properties.workloadProfiles"
+      vnet              = "properties.vnetConfiguration"
+    }
+  }
+
   assert {
     condition = (
-      length(azurerm_container_app_environment.this.workload_profile) == 1 &&
-      alltrue([for p in azurerm_container_app_environment.this.workload_profile : p.workload_profile_type == "Consumption"]) &&
-      try(length(azurerm_container_app_environment.this.infrastructure_subnet_id), 0) == 0
+      try(length(azurerm_container_app.app.workload_profile_name), 0) == 0 &&
+      alltrue(try([for p in data.azapi_resource.live_environment.output.workload_profiles : p.workloadProfileType == "Consumption"], [true])) &&
+      try(data.azapi_resource.live_environment.output.vnet, null) == null
     )
-    error_message = "The Container Apps environment must have only the Consumption workload profile and no VNet (dedicated profiles, premium ingress and private endpoints cost >= $73/month)."
+    error_message = "The app must run on Consumption only (no workload_profile_name) in an environment without dedicated profiles or a VNet (dedicated profiles, premium ingress and private endpoints cost >= $73/month)."
   }
 }
 
-check "acr_admin_disabled" {
+check "app_fqdn" {
+  # BW_PUBLIC_ORIGIN and the Entra redirect URIs are computed as
+  # <app>.<environment default domain>; the real ingress FQDN must match.
   assert {
-    condition     = azurerm_container_registry.this.admin_enabled == false
-    error_message = "ACR admin user must stay disabled (pulls use the app identity, pushes use ci_deploy)."
+    condition     = azurerm_container_app.app.ingress[0].fqdn == local.app_default_fqdn
+    error_message = "The app's ingress FQDN differs from <container_app_name>.<environment default domain>; set public_origin (and check the Entra redirect URIs)."
   }
 }
 
@@ -87,9 +104,10 @@ check "storage_shared_key_disabled" {
 }
 
 check "cosmos_local_auth_disabled" {
+  # The data root owns the account; the app relies on Entra ID only.
   assert {
-    condition     = azurerm_cosmosdb_account.this.local_authentication_enabled == false
-    error_message = "Cosmos DB local (key) authentication must stay disabled."
+    condition     = try(data.azapi_resource.cosmos_account.output.disable_local_auth == true, false)
+    error_message = "Cosmos DB local (key) authentication must stay disabled on the v2 account (infra/v2/data)."
   }
 }
 
@@ -103,16 +121,6 @@ check "foundry_local_auth_disabled" {
   }
 }
 
-check "published_blogs_contract" {
-  assert {
-    condition = (
-      azurerm_cosmosdb_sql_container.this["published-blogs"].partition_key_paths == tolist(["/id"]) &&
-      azurerm_cosmosdb_sql_container.this["published-blogs-staging"].partition_key_paths == tolist(["/id"])
-    )
-    error_message = "published-blogs(-staging) must keep partition key /id: the portfolio point-reads item(slug, slug) and relies on id == slug."
-  }
-}
-
 # ---------------------------------------------------------------------------
 # Reminders (not invariants): they fail by design until acted on, so CI must
 # not gate on them.
@@ -121,7 +129,14 @@ check "published_blogs_contract" {
 check "health_probes_mode" {
   assert {
     condition     = var.http_health_probes_enabled
-    error_message = "Readiness/startup probes are still TCP (placeholder mode). After deploy.yml has rolled out an image that serves /api/health, set http_health_probes_enabled = true."
+    error_message = "Readiness/startup probes are TCP (placeholder mode). Once deploy has rolled out an image that serves /api/health, apply with http_health_probes_enabled = true (the default)."
+  }
+}
+
+check "scheduler_tick_alert" {
+  assert {
+    condition     = var.scheduler_tick_alert_enabled
+    error_message = "The 'no scheduler tick for 15 minutes' alert is disabled. Enable scheduler_tick_alert_enabled once the scheduler logs schedule_tick on every tick (today it only logs ticks that did something)."
   }
 }
 

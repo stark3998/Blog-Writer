@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>{{ title }}</title>
+<style>{{ font_css }}{{ css_vars }}
+{% include "slides.css" %}
+</style>
+</head>
+<body>
+{% for view in views %}
+{% include "slides/" ~ view.slide.type ~ ".html.j2" %}
+{% endfor %}
+</body>
+</html>

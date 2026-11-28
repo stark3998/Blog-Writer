@@ -29,6 +29,11 @@ Missed slots (downtime):
   calls :meth:`Scheduler.confirm` (run the missed slot now, or skip it).
 
 The clock is injected, so tests drive :meth:`Scheduler.tick` through any date.
+
+Liveness: the loop logs one ``schedule_tick`` INFO line after **every** completed tick, idle ones
+included (``count`` = jobs fired plus items parked, and ``fired``/``parked``/``errors``), so the
+"no scheduler tick for 15 minutes" alert can tell a quiet scheduler from a dead one. A tick that
+fails logs ``schedule_tick_failed`` (store) or ``schedule_tick_crashed`` instead.
 """
 
 from __future__ import annotations
@@ -97,6 +102,7 @@ __all__ = [
     "daily",
     "every",
     "latest_due",
+    "log_tick",
     "next_run_after",
     "scheduled_job_id",
     "weekly",
@@ -316,6 +322,19 @@ class TickReport:
 
 def _never() -> bool:
     return False
+
+
+def log_tick(report: TickReport) -> None:
+    """The ``schedule_tick`` liveness line, written after every completed tick."""
+    logger.info(
+        "schedule_tick",
+        extra={
+            "count": len(report.fired) + len(report.needs_confirmation),
+            "fired": len(report.fired),
+            "parked": len(report.needs_confirmation),
+            "errors": report.errors,
+        },
+    )
 
 
 class Scheduler:
@@ -722,9 +741,5 @@ class Scheduler:
             except Exception as exc:
                 logger.error("schedule_tick_crashed", extra=describe_exception(exc))
             else:
-                if report.fired or report.needs_confirmation or report.errors:
-                    logger.info(
-                        "schedule_tick",
-                        extra={"count": len(report.fired) + len(report.needs_confirmation)},
-                    )
+                log_tick(report)
             await asyncio.sleep(self._settings.tick_seconds)

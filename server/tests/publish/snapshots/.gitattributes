@@ -1,0 +1,2 @@
+# Render goldens are byte-exact: never normalize line endings or whitespace.
+* -text

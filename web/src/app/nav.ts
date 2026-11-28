@@ -21,6 +21,25 @@ export const STUDIO_TABS = [
   { id: 'go-live', label: 'Go-live' },
 ] as const satisfies readonly Section[];
 
+export type StudioTab = (typeof STUDIO_TABS)[number];
+
+/**
+ * A Studio piece is an article (`art-…`) or a standalone post (`post-…`: the native and
+ * quick-take lanes), by its id's prefix (contract section 10).
+ */
+export type PieceKind = 'article' | 'post';
+
+export function pieceKind(pieceId: string): PieceKind {
+  return pieceId.startsWith('post-') ? 'post' : 'article';
+}
+
+const POST_TABS: readonly StudioTab[] = STUDIO_TABS.filter((tab) => tab.id !== 'draft');
+
+/** The tabs a piece has: Draft is for articles only. */
+export function studioTabsFor(pieceId: string): readonly StudioTab[] {
+  return pieceKind(pieceId) === 'post' ? POST_TABS : STUDIO_TABS;
+}
+
 export const LIBRARY_SECTIONS = [
   { id: 'pillars', label: 'Pillars', keywords: ['topics', 'hashtags'] },
   { id: 'voice', label: 'Voice guide', keywords: ['style', 'tone'] },

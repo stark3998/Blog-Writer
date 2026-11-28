@@ -1,15 +1,13 @@
 # Copy to terraform.tfvars (gitignored) and fill in. This repository is PUBLIC:
 # never commit real subscription/tenant/object IDs, email addresses or names.
-# The all-zero GUIDs below are placeholders; validation rejects them.
+# The all-zero GUID below is a placeholder; validation rejects it.
 # In CI, provide the same values as TF_VAR_* from GitHub environment secrets.
 
 # Leave unset and export ARM_SUBSCRIPTION_ID instead, or set it here locally.
 # subscription_id = "00000000-0000-0000-0000-000000000000"
 
-location            = "eastus"
-resource_group_name = "rg-blog-writer-v2"
-
-# Lab-required resource group tags (exact names: Purpose, Owner, Expiry Date).
+# Lab-required tags (exact names: Purpose, Owner, Expiry Date) on every
+# resource this root creates.
 tag_purpose     = "<purpose>"
 tag_owner       = "<owner-alias>"
 tag_expiry_date = "2027-06-30"
@@ -19,43 +17,70 @@ owner_object_id = "00000000-0000-0000-0000-000000000000"
 alert_email     = "owner@example.com"
 
 # GitHub OIDC (case-sensitive, must match the token's 'sub' claim).
-github_owner     = "<github-user-or-org>"
-github_repo      = "Blog-Writer"
-portfolio_repo   = "portfolio"
-portfolio_branch = "master"
+github_owner = "<github-user-or-org>"
+# github_repo      = "Blog-Writer"
+# portfolio_repo   = "portfolio"
+# portfolio_branch = "master"
 
-# Easy Auth: client ID of the Entra app registration the owner created
-# (README owner step 1). Or set create_entra_app = true.
-easyauth_client_id  = "00000000-0000-0000-0000-000000000000"
-easyauth_credential = "federated"
-# create_entra_app  = false
+# Existing footprint (defaults shown; change only if the names differ).
+# resource_group_name            = "rg-blog-writer-dev"
+# container_app_environment_name = "cae-blog-writer-dev"
+# log_analytics_workspace_name   = "law-blog-writer-dev"
+# container_registry_name        = "<shared registry name>"
+# cosmos_account_name            = "<output cosmos_account_name of infra/v2/data>"
+# cosmos_database_name           = "blog-writer"
 
-# Container app. Keep the placeholder image and TCP probes for the first apply;
-# flip http_health_probes_enabled after deploy.yml has shipped a real image.
+# The new v2 app, side by side with v1.
+# container_app_name = "ca-blog-writer-v2"
+
+# FIRST APPLIES ONLY (README, runbook): the placeholder image has no
+# /api/health, so use TCP probes until deploy has rolled out the real image,
+# then remove this line (the default is true).
 http_health_probes_enabled = false
 
-# Key Vault secrets the owner has already set (README owner step 2). Each one
-# listed here becomes a versionless Key Vault reference on the container app.
+# Key Vault secrets the owner has already set (README, runbook step 3). Keep
+# [] for the first apply; each name listed becomes a versionless Key Vault
+# reference on the container app.
 key_vault_secrets_set = [
-  # "app-encryption-key",
+  # "cookie-key",
+  # "vault-keys",
   # "vapid-private-key",
-  # "vapid-public-key",
   # "portfolio-dispatch-token",
   # "linkedin-client-secret",
 ]
+
+# Optional app settings.
+# linkedin_client_id  = "<LinkedIn app client ID>" # with linkedin-client-secret
+# public_origin       = "https://writer.example.com" # at cutover, with custom_domain_hostname
+# webiq_endpoint      = "https://<web iq endpoint>"  # only if the account does not export one
+# portfolio_workflow  = "deploy.yml"
+# publish_site_origin = "https://example.com"
+
+# Easy Auth (defaults: Terraform creates the Entra app; owner CLI access on).
+# create_entra_app            = true
+# easyauth_cli_access_enabled = true
+# easyauth_credential         = "federated"
+
+# Features (defaults shown).
+# enable_claude_deployment     = true
+# enable_webiq                 = true
+# enable_budget                = true
+# monthly_budget_amount        = 300
+# enable_locks                 = true
+# scheduler_tick_alert_enabled = false # README, Alerts
+# ci_infra_rbac_admin_enabled  = false
+# enable_gpt_5_6_sol           = false
+# enable_image_generation      = false
 
 # Model capacity (units of 1K TPM), merged over the defaults in locals.tf.
 # model_capacity = {
 #   "gpt-6.2-sol" = 500
 # }
 
-# Optional features (all default off).
-# enable_gpt_5_6_sol          = false
-# enable_image_generation     = false
-# enable_webiq                = false # register Microsoft.WebIQ first
-# enable_claude_deployment    = false # owner deploys Claude in the portal instead
-# ci_infra_rbac_admin_enabled = false
+# Anthropic deployments need modelProviderData; the organization name accepted with the
+# Anthropic Marketplace terms (industry and country code have defaults).
+claude_provider_organization = "<organization name>"
 
-claude_deployment_name = "claude-opus-5-5"
-monthly_budget_amount  = 300
-enable_locks           = true
+# Azure Container Apps cannot start Chromium's own sandbox; the app applies compensating
+# controls instead (docs/v2/build/render.md). Keep false on ACA.
+# render_chromium_sandbox = false

@@ -156,9 +156,15 @@ class _GuardedStore:
         order_by: OrderBy | None = None,
         limit: int | None = None,
         partition_key: str | None = None,
+        fields: Sequence[str] | None = None,
     ) -> list[Doc]:
         return await self._inner.find(
-            container, filters, order_by=order_by, limit=limit, partition_key=partition_key
+            container,
+            filters,
+            order_by=order_by,
+            limit=limit,
+            partition_key=partition_key,
+            fields=fields,
         )
 
     async def ensure_containers(self) -> None:

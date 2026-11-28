@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:base="https://blog.example.net/agents/">
+  <title type="text">Agent Security Notes</title>
+  <id>urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6</id>
+  <updated>2026-11-26T09:00:00Z</updated>
+  <entry>
+    <title type="html">MCP servers &amp;amp; scoped tokens</title>
+    <link rel="alternate" type="text/html" href="mcp-scoped-tokens"/>
+    <id>tag:blog.example.net,2026:1</id>
+    <published>2026-11-24T10:00:00+01:00</published>
+    <updated>2026-11-24T12:00:00+01:00</updated>
+    <summary>SUMMARY-MARKER-2 should never be stored.</summary>
+  </entry>
+  <entry>
+    <title>Prompt injection in tool descriptions</title>
+    <link rel="related" href="https://other.example.com/unrelated"/>
+    <link rel="alternate" href="https://blog.example.net/agents/tool-descriptions"/>
+    <id>tag:blog.example.net,2026:2</id>
+    <updated>2026-11-25T18:45:30Z</updated>
+    <source>
+      <title>Guest column: Red Team Digest</title>
+    </source>
+  </entry>
+  <entry>
+    <title>Entry without any link</title>
+    <id>tag:blog.example.net,2026:3</id>
+    <updated>2026-11-25T08:00:00Z</updated>
+  </entry>
+</feed>

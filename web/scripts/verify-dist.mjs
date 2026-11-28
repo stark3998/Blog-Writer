@@ -40,11 +40,22 @@ const CDN_HOSTS = [
 /**
  * Hosts that appear in the build as plain text, never as something the page loads: XML
  * namespaces (www.w3.org), the error-decoder and docs links inside React and React Router
- * messages, Tailwind's licence banner, and React Router's base for building URLs (localhost).
- * Any other host fails the build. Before adding one, check that nothing fetches it: the CSP
- * would block the request anyway (connect-src, img-src and the rest are 'self').
+ * messages, Tailwind's licence banner, React Router's base for building URLs (localhost), and
+ * the editor's libraries: a ProseMirror error message (prosemirror.net) and a highlight.js
+ * console warning (github.com), in the Draft tab and the normalize worker once they bundle the
+ * editor (`src/features/editor/README.md`). Any other host fails the build. Before adding one,
+ * check that nothing fetches it: the CSP would block the request anyway (connect-src, img-src
+ * and the rest are 'self').
  */
-const TEXT_ONLY_HOSTS = new Set(['www.w3.org', 'react.dev', 'reactrouter.com', 'tailwindcss.com', 'localhost']);
+const TEXT_ONLY_HOSTS = new Set([
+  'www.w3.org',
+  'react.dev',
+  'reactrouter.com',
+  'tailwindcss.com',
+  'localhost',
+  'prosemirror.net',
+  'github.com',
+]);
 const URL_HOST = /\b(?:https?|wss?):\/\/([^/\s"'`)<>\\:]+)/gi;
 
 /** eval (also `window.eval`) and the Function constructor need 'unsafe-eval', which the CSP does not allow. */

@@ -42,6 +42,7 @@ from blogwriter.jobs.lifecycle import (
 )
 from blogwriter.jobs.models import (
     ACTIVE_STATUSES,
+    FINISHED_JOB_TTL_SECONDS,
     JOBS_CONTAINER,
     MAX_EVENTS,
     TERMINAL_STATUSES,
@@ -62,6 +63,8 @@ from blogwriter.jobs.queue import (
     retry_job,
 )
 from blogwriter.jobs.runner import (
+    MAX_DEFERRALS,
+    JobDeferred,
     JobFailed,
     JobRegistry,
     JobRunner,
@@ -92,7 +95,9 @@ from blogwriter.jobs.sse import EVENTS_PATH, get_router
 __all__ = [
     "ACTIVE_STATUSES",
     "EVENTS_PATH",
+    "FINISHED_JOB_TTL_SECONDS",
     "JOBS_CONTAINER",
+    "MAX_DEFERRALS",
     "MAX_EVENTS",
     "SYSTEM_CLOCK",
     "TERMINAL_STATUSES",
@@ -108,6 +113,7 @@ __all__ = [
     "InputRequest",
     "IntervalRule",
     "Job",
+    "JobDeferred",
     "JobError",
     "JobEvent",
     "JobEventMessage",

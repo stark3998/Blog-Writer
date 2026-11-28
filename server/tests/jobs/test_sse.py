@@ -306,11 +306,17 @@ async def test_a_store_failure_ends_the_stream_cleanly(store: MemoryStore) -> No
             order_by: OrderBy | None = None,
             limit: int | None = None,
             partition_key: str | None = None,
+            fields: Sequence[str] | None = None,
         ) -> list[Doc]:
             if self.failing:
                 raise StoreUnavailable("throttled")
             return await self.inner.find(
-                container, filters, order_by=order_by, limit=limit, partition_key=partition_key
+                container,
+                filters,
+                order_by=order_by,
+                limit=limit,
+                partition_key=partition_key,
+                fields=fields,
             )
 
     failing = FailingQueries(store)

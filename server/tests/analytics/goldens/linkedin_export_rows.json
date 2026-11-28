@@ -1,0 +1,42 @@
+[
+  {
+    "day": "2026-11-02",
+    "ids": ["7390000000000000001"],
+    "impressions": 2000,
+    "reactions": 40,
+    "comments": 10,
+    "reposts": 2,
+    "saves": 6,
+    "sends": 2
+  },
+  {
+    "day": "2026-11-04",
+    "ids": ["7390000000000000002"],
+    "impressions": 1000,
+    "reactions": 10,
+    "comments": 4,
+    "reposts": 0,
+    "saves": 1,
+    "sends": 0
+  },
+  {
+    "day": "2026-11-04",
+    "ids": ["7390000000000000003"],
+    "impressions": 3000,
+    "reactions": 25,
+    "comments": 5,
+    "reposts": 1,
+    "saves": 3,
+    "sends": 1
+  },
+  {
+    "day": "2026-11-10",
+    "ids": ["7390000000000000004"],
+    "impressions": 500,
+    "reactions": 5,
+    "comments": 1,
+    "reposts": null,
+    "saves": null,
+    "sends": null
+  }
+]

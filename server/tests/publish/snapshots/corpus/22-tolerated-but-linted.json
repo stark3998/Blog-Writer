@@ -1,0 +1,22 @@
+{
+  "frontmatter": null,
+  "title": null,
+  "excerpt": null,
+  "toc": [],
+  "headings": [
+    {
+      "level": 1,
+      "text": "A level-1 heading is parsed but rejected by the linter",
+      "id": null
+    },
+    {
+      "level": 5,
+      "text": "Level five is parsed too",
+      "id": null
+    }
+  ],
+  "citations": [],
+  "diagrams": [],
+  "wordCount": 41,
+  "readingTimeMinutes": 1
+}

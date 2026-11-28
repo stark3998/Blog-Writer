@@ -1,10 +1,11 @@
 import { act, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findPageHeading, renderApp } from '@/test/render-app';
 import { apiUrl, problem, server, TEST_HEALTH, TEST_ME } from '@/test/msw';
 
+import { todayHandlers } from './testing/handlers';
 import { shortSha } from './today-status';
 
 /** The definition list under Today's title. */
@@ -16,6 +17,11 @@ function statusList() {
 }
 
 describe('Today: session facts', () => {
+  beforeEach(() => {
+    // The rest of the page (inbox, notices, week) answers too, so only the facts are under test.
+    server.use(...todayHandlers());
+  });
+
   it('shows skeletons, then the signed-in name and the server build', async () => {
     renderApp('/today', { seed: false });
     await findPageHeading('Today');

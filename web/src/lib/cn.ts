@@ -19,6 +19,8 @@ const twMerge = extendTailwindMerge({
         'slide-in-bottom',
         'progress',
         'pulse-soft',
+        'expand',
+        'collapse',
       ],
     },
   },

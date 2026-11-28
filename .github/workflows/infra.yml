@@ -1,0 +1,294 @@
+name: Infra
+
+# Terraform for infra/v2. Pull requests from this repository (never forks) get fmt, validate and
+# a plan with the ci_infra identity. Apply is manual: run this workflow on main, and the "infra"
+# environment's protection rules (required reviewers) gate the job.
+#
+# Public repository, so Terraform's own output never reaches the log: it goes to a temp file, and
+# the log and job summary show only the plan's resource addresses and actions and the names of
+# failing check blocks. Error output is printed with GUIDs and email addresses redacted. No plan
+# file is uploaded anywhere.
+#
+# GitHub environment "infra" (its federated credential belongs to ci_infra):
+#   variables  AZURE_CLIENT_ID (ci_infra), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (better as
+#              environment secrets with the same names: a secret wins and is masked),
+#              TF_STATE_RESOURCE_GROUP, TF_STATE_STORAGE_ACCOUNT, TF_STATE_CONTAINER ("tfstate")
+#   secrets    TF_VARS_FILE: the full text of infra/v2/data/terraform.tfvars
+#              TF_VARS_FILE_PLATFORM: the same for infra/v2 (optional: without it the platform
+#              root is validated but not planned; with create_entra_app = true it cannot be
+#              planned in CI anyway, because ci_infra has no Microsoft Graph permissions)
+#   The tfvars files are gitignored because they hold IDs. The job writes the secret to
+#   $RUNNER_TEMP with mode 0600 and deletes it at the end.
+# Both roots use a key-based azurerm backend on the existing state account: Terraform reads the
+# account key with the ci_infra identity (Contributor on that resource group), as infra/v2/data did.
+
+on:
+  pull_request:
+    paths:
+      - "infra/v2/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+    inputs:
+      root:
+        description: "Terraform root to apply"
+        type: choice
+        options:
+          - infra/v2/data
+          - infra/v2
+        default: infra/v2/data
+      allow_destroy:
+        description: "Apply even if the plan deletes or replaces resources"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One run per pull request (a new push cancels the old plan: plans never take the state lock, so
+# cancelling one leaves nothing behind). Applies queue and are never cancelled.
+concurrency:
+  group: infra-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'apply' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TERRAFORM_VERSION: "1.14.8"
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+  # check blocks that only remind (infra/v2/README.md, "CI notes"); any other failing check fails.
+  REMINDER_CHECKS: "health_probes_mode scheduler_tick_alert lab_expiry_tag"
+
+jobs:
+  static:
+    name: Terraform fmt and validate
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Format
+        run: terraform fmt -check -recursive -diff -no-color infra/v2
+
+      # Offline: no backend, no credentials. The lock files pin every provider.
+      - name: Validate every root
+        run: |
+          set -euo pipefail
+          roots=$(find infra/v2 -name '*.tf' -not -path '*/.terraform/*' -exec dirname {} \; | sort -u)
+          for root in $roots; do
+            echo "::group::$root"
+            terraform -chdir="$root" init -backend=false -input=false -no-color -lockfile=readonly
+            terraform -chdir="$root" validate -no-color
+            echo "::endgroup::"
+          done
+
+  plan:
+    name: Terraform plan (${{ matrix.root }})
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - root: infra/v2/data
+            state_key: blog-writer-v2-data.tfstate
+            tfvars_secret: TF_VARS_FILE
+            optional: false
+          - root: infra/v2
+            state_key: blog-writer-v2-platform.tfstate
+            tfvars_secret: TF_VARS_FILE_PLATFORM
+            optional: true
+    env:
+      ROOT: ${{ matrix.root }}
+      STATE_KEY: ${{ matrix.state_key }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+      TF_STATE_RESOURCE_GROUP: ${{ vars.TF_STATE_RESOURCE_GROUP }}
+      TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
+      TF_STATE_CONTAINER: ${{ vars.TF_STATE_CONTAINER || 'tfstate' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Init, validate and plan
+        env:
+          TF_VARS_FILE: ${{ secrets[matrix.tfvars_secret] }}
+          TFVARS_SECRET_NAME: ${{ matrix.tfvars_secret }}
+          OPTIONAL_ROOT: ${{ matrix.optional }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/terraform.log"
+          vars_file="$RUNNER_TEMP/terraform.tfvars"
+          plan_file="$RUNNER_TEMP/tfplan"
+          plan_json="$RUNNER_TEMP/plan.json"
+          trap 'rm -f "$vars_file" "$plan_file" "$plan_json"' EXIT
+          redact() {
+            sed -E -e 's/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/<guid>/g' \
+              -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g'
+          }
+          fail() { echo "::error::$1"; redact <"$log" | tail -n 80; exit 1; }
+
+          if [ -z "$TF_VARS_FILE" ] && [ "$OPTIONAL_ROOT" = "true" ]; then
+            echo "::notice::$ROOT is not planned: the $TFVARS_SECRET_NAME secret is not set in the \"infra\" environment."
+            exit 0
+          fi
+          for name in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID TF_STATE_RESOURCE_GROUP TF_STATE_STORAGE_ACCOUNT TF_VARS_FILE; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set in the \"infra\" environment"; exit 1; fi
+          done
+          (umask 077 && printf '%s\n' "$TF_VARS_FILE" >"$vars_file")
+
+          terraform -chdir="$ROOT" init -input=false -no-color -lockfile=readonly \
+            -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TF_STATE_CONTAINER" \
+            -backend-config="key=$STATE_KEY" >"$log" 2>&1 || fail "terraform init failed"
+          terraform -chdir="$ROOT" validate -no-color >"$log" 2>&1 || fail "terraform validate failed"
+
+          # -lock=false: a plan writes nothing, and a cancelled run must not leave a lease behind.
+          status=0
+          terraform -chdir="$ROOT" plan -input=false -no-color -lock=false -detailed-exitcode \
+            -var-file="$vars_file" -out="$plan_file" >"$log" 2>&1 || status=$?
+          if [ "$status" -eq 1 ]; then fail "terraform plan failed"; fi
+          headline=$(grep -E '^(Plan: |No changes\.)' "$log" | head -n 1 || true)
+
+          terraform -chdir="$ROOT" show -json "$plan_file" >"$plan_json" 2>"$log" || fail "terraform show failed"
+          changes=$(jq -r '.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"]) | "\(.change.actions | join("/"))\t\(.address)"' "$plan_json" | redact)
+          failing=$(jq -r '[.checks[]? | select(.address.kind == "check" and (.status == "fail" or .status == "error")) | .address.name] | unique | .[]' "$plan_json")
+          echo "$ROOT: ${headline:-plan finished (exit code $status)}"
+          if [ -n "$changes" ]; then printf '%s\n' "$changes"; fi
+          {
+            echo "### Terraform plan: \`$ROOT\`"
+            echo "${headline:-Plan finished (exit code $status).}"
+            if [ -n "$changes" ]; then printf '\n~~~\n%s\n~~~\n' "$changes"; fi
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          blocking=""
+          for check in $failing; do
+            case " $REMINDER_CHECKS " in
+              *" $check "*) echo "::warning::check $check failed (a reminder, not blocking)" ;;
+              *) blocking="$blocking $check" ;;
+            esac
+          done
+          if [ -n "$blocking" ]; then
+            echo "::error::Invariant checks failed:$blocking"
+            echo "Invariant checks failed:$blocking" >>"$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  apply:
+    name: Terraform apply (${{ inputs.root }})
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ROOT: ${{ inputs.root }}
+      ALLOW_DESTROY: ${{ inputs.allow_destroy && 'true' || 'false' }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID || vars.AZURE_SUBSCRIPTION_ID }}
+      TF_STATE_RESOURCE_GROUP: ${{ vars.TF_STATE_RESOURCE_GROUP }}
+      TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
+      TF_STATE_CONTAINER: ${{ vars.TF_STATE_CONTAINER || 'tfstate' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Plan and apply
+        env:
+          TF_VARS_FILE_DATA: ${{ secrets.TF_VARS_FILE }}
+          TF_VARS_FILE_PLATFORM: ${{ secrets.TF_VARS_FILE_PLATFORM }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/terraform.log"
+          vars_file="$RUNNER_TEMP/terraform.tfvars"
+          plan_file="$RUNNER_TEMP/tfplan"
+          plan_json="$RUNNER_TEMP/plan.json"
+          trap 'rm -f "$vars_file" "$plan_file" "$plan_json"' EXIT
+          redact() {
+            sed -E -e 's/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/<guid>/g' \
+              -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g'
+          }
+          fail() { echo "::error::$1"; redact <"$log" | tail -n 80; exit 1; }
+
+          case "$ROOT" in
+            infra/v2/data) state_key=blog-writer-v2-data.tfstate; tfvars=$TF_VARS_FILE_DATA; secret_name=TF_VARS_FILE ;;
+            infra/v2) state_key=blog-writer-v2-platform.tfstate; tfvars=$TF_VARS_FILE_PLATFORM; secret_name=TF_VARS_FILE_PLATFORM ;;
+            *) echo "::error::no state key is configured for $ROOT"; exit 1 ;;
+          esac
+          if [ -z "$tfvars" ]; then echo "::error::$secret_name is not set in the \"infra\" environment"; exit 1; fi
+          for name in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID TF_STATE_RESOURCE_GROUP TF_STATE_STORAGE_ACCOUNT; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set in the \"infra\" environment"; exit 1; fi
+          done
+          (umask 077 && printf '%s\n' "$tfvars" >"$vars_file")
+
+          terraform -chdir="$ROOT" init -input=false -no-color -lockfile=readonly \
+            -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TF_STATE_CONTAINER" \
+            -backend-config="key=$state_key" >"$log" 2>&1 || fail "terraform init failed"
+          terraform -chdir="$ROOT" validate -no-color >"$log" 2>&1 || fail "terraform validate failed"
+
+          status=0
+          terraform -chdir="$ROOT" plan -input=false -no-color -lock-timeout=10m -detailed-exitcode \
+            -var-file="$vars_file" -out="$plan_file" >"$log" 2>&1 || status=$?
+          if [ "$status" -eq 1 ]; then fail "terraform plan failed"; fi
+          headline=$(grep -E '^(Plan: |No changes\.)' "$log" | head -n 1 || true)
+          echo "$ROOT: ${headline:-plan finished}"
+          if [ "$status" -eq 0 ]; then
+            echo "### Terraform apply: \`$ROOT\`: no changes" >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          terraform -chdir="$ROOT" show -json "$plan_file" >"$plan_json" 2>"$log" || fail "terraform show failed"
+          jq -r '.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"]) | "\(.change.actions | join("/"))\t\(.address)"' "$plan_json" | redact
+          blocking=""
+          for check in $(jq -r '[.checks[]? | select(.address.kind == "check" and (.status == "fail" or .status == "error")) | .address.name] | unique | .[]' "$plan_json"); do
+            case " $REMINDER_CHECKS " in
+              *" $check "*) echo "::warning::check $check failed (a reminder, not blocking)" ;;
+              *) blocking="$blocking $check" ;;
+            esac
+          done
+          if [ -n "$blocking" ]; then echo "::error::Invariant checks failed:$blocking"; exit 1; fi
+          deletes=$(jq '[.resource_changes[]? | select(any(.change.actions[]; . == "delete"))] | length' "$plan_json")
+          if [ "$deletes" -gt 0 ] && [ "$ALLOW_DESTROY" != "true" ]; then
+            echo "::error::The plan deletes or replaces $deletes resource(s). Re-run with allow_destroy if that is intended."
+            exit 1
+          fi
+
+          terraform -chdir="$ROOT" apply -input=false -no-color -lock-timeout=10m "$plan_file" >"$log" 2>&1 || fail "terraform apply failed"
+          grep -E '(: (Creation|Modifications|Destruction) complete|^Apply complete)' "$log" | redact || true
+          {
+            echo "### Terraform apply: \`$ROOT\`"
+            echo "$headline"
+            grep -E '^Apply complete' "$log" || true
+          } >>"$GITHUB_STEP_SUMMARY"

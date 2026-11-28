@@ -1,11 +1,11 @@
-# Microsoft Foundry (Azure AI Services) in East US, Entra ID only.
-# Lab policy enforces disableLocalAuth on AI Services (modify/DINE); it is set
-# explicitly here so Terraform and the policy agree.
+# Microsoft Foundry (Azure AI Services) in East US, Entra ID only. New and
+# managed here. Lab policy enforces disableLocalAuth on AI Services
+# (modify/DINE); it is set explicitly so Terraform and the policy agree.
 
 resource "azurerm_cognitive_account" "foundry" {
   name                  = local.names.foundry
-  location              = azurerm_resource_group.this.location
-  resource_group_name   = azurerm_resource_group.this.name
+  location              = var.location
+  resource_group_name   = data.azurerm_resource_group.this.name
   kind                  = "AIServices"
   sku_name              = "S0"
   custom_subdomain_name = local.names.foundry # required for Entra ID tokens
@@ -13,8 +13,8 @@ resource "azurerm_cognitive_account" "foundry" {
   local_auth_enabled            = false
   public_network_access_enabled = true
 
-  # Projects let the owner use the Foundry portal (Claude Marketplace
-  # deployment, playground) against this account.
+  # Projects let the owner use the Foundry portal (playground, quota view)
+  # against this account.
   project_management_enabled = var.foundry_project_enabled
 
   identity {
@@ -29,7 +29,7 @@ resource "azurerm_cognitive_account_project" "this" {
 
   name                 = local.names.foundry_project
   cognitive_account_id = azurerm_cognitive_account.foundry.id
-  location             = azurerm_resource_group.this.location
+  location             = var.location
   display_name         = "Blog Writer v2"
   description          = "Blog Writer v2 models and Claude deployment"
 
@@ -64,31 +64,51 @@ resource "azurerm_cognitive_deployment" "models" {
   }
 }
 
-# OPT-IN and UNVERIFIED (default off). Claude is sold through the Azure
-# Marketplace: the first deployment must be created in the Foundry portal so
-# the owner can accept the offer terms. The model entry was verified with
-# `az cognitiveservices model list` (format "Anthropic", version "2" = Hosted
-# on Azure, GlobalStandard); whether an ARM-only create succeeds after the
-# offer is accepted is not verified. azurerm_cognitive_deployment accepts any
-# model format, so azapi is not needed.
-resource "azurerm_cognitive_deployment" "claude" {
+# Claude Opus 5.5, Hosted on Azure (format "Anthropic", version "2"),
+# GlobalStandard. On by default (owner decision 2026-11-26: quota verified,
+# 5,000 units free in East US). Claude is sold through the Azure Marketplace:
+# if the create fails on the offer terms, accept them once in the Foundry
+# portal and apply again (README). Never alongside a portal-created deployment
+# of the same name on this account: import that one instead.
+resource "azapi_resource" "claude" {
   count = var.enable_claude_deployment ? 1 : 0
 
-  name                   = var.claude_deployment_name
-  cognitive_account_id   = azurerm_cognitive_account.foundry.id
-  version_upgrade_option = "OnceCurrentVersionExpired"
+  # azapi, not azurerm_cognitive_deployment: Anthropic deployments require
+  # properties.modelProviderData (industry, organizationName, countryCode), which
+  # the azurerm resource cannot send (400 InvalidModelProviderData).
+  type                      = "Microsoft.CognitiveServices/accounts/deployments@2026-03-01"
+  name                      = var.claude_deployment_name
+  parent_id                 = azurerm_cognitive_account.foundry.id
+  schema_validation_enabled = false
 
-  model {
-    format  = "Anthropic"
-    name    = "claude-opus-5-5"
-    version = var.claude_model_version
+  body = {
+    sku = {
+      name     = "GlobalStandard"
+      capacity = var.claude_capacity
+    }
+    properties = {
+      model = {
+        format  = "Anthropic"
+        name    = "claude-opus-5-5"
+        version = var.claude_model_version
+      }
+      versionUpgradeOption = "OnceCurrentVersionExpired"
+      modelProviderData = {
+        industry         = var.claude_provider_industry
+        organizationName = var.claude_provider_organization
+        countryCode      = var.claude_provider_country_code
+      }
+    }
   }
 
-  sku {
-    name     = "GlobalStandard"
-    capacity = var.claude_capacity
+  lifecycle {
+    precondition {
+      condition     = var.claude_provider_organization != null && length(trimspace(coalesce(var.claude_provider_organization, ""))) > 0
+      error_message = "Set claude_provider_organization (the organization name accepted with the Anthropic Marketplace terms) in terraform.tfvars."
+    }
   }
 
+  # Deployments on one account are created one at a time.
   depends_on = [azurerm_cognitive_deployment.models]
 }
 
@@ -101,7 +121,7 @@ resource "azurerm_cognitive_account" "images" {
 
   name                  = local.names.foundry_images
   location              = var.image_location
-  resource_group_name   = azurerm_resource_group.this.name
+  resource_group_name   = data.azurerm_resource_group.this.name
   kind                  = "AIServices"
   sku_name              = "S0"
   custom_subdomain_name = local.names.foundry_images

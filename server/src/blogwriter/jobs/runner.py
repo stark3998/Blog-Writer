@@ -29,6 +29,12 @@ Outcomes
     - The step returns: its output is committed; after the last step the job ``succeeded`` with
       the last step's output as ``result`` (keep outputs small: references, not documents).
     - :class:`JobFailed`: the job ``failed`` (no retry).
+    - :class:`JobDeferred` (the AI brake, services still starting): the job goes back to
+      ``queued`` until ``run_after`` (clamped to 1 s .. 24 h from now) with its steps parked
+      and its attempt given back, and records ``status {queued, reason: deferred, code}``. A
+      job is deferred at most :data:`MAX_DEFERRALS` times in a row (a succeeded step, a retry
+      or an input wait ends the run of deferrals; the owner's retry resets it): the next
+      deferral quarantines it (``max_deferrals``; the quarantine hook alerts).
     - Any other exception (a ``CancelledError`` the step raised itself included): retried after
       a backoff (``retry_base_seconds`` doubling, capped), or ``quarantined`` once
       ``maxAttempts`` attempts are used (the quarantine hook alerts).
@@ -44,7 +50,8 @@ Outcomes
       looks like) nothing is written and the leases simply lapse.
 
 Attempts count claims that did not end cleanly: crashes and errors. A job that crashes the
-process every time is quarantined on its fourth claim without running again.
+process every time is quarantined on its fourth claim without running again. Deferrals, input
+waits and releases give the attempt back.
 """
 
 from __future__ import annotations
@@ -97,7 +104,11 @@ from blogwriter.jobs.models import (
 from blogwriter.jobs.settings import JobsSettings, replica_name
 
 __all__ = [
+    "MAX_DEFER",
+    "MAX_DEFERRALS",
+    "MIN_DEFER",
     "RESERVED_EVENT_TYPES",
+    "JobDeferred",
     "JobFailed",
     "JobRegistry",
     "JobRunner",
@@ -120,6 +131,13 @@ _DEADLINE_CHECK_SECONDS: Final = 1.0
 _CANCEL_WAIT_SECONDS: Final = 2.0
 _RELEASE_BUDGET_SECONDS: Final = 5.0
 _ALERT_TIMEOUT_SECONDS: Final = 5.0
+
+MAX_DEFERRALS: Final = 200
+"""Deferrals a job may take in a row; the next :class:`JobDeferred` quarantines it."""
+MIN_DEFER: Final = timedelta(seconds=1)
+"""A deferred job waits at least this long (a ``run_after`` in the past cannot spin)."""
+MAX_DEFER: Final = timedelta(hours=24)
+"""And at most this long, whatever ``run_after`` the step asked for."""
 
 RESERVED_EVENT_TYPES: Final = frozenset(
     {
@@ -220,6 +238,28 @@ class JobFailed(Exception):
         super().__init__(code)
         self.code = code
         self.detail = detail
+
+
+class JobDeferred(Exception):
+    """Raise from a step to put its job back in the queue until ``run_after`` without using up
+    an attempt: background AI work while the spend brake is engaged, services still starting.
+
+    ``reason`` is a code (``[a-z][a-z0-9_.-]*``: ``brake_over_budget``, ``services_starting``).
+    The runner parks the steps, sets ``runAfter`` to ``run_after`` clamped to
+    :data:`MIN_DEFER` .. :data:`MAX_DEFER` from now, gives the attempt back and records
+    ``status {queued, reason: deferred, code: reason}``; after :data:`MAX_DEFERRALS` deferrals
+    in a row the next one quarantines the job. The step runs again from the start later
+    (checkpoint first). ``blogwriter.domain.jobflow.JobDeferred`` is this class.
+    """
+
+    def __init__(self, run_after: datetime, reason: str) -> None:
+        if run_after.tzinfo is None:
+            raise ValueError("run_after must be timezone-aware")
+        if not _NAME_RE.fullmatch(reason):
+            raise ValueError(f"reason must match {NAME_PATTERN}")
+        super().__init__(f"deferred until {to_iso(run_after)}: {reason}")
+        self.run_after = run_after
+        self.reason = reason
 
 
 class _SuspendForInput(BaseException):
@@ -437,6 +477,7 @@ def _step_succeeded(name: str, output: JsonValue, job: Job, now: datetime) -> No
     step.status = "succeeded"
     step.output = copy.deepcopy(output)
     step.finished_at = stamp
+    job.deferrals = 0  # progress ends a run of deferrals
     job.add_event("step.succeeded", at=stamp, step=name)
 
 
@@ -460,6 +501,7 @@ def _succeed(result: JsonValue, job: Job, now: datetime) -> None:
     job.result = copy.deepcopy(result)
     job.error = None
     job.finished_at = stamp
+    job.expire_when_finished()
     job.add_event("status", at=stamp, data={"status": "succeeded"})
 
 
@@ -472,6 +514,7 @@ def _suspend(request: _SuspendForInput, job: Job, now: datetime) -> None:
         step=request.step, key=request.key, prompt=request.prompt, requested_at=stamp
     )
     job.attempt = max(0, job.attempt - 1)
+    job.deferrals = 0
     job.add_event("input.requested", at=stamp, step=request.step, data={"key": request.key})
     job.add_event("status", at=stamp, data={"status": "waiting_input"})
 
@@ -486,6 +529,7 @@ def _fail(code: str, detail: str | None, job: Job, now: datetime) -> None:
     job.status = "failed"
     job.error = JobError(code=code, at=stamp, step=step.name if step else None, detail=detail)
     job.finished_at = stamp
+    job.expire_when_finished()
     job.add_event("status", at=stamp, data={"status": "failed", "code": code})
 
 
@@ -495,6 +539,7 @@ def _retry(error_type: str, delay: timedelta, job: Job, now: datetime) -> None:
     _park_steps(job)
     job.status = "queued"
     job.run_after = to_iso(now + delay)
+    job.deferrals = 0
     job.error = JobError(
         code="step_error", at=stamp, step=step.name if step else None, error_type=error_type
     )
@@ -505,15 +550,29 @@ def _retry(error_type: str, delay: timedelta, job: Job, now: datetime) -> None:
     )
 
 
-def _quarantine(error_type: str | None, job: Job, now: datetime) -> None:
+def _defer(code: str, run_after: datetime, job: Job, now: datetime) -> None:
+    """Back to ``queued`` until ``run_after`` (clamped), attempt given back (like a release)."""
+    stamp = to_iso(now)
+    _park_steps(job)
+    job.status = "queued"
+    job.run_after = to_iso(min(max(run_after, now + MIN_DEFER), now + MAX_DEFER))
+    job.attempt = max(0, job.attempt - 1)
+    job.deferrals += 1
+    job.add_event("status", at=stamp, data={"status": "queued", "reason": "deferred", "code": code})
+
+
+def _quarantine(
+    error_type: str | None, job: Job, now: datetime, *, code: str = "max_attempts"
+) -> None:
     stamp = to_iso(now)
     step = _unfinished_step(job)
     _park_steps(job)
     job.status = "quarantined"
     job.error = JobError(
-        code="max_attempts", at=stamp, step=step.name if step else None, error_type=error_type
+        code=code, at=stamp, step=step.name if step else None, error_type=error_type
     )
     job.finished_at = stamp
+    job.expire_when_finished()
     job.add_event("status", at=stamp, data={"status": "quarantined", "attempt": job.attempt})
 
 
@@ -523,6 +582,7 @@ def _cancel(job: Job, now: datetime) -> None:
     job.status = "cancelled"
     job.awaiting = None
     job.finished_at = stamp
+    job.expire_when_finished()
     job.add_event("status", at=stamp, data={"status": "cancelled"})
 
 
@@ -559,6 +619,7 @@ class RunnerStats:
     waiting: int = 0
     cancelled: int = 0
     released: int = 0
+    deferred: int = 0
     claims_lost: int = 0
 
 
@@ -1077,6 +1138,8 @@ class JobRunner:
             await self._finish(handle, _cancel, "cancelled")
         elif isinstance(exc, JobFailed):
             await self._finish(handle, partial(_fail, exc.code, exc.detail), "failed")
+        elif isinstance(exc, JobDeferred):
+            await self._handle_deferral(handle, exc)
         elif isinstance(exc, Exception):
             await self._handle_error(handle, exc)
         else:  # pragma: no cover - other BaseExceptions end the process anyway
@@ -1102,6 +1165,25 @@ class JobRunner:
         base = self._settings.retry_base_seconds * (2 ** max(0, job.attempt - 1))
         delay = timedelta(seconds=min(self._settings.retry_max_seconds, base))
         await self._finish(handle, partial(_retry, error_type, delay), "retried")
+
+    async def _handle_deferral(self, handle: _JobHandle, exc: JobDeferred) -> None:
+        job = handle.job
+        logger.info(
+            "job_deferred",
+            extra={
+                "job_id": job.id,
+                "job_type": job.type,
+                "reason": exc.reason,
+                "deferrals": job.deferrals + 1,
+            },
+        )
+        if job.deferrals >= MAX_DEFERRALS:
+            quarantine = partial(_quarantine, _error_type(exc), code="max_deferrals")
+            stored = await self._finish(handle, quarantine, "quarantined")
+            if stored is not None:
+                await self._alert(stored)
+            return
+        await self._finish(handle, partial(_defer, exc.reason, exc.run_after), "deferred")
 
     async def _finish(self, handle: _JobHandle, change: Change, outcome: str) -> Job | None:
         """Write the job's outcome and release the claim, retrying transient errors until the
@@ -1170,6 +1252,8 @@ class JobRunner:
                 self.stats.waiting += 1
             case "cancelled":
                 self.stats.cancelled += 1
+            case "deferred":
+                self.stats.deferred += 1
             case _:
                 pass
 

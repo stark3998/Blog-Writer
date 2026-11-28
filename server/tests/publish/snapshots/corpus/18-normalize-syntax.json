@@ -1,0 +1,45 @@
+{
+  "frontmatter": null,
+  "title": null,
+  "excerpt": null,
+  "toc": [
+    {
+      "level": 2,
+      "id": "setext-heading-level-2",
+      "text": "Setext Heading Level 2"
+    },
+    {
+      "level": 3,
+      "id": "closed-atx-heading",
+      "text": "Closed ATX heading"
+    }
+  ],
+  "headings": [
+    {
+      "level": 2,
+      "text": "Setext Heading Level 2",
+      "id": "setext-heading-level-2"
+    },
+    {
+      "level": 1,
+      "text": "Setext Heading Level 1 Is Still Parsed",
+      "id": null
+    },
+    {
+      "level": 3,
+      "text": "Closed ATX heading",
+      "id": "closed-atx-heading"
+    },
+    {
+      "level": 1,
+      "text": "Heading with extra spaces",
+      "id": null
+    }
+  ],
+  "citations": [],
+  "diagrams": [
+    "dd294adbd647b1bb22d2256797c022a8dd87287e45761079a0de7daa6cb22cce"
+  ],
+  "wordCount": 122,
+  "readingTimeMinutes": 1
+}

@@ -4,36 +4,98 @@ Run it with::
 
     uvicorn blogwriter.main:app --factory --no-access-log --no-server-header
 
-Composition (start order; shutdown is the reverse):
+Composition (contract section 5, I-1). Lifecycles start in this order; shutdown is the reverse,
+so the job runner stops (and releases its running jobs) before any service it uses closes:
 
 1. ``db``: opens the Cosmos store (``BW_COSMOS_*``) and verifies every container exists.
-2. ``jobs``: the crash-only runner, the scheduler and the app-wide SSE stream
-   (``GET /api/events``). A quarantined job raises an out-of-band ``alert_event``.
-3. ``ai``: the router, built only when ``BW_AI_*`` endpoints are configured. Its ledger writes
-   to the ``usage`` container so the spend brake survives restarts.
+2. :class:`AILifecycle`: the router, built only when ``BW_AI_*`` endpoints are configured. Its
+   ledger writes to the ``usage`` container so the spend brake survives restarts.
+3. ``CoreServicesLifecycle``: ``clock``, ``egress``, ``vault``, ``notifier`` (+ ``push``) and the
+   ``embedder`` (served when the AI router has a ``Task.EMBED`` route).
+4. Package runtime services: storage (``blobs``), render (the renderer, then the
+   ``RenderService`` adapter on ``render``), research (``fetcher``), stories (``classifier``),
+   gates (``slop``) and the LinkedIn transport (client, settings and its startup sweep).
+5. ``ServicesLifecycle``: ``app.state.services = StateServices(app)`` and ``install_services``
+   (job steps), plus the System page's status probes.
+6. ``JobsLifecycle``: records the boot, then starts the runner with :func:`build_registry`
+   (every package's job types). Every service is set by now, so a missing one means "not
+   configured". A quarantined job raises an out-of-band alert. The scheduler is held.
+7. ``SchedulesLifecycle``: ``app.state.schedules`` and a first reseed of every package's
+   :data:`SCHEDULE_PROVIDERS` entries (it needs ``app.state.jobs.scheduler``); once a reseed
+   lands it releases the scheduler, so no item of an earlier cadence fires at boot.
 
-Packages never import each other's internals; this module is the only place they meet.
+Routers: core's ``/api/health`` and ``/api/me``, the system router (jobs, schedules, push,
+status, meta), the render preview (``/api/render/mermaid``), the SSE stream (``/api/events``)
+and every package router (:func:`package_routers`). Packages never import each other's
+internals; this module is the only place they meet.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Final
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 
-from blogwriter import db, jobs
+from blogwriter import (
+    analytics,
+    articles,
+    backups,
+    db,
+    engagement,
+    gates,
+    jobs,
+    kb,
+    pipeline,
+    planner,
+    research,
+    signals,
+    storage,
+    stories,
+    voice,
+)
 from blogwriter.ai import AIRouter, AISettings, UsageRecord, create_providers
 from blogwriter.ai.providers.auth import entra_token_provider
-from blogwriter.core.app import create_app
+from blogwriter.api import render as render_api
+from blogwriter.api import system as system_api
+from blogwriter.core.app import Lifecycle, create_app
+from blogwriter.core.logging import describe_exception
 from blogwriter.core.settings import CoreSettings
 from blogwriter.db import Filter, Store
-from blogwriter.jobs import JobsLifecycle, QuarantineNotice
+from blogwriter.domain.ports import ScheduleProvider, current_services
+from blogwriter.jobs import JobRegistry, JobsLifecycle, QuarantineNotice
+from blogwriter.linkedin import posts as linkedin_posts
+from blogwriter.linkedin import transport as linkedin_transport
 from blogwriter.notify import emit_alert
+from blogwriter.publish import jobs as publish_jobs
+from blogwriter.publish import routes as publish_routes
+from blogwriter.publish.jobs import PublishRuntime
+from blogwriter.publish.recovery import PUBLISH_JOB_TYPES, after_quarantine
+from blogwriter.publish.settings import PublishSettings, publish_settings
+from blogwriter.render import RenderLifecycle
+from blogwriter.services import (
+    CoreServicesLifecycle,
+    RenderAdapterLifecycle,
+    SchedulesLifecycle,
+    ServicesLifecycle,
+    ServiceView,
+)
 
-__all__ = ["AILifecycle", "CosmosLedgerSink", "app", "build_app", "quiet_third_party_loggers"]
+__all__ = [
+    "SCHEDULE_PROVIDERS",
+    "AILifecycle",
+    "CosmosLedgerSink",
+    "app",
+    "build_app",
+    "build_lifecycles",
+    "build_registry",
+    "package_routers",
+    "portfolio_status",
+    "quiet_third_party_loggers",
+]
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +110,24 @@ QUIET_LOGGERS: Final = (
     "httpx2",
     "httpcore",
 )
+
+SCHEDULE_PROVIDERS: Final[tuple[ScheduleProvider, ...]] = (
+    signals.schedule_entries,
+    planner.schedule_entries,
+    voice.schedule_entries,
+    analytics.schedule_entries,
+    linkedin_transport.schedule_entries,
+    gates.schedule_entries,
+    backups.schedule_entries,
+    engagement.schedule_entries,
+    research.schedule_entries,
+    stories.schedule_entries,
+    pipeline.schedule_entries,
+    publish_jobs.schedule_entries,
+    linkedin_posts.schedule_entries,
+)
+"""Every package's ``schedule_entries(cadence)`` (contract section 8), seeded at startup and
+again when kb saves the cadence. Packages without schedule items return none."""
 
 
 def quiet_third_party_loggers() -> None:
@@ -132,17 +212,112 @@ class AILifecycle:
 
 
 async def _on_quarantine(notice: QuarantineNotice) -> None:
-    """Out-of-band alert (Azure Monitor emails the owner); ids only, never job content."""
+    """Out-of-band alert (Azure Monitor emails the owner); ids only, never job content. A
+    quarantined publish job ran none of its failure handling: its article is released to
+    ``publish_failed`` (``publish.recovery.after_quarantine``) so the owner can retry it."""
     emit_alert("quarantined", notice.job_id)
+    if notice.job_type not in PUBLISH_JOB_TYPES:
+        return
+    try:
+        await after_quarantine(current_services(), notice.job_id)
+    except Exception as exc:  # the alert went out; the owner's exits (publish-now) remain
+        log.warning(
+            "publish_release_failed", extra={"job_id": notice.job_id, **describe_exception(exc)}
+        )
+
+
+async def portfolio_status(app: FastAPI) -> ServiceView:
+    """The System page's ``portfolio`` service: ``on`` when the publish job has everything a
+    publish needs (``BW_PUBLISH_PORTFOLIO_*`` and ``BW_PUBLISH_SITE_ORIGIN``), else ``off``.
+    The PAT's expiry is not recorded anywhere yet, so ``expiresAt`` stays unknown."""
+    del app  # the settings come from the environment
+    if publish_settings().portfolio_configured:
+        return ServiceView(state="on")
+    return ServiceView(state="off", reason="not_configured")
+
+
+def package_routers(
+    *, publish: Callable[[], PublishSettings] = publish_settings
+) -> list[APIRouter]:
+    """The system router, the SSE stream and every package router (full paths each).
+
+    ``publish``: the publish routes' settings (default: the environment; the end-to-end test
+    passes settings for its mocked portfolio).
+    """
+    return [
+        system_api.get_router(),
+        render_api.get_router(),
+        jobs.get_router(),
+        storage.get_router(),
+        kb.get_router(),
+        stories.get_router(),
+        voice.get_router(),
+        research.get_router(),
+        signals.get_router(),
+        articles.get_router(),
+        gates.get_router(),
+        linkedin_transport.get_router(),
+        backups.get_router(),
+        pipeline.get_router(),
+        publish_routes.get_router(settings=publish),
+        linkedin_posts.get_router(),
+        planner.get_router(),
+        engagement.get_router(),
+        analytics.get_router(),
+    ]
+
+
+def build_registry(*, publish_runtime: PublishRuntime | None = None) -> JobRegistry:
+    """One registry with every package's job types (contract section 7).
+
+    ``publish_runtime``: what the publish steps use besides the services (default: the
+    environment's settings and the GitHub client; the end-to-end test mocks the portfolio).
+    """
+    registry = JobRegistry()
+    research.register_jobs(registry)
+    signals.register_jobs(registry)
+    stories.register_jobs(registry)
+    voice.register_jobs(registry)
+    gates.register_jobs(registry)
+    linkedin_transport.register_jobs(registry)
+    backups.register_jobs(registry)
+    pipeline.register_jobs(registry)
+    publish_jobs.register_jobs(registry, runtime=publish_runtime)
+    linkedin_posts.register_jobs(registry)
+    planner.register_jobs(registry)
+    engagement.register_jobs(registry)
+    analytics.register_jobs(registry)
+    return registry
+
+
+def build_lifecycles(
+    registry: JobRegistry, providers: Sequence[ScheduleProvider] = SCHEDULE_PROVIDERS
+) -> list[Lifecycle]:
+    """The lifecycles in start order (see the module docs; the runner starts last but one)."""
+    return [
+        db,
+        AILifecycle(),
+        CoreServicesLifecycle(),
+        storage.StorageLifecycle(),
+        RenderLifecycle(),
+        RenderAdapterLifecycle(),
+        research.ResearchLifecycle(),
+        stories.StoriesLifecycle(),
+        gates.GatesLifecycle(),
+        linkedin_transport.TransportLifecycle(),
+        ServicesLifecycle(status_probes={"portfolio": portfolio_status}),
+        JobsLifecycle(registry, on_quarantine=_on_quarantine, hold_scheduler=True),
+        SchedulesLifecycle(providers),
+    ]
 
 
 def build_app(settings: CoreSettings | None = None) -> FastAPI:
-    """The production app: core plus db, jobs (with SSE) and the AI router."""
+    """The production app: core plus every package's routes, jobs, schedules and services."""
     quiet_third_party_loggers()
     return create_app(
         settings,
-        routers=[jobs.get_router()],
-        lifecycles=[db, JobsLifecycle(on_quarantine=_on_quarantine), AILifecycle()],
+        routers=package_routers(),
+        lifecycles=build_lifecycles(build_registry()),
     )
 
 

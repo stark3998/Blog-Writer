@@ -1,0 +1,148 @@
+{
+  "frontmatter": null,
+  "title": null,
+  "excerpt": null,
+  "toc": [
+    {
+      "level": 2,
+      "id": "overview",
+      "text": "Overview"
+    },
+    {
+      "level": 3,
+      "id": "what-changed-in-2025",
+      "text": "What changed in 2025?"
+    },
+    {
+      "level": 3,
+      "id": "why-it-matters",
+      "text": "Why it matters!"
+    },
+    {
+      "level": 2,
+      "id": "c-and-f-tooling",
+      "text": "C# and F# tooling"
+    },
+    {
+      "level": 2,
+      "id": "item",
+      "text": "Item #"
+    },
+    {
+      "level": 2,
+      "id": "ends-with-a-hash-run",
+      "text": "Ends with a hash run ##"
+    },
+    {
+      "level": 2,
+      "id": "emphasis-and-code-in-a-heading",
+      "text": "Emphasis and code in a heading"
+    },
+    {
+      "level": 2,
+      "id": "unicode-headings-resume",
+      "text": "Ünïcödé — headings: résumé ☕"
+    },
+    {
+      "level": 2,
+      "id": "overview-1",
+      "text": "Overview"
+    },
+    {
+      "level": 2,
+      "id": "1-numbered-heading-text",
+      "text": "1. Numbered heading text"
+    },
+    {
+      "level": 2,
+      "id": "heading-with-trailing-colon",
+      "text": "Heading with trailing colon:"
+    },
+    {
+      "level": 2,
+      "id": "heading-with-a-link-inside",
+      "text": "Heading with a link inside"
+    },
+    {
+      "level": 3,
+      "id": "heading-that-ends-in-a-closing-parenthesis-see-below",
+      "text": "Heading that ends in a closing parenthesis (see below)"
+    }
+  ],
+  "headings": [
+    {
+      "level": 2,
+      "text": "Overview",
+      "id": "overview"
+    },
+    {
+      "level": 3,
+      "text": "What changed in 2025?",
+      "id": "what-changed-in-2025"
+    },
+    {
+      "level": 3,
+      "text": "Why it matters!",
+      "id": "why-it-matters"
+    },
+    {
+      "level": 4,
+      "text": "Step 1: inventory your agents",
+      "id": null
+    },
+    {
+      "level": 2,
+      "text": "C# and F# tooling",
+      "id": "c-and-f-tooling"
+    },
+    {
+      "level": 2,
+      "text": "Item #",
+      "id": "item"
+    },
+    {
+      "level": 2,
+      "text": "Ends with a hash run ##",
+      "id": "ends-with-a-hash-run"
+    },
+    {
+      "level": 2,
+      "text": "Emphasis and code in a heading",
+      "id": "emphasis-and-code-in-a-heading"
+    },
+    {
+      "level": 2,
+      "text": "Ünïcödé — headings: résumé ☕",
+      "id": "unicode-headings-resume"
+    },
+    {
+      "level": 2,
+      "text": "Overview",
+      "id": "overview-1"
+    },
+    {
+      "level": 2,
+      "text": "1. Numbered heading text",
+      "id": "1-numbered-heading-text"
+    },
+    {
+      "level": 2,
+      "text": "Heading with trailing colon:",
+      "id": "heading-with-trailing-colon"
+    },
+    {
+      "level": 2,
+      "text": "Heading with a link inside",
+      "id": "heading-with-a-link-inside"
+    },
+    {
+      "level": 3,
+      "text": "Heading that ends in a closing parenthesis (see below)",
+      "id": "heading-that-ends-in-a-closing-parenthesis-see-below"
+    }
+  ],
+  "citations": [],
+  "diagrams": [],
+  "wordCount": 93,
+  "readingTimeMinutes": 1
+}

@@ -1,0 +1,7 @@
+Note: this applies to Entra ID P2 tenants only.
+---8<---
+Step 2: configure the SCIM endpoint with the tenant URL.
+---8<---
+Here's how to configure the tenant for SCIM provisioning: open Enterprise apps first.
+---8<---
+The result of the pilot was 12 broken apps out of 200.

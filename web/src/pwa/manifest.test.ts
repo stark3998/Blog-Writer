@@ -68,7 +68,7 @@ describe('web app manifest', () => {
   });
 });
 
-describe('service worker stub', () => {
+describe('service worker', () => {
   const source = readProjectFile('public/sw.js');
 
   it('takes control without caching or intercepting requests', () => {
@@ -78,8 +78,10 @@ describe('service worker stub', () => {
     expect(source).not.toMatch(/caches\./);
   });
 
-  it('has no push handler yet', () => {
-    expect(source).not.toMatch(/addEventListener\('push'/);
+  it('listens for push and notification clicks, and for nothing else', () => {
+    // The handlers themselves are tested in src/pwa/push-sw.test.ts.
+    const events = [...source.matchAll(/addEventListener\('([a-z]+)'/g)].map(([, event]) => event);
+    expect(new Set(events)).toEqual(new Set(['install', 'activate', 'push', 'notificationclick']));
   });
 });
 

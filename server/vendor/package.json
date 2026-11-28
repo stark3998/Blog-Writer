@@ -1,0 +1,9 @@
+{
+  "name": "bw-server-vendor",
+  "private": true,
+  "description": "Pinned browser-side bundle for blogwriter.render. Only @mermaid-js/tiny/dist/mermaid.tiny.js is used at runtime; its SHA-256 is pinned in server/src/blogwriter/render/settings.py (MERMAID_TINY_SHA256). Bump both together.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@mermaid-js/tiny": "12.3.0"
+  }
+}

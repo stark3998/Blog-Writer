@@ -9,6 +9,9 @@ UUID). It needs the store on ``app.state.store``, so list it after ``blogwriter.
     create_app(routers=[jobs.get_router()], lifecycles=[db, JobsLifecycle(registry)])
 
 Startup records the boot; in safe mode (crash loop) neither the runner nor the scheduler starts.
+With ``hold_scheduler`` the scheduler waits for :meth:`JobsService.release_scheduler` (the app
+releases it after the first schedule reseed, so a stale schedule item cannot fire at boot); the
+runner starts at once.
 When the boot log cannot be written at startup the service also starts in safe mode (fail
 closed), but keeps trying in the background and leaves safe mode by itself once this boot is
 recorded and is not part of a crash loop: a store blip during a deploy does not leave the job
@@ -102,7 +105,9 @@ class JobsService:
         runner: JobRunner,
         scheduler: Scheduler,
         boot_guard: BootGuard,
+        hold_scheduler: bool = False,
     ) -> None:
+        self._scheduler_held = hold_scheduler
         self.store = store
         self.registry = registry
         self.settings = settings
@@ -159,10 +164,27 @@ class JobsService:
             logger.warning("jobs_safe_mode_exited", extra={"boots": report.boots})
             return
 
+    @property
+    def scheduler_held(self) -> bool:
+        """The scheduler waits for :meth:`release_scheduler` (the first schedule reseed)."""
+        return self._scheduler_held
+
     async def _start_loops(self) -> None:
         await self.runner.start()
-        await self.scheduler.start()
+        if not self._scheduler_held:
+            await self.scheduler.start()
         self._started = True
+
+    async def release_scheduler(self) -> None:
+        """Let the scheduler run: now when the loops already run, else when they start (safe
+        mode left, the boot recorded late). Idempotent."""
+        async with self._mode_lock:
+            if not self._scheduler_held:
+                return
+            self._scheduler_held = False
+            if self._started:
+                await self.scheduler.start()
+        logger.info("jobs_scheduler_released", extra={"owner": self.owner})
 
     async def exit_safe_mode(self) -> None:
         """Owner action: clear the boot log and start the runner and the scheduler.
@@ -265,12 +287,14 @@ class JobsLifecycle:
         clock: Clock = SYSTEM_CLOCK,
         on_quarantine: QuarantineHook | None = None,
         stop_requested: Callable[[], bool] | None = server_exit_requested,
+        hold_scheduler: bool = False,
     ) -> None:
         self._registry = registry if registry is not None else default_registry()
         self._settings = settings
         self._clock = clock
         self._on_quarantine = on_quarantine
         self._stop_requested = stop_requested
+        self._hold_scheduler = hold_scheduler
 
     async def startup(self, app: FastAPI) -> None:
         store: object = getattr(app.state, "store", None)
@@ -319,6 +343,7 @@ class JobsLifecycle:
             runner=runner,
             scheduler=scheduler,
             boot_guard=guard,
+            hold_scheduler=self._hold_scheduler,
         )
         app.state.jobs = service
         await service.start()

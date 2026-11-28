@@ -1,15 +1,15 @@
-# CanNotDelete locks on the resources that hold durable data or configuration.
-# A lock also blocks deleting their child and extension resources through ARM
-# (Cosmos containers and SQL role assignments, model deployments, blob
-# containers, Azure role assignments scoped to them), so a change that removes
-# or replaces one of those needs enable_locks = false first. Locks are
-# created/removed by the owner's local apply: Contributor (ci_infra) cannot
-# write Microsoft.Authorization/locks.
+# CanNotDelete locks on the resources created here that hold durable data or
+# configuration: storage, Foundry and Key Vault. (The Cosmos DB lock lives in
+# infra/v2/data.) A lock also blocks deleting their child and extension
+# resources through ARM (model deployments, blob containers, Azure role
+# assignments scoped to them), so a change that removes or replaces one of
+# those needs enable_locks = false first. Locks are created/removed by the
+# owner's local apply: Contributor (ci_infra) cannot write
+# Microsoft.Authorization/locks.
 
 locals {
   locked_resources = merge(
     {
-      cosmos    = azurerm_cosmosdb_account.this.id
       storage   = azurerm_storage_account.this.id
       foundry   = azurerm_cognitive_account.foundry.id
       key_vault = azurerm_key_vault.this.id

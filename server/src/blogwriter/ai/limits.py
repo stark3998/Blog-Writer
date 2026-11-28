@@ -46,7 +46,7 @@ from blogwriter.ai.providers.base import (
     ProviderUnavailableError,
     RateLimitedError,
 )
-from blogwriter.ai.types import Request, TextPart, ToolCallPart, Usage
+from blogwriter.ai.types import ImagePart, Request, TextPart, ToolCallPart, Usage
 
 __all__ = [
     "Clock",
@@ -67,6 +67,8 @@ type RetryReason = Literal["rate_limited", "unavailable"]
 
 _EPSILON: Final = 1e-9
 _CHARS_PER_TOKEN: Final = 4
+_IMAGE_TOKENS: Final = 1_600
+"""Input reserved per image part (about a 1.15 MP image on Claude; settled with the real count)."""
 _MAX_ATTEMPTS_CAP: Final = 10
 # Error codes the providers use for rate limits inside a stream (see providers.base).
 _RATE_LIMIT_CODES: Final = frozenset({"rate_limit_exceeded", "rate_limit_error", "429"})
@@ -323,20 +325,24 @@ class ModelLimiter:
 
 
 def estimate_input_tokens(request: Request) -> int:
-    """A rough prompt size (about 4 characters per token) for the input reservation.
+    """A rough prompt size (about 4 characters per token, a fixed allowance per image) for the
+    input reservation.
 
     Opaque native items are not counted; :meth:`Lease.settle` corrects the estimate.
     """
     characters = len(request.system)
+    images = 0
     for message in request.messages:
         for part in message.parts:
             if isinstance(part, TextPart):
                 characters += len(part.text)
+            elif isinstance(part, ImagePart):
+                images += 1
             elif isinstance(part, ToolCallPart):
                 characters += len(part.arguments)
             else:
                 characters += len(part.output)
-    return characters // _CHARS_PER_TOKEN + 1
+    return characters // _CHARS_PER_TOKEN + 1 + images * _IMAGE_TOKENS
 
 
 # --------------------------------------------------------------------------------------------

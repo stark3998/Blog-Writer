@@ -1,6 +1,7 @@
 """blogwriter.ai: model providers, the router and its policy, limits, ledger and brake.
 
-Entry point: :class:`AIRouter` (``run(task, request, origin=...)`` / ``stream(...)``), built with
+Entry point: :class:`AIRouter` (``run(task, request, origin=...)`` / ``stream(...)``, and
+``embed(texts, origin=...)`` for ``Task.EMBED``), built with
 :meth:`AIRouter.from_settings` from :class:`AISettings` (``BW_AI_*``), the providers from
 :func:`create_providers` and a :class:`LedgerSink`. See ``docs/v2/phase1/ai-router.md``.
 
@@ -38,6 +39,7 @@ from blogwriter.ai.router import (
     DISCARD_EVENTS,
     REVIEW_ONLY_TASKS,
     AIRouter,
+    EmbeddingResult,
     Fallback,
     FallbackReason,
     Finished,
@@ -60,6 +62,7 @@ __all__ = [
     "BrakeStatus",
     "BudgetBrake",
     "Clock",
+    "EmbeddingResult",
     "Fallback",
     "FallbackReason",
     "Finished",

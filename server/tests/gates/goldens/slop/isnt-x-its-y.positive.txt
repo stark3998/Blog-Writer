@@ -1,0 +1,13 @@
+Security isn't a tool, it's a mindset.
+---8<---
+It's not about the model. It's about the data you feed it.
+---8<---
+Zero trust doesn't mean no trust, it means verified trust.
+---8<---
+This is not just a migration, but a reset of how we think about identity.
+---8<---
+Governance is less about policy documents and more about who can say no.
+---8<---
+The problem isn't your IdP; it's the attribute mapping.
+---8<---
+Agent identity isn’t a feature. It’s a lifecycle.

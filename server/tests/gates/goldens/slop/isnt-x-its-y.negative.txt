@@ -1,0 +1,9 @@
+The token is not stored in the browser. It is encrypted in the vault.
+---8<---
+This is not a drill, and the alert came from the SOC at 03:12.
+---8<---
+Entra does not support SCIM for that app, so we wrote a connector.
+---8<---
+It isn't clear which tenant owns the app registration.
+---8<---
+We did not migrate the 37 legacy apps. They stayed on Okta until June.

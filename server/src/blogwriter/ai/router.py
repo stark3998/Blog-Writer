@@ -33,6 +33,12 @@ Streaming contract
     attempt is therefore never final. Iterate with ``contextlib.aclosing`` so an abandoned
     stream releases its model slot at once.
 
+Embeddings
+    :meth:`AIRouter.embed` serves ``Task.EMBED`` through the same checks (route, policy, brake),
+    the model's limiter, the retry policy and the ledger, on the route's primary only:
+    embeddings of different models live in different vector spaces, so a fallback would make
+    stored vectors silently incomparable.
+
 The router never sends a forced ``tool_choice`` or a ``temperature`` (the request types have
 neither, and the providers never add them). Provider-side background runs are not served here.
 Logs carry ids, counts, durations and costs only.
@@ -42,7 +48,7 @@ from __future__ import annotations
 
 import logging
 import random
-from collections.abc import AsyncGenerator, Callable, Mapping
+from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from contextlib import aclosing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -73,6 +79,7 @@ from blogwriter.ai.limits import (
 from blogwriter.ai.policy import SensitivityPolicy
 from blogwriter.ai.providers import (
     AnthropicFoundryProvider,
+    EmbeddingProvider,
     OpenAIResponsesProvider,
     Provider,
     ProviderError,
@@ -94,11 +101,14 @@ from blogwriter.ai.types import (
     Completion,
     Done,
     Effort,
+    Embeddings,
     FunctionTool,
+    Message,
     ModelSpec,
     ProviderName,
     Refusal,
     Request,
+    Sensitivity,
     Task,
     TextDelta,
     ThinkingSummary,
@@ -110,8 +120,11 @@ from blogwriter.core.logging import describe_exception, register_log_fields
 
 __all__ = [
     "DISCARD_EVENTS",
+    "MAX_EMBED_CHARS",
+    "MAX_EMBED_INPUTS",
     "REVIEW_ONLY_TASKS",
     "AIRouter",
+    "EmbeddingResult",
     "Fallback",
     "FallbackReason",
     "Finished",
@@ -134,6 +147,11 @@ REVIEW_ONLY_TASKS: Final = frozenset({Task.DRAFT, Task.REVISE, Task.CRITIQUE})
 
 # Tasks with a route (for policy and pricing) that run/stream do not serve.
 _NOT_CHAT: Final = frozenset({Task.EMBED, Task.IMAGE})
+
+MAX_EMBED_INPUTS: Final = 256
+"""Most texts in one embeddings call (the service allows 2,048; batches stay small)."""
+MAX_EMBED_CHARS: Final = 32_000
+"""Longest text one embeddings input may have (about 8,000 tokens; the model takes 8,192)."""
 # Finish reasons that hand control back to the caller without validating structured output.
 _CALLER_TURN: Final = frozenset({"tool_calls", "pause", "cancelled"})
 
@@ -267,6 +285,24 @@ class Fallback:
     to_deployment: str
     reason: FallbackReason
     type: Literal["fallback"] = field(default="fallback", init=False)
+
+
+@dataclass(frozen=True, slots=True)
+class EmbeddingResult:
+    """The outcome of one routed embeddings request (:meth:`AIRouter.embed`).
+
+    ``usage`` and ``cost_usd`` cover every call made for it, failed attempts that reported
+    usage included.
+    """
+
+    embeddings: Embeddings
+    served_by: ServedBy
+    usage: Usage
+    cost_usd: Decimal
+
+    @property
+    def vectors(self) -> tuple[tuple[float, ...], ...]:
+        return self.embeddings.vectors
 
 
 @dataclass(frozen=True, slots=True)
@@ -417,6 +453,16 @@ class AIRouter:
     def routing(self) -> RoutingTable:
         return self._routing
 
+    @property
+    def prices(self) -> PriceTable:
+        """The price table every call is costed with (read-only; for the settings pages)."""
+        return self._prices
+
+    @property
+    def brake(self) -> BudgetBrake | None:
+        """The spend brake (``None`` when disabled); its ``status()`` feeds the System page."""
+        return self._brake
+
     def limiter(self, model: str) -> ModelLimiter:
         """The limiter of a model family (shared by every task that uses it)."""
         return self._limiters[model]
@@ -512,6 +558,47 @@ class AIRouter:
             )
             yield Finished(result)
             return
+
+    async def embed(
+        self,
+        texts: Sequence[str],
+        *,
+        origin: Origin,
+        job_id: str | None = None,
+        dimensions: int | None = None,
+        sensitivity: Sensitivity = Sensitivity.ANONYMIZED,
+    ) -> EmbeddingResult:
+        """Embed ``texts`` (``Task.EMBED``): one vector per text, in order.
+
+        Raises before any call on a missing route, a policy violation (``sensitivity`` against
+        the route), invalid input (``ValueError``: 1-:data:`MAX_EMBED_INPUTS` non-blank texts of
+        at most :data:`MAX_EMBED_CHARS` characters), a provider without embeddings
+        (``UnsupportedRequestError``) or an engaged brake for background work. Retries 429/5xx
+        like chat calls; the primary only (see the module docstring).
+        """
+        task = Task.EMBED
+        route = self._routing.route(task)
+        inputs = _embedding_inputs(texts)
+        if dimensions is not None and dimensions < 1:
+            raise ValueError("dimensions must be at least 1")
+        request = Request(system="", messages=(Message.user(*inputs),), sensitivity=sensitivity)
+        self._policy.check(route.policy, request, route.chain)
+        spec = route.primary
+        provider = self._providers[spec.provider]
+        if not isinstance(provider, EmbeddingProvider):
+            raise UnsupportedRequestError(f"the {spec.provider} provider serves no embeddings")
+        if self._brake is not None:
+            await self._brake.check(origin)
+        run = _Run(task, request, origin, job_id)
+        embeddings = await self._embed_call(run, spec, provider, inputs, dimensions)
+        served_by = ServedBy(
+            task=task,
+            model=spec.family,
+            deployment=spec.deployment,
+            provider=spec.provider,
+            effort=spec.effort,
+        )
+        return EmbeddingResult(embeddings, served_by, run.usage, run.cost)
 
     # ----------------------------------------------------------------------------------------
     # Steps
@@ -690,6 +777,83 @@ class AIRouter:
             yield Retry(spec.deployment, attempt, delay, reason)
             await self._clock.sleep(delay)
 
+    async def _embed_call(
+        self,
+        run: _Run,
+        spec: ModelSpec,
+        provider: EmbeddingProvider,
+        inputs: Sequence[str],
+        dimensions: int | None,
+    ) -> Embeddings:
+        """One embeddings call through the limiter, retried on 429/5xx like :meth:`_call`."""
+        limiter = self._limiters[spec.family]
+        estimate = estimate_input_tokens(run.request)
+        attempt = 1
+        while True:
+            started = self._clock.monotonic()
+            result: Embeddings | None = None
+            failure: ProviderError | None = None
+            try:
+                async with limiter.admit(
+                    estimate, max_cooldown=self._retry.max_retry_after
+                ) as lease:
+                    try:
+                        result = await provider.embed(spec, inputs, dimensions=dimensions)
+                    except ProviderError as error:
+                        failure = error
+                    if result is not None:
+                        lease.settle(result.usage)
+                    elif failure is not None:
+                        lease.settle(failure.usage)
+            except ModelCoolingDown as cooling:
+                _logger.info(
+                    "ai_model_cooling_down",
+                    extra={
+                        "task": run.task,
+                        "deployment": spec.deployment,
+                        "delay_ms": round(cooling.remaining * 1000),
+                        "job_id": run.job_id,
+                    },
+                )
+                raise RateLimitedError(
+                    f"{spec.provider} {spec.deployment} is cooling down after a Retry-After",
+                    provider=spec.provider,
+                    retryable=True,
+                    retry_after=cooling.remaining,
+                ) from None
+            duration_ms = (self._clock.monotonic() - started) * 1000
+            if result is not None:
+                await self._record(run, spec, result.usage, "completed", None, duration_ms)
+                return result
+            if failure is None:  # pragma: no cover - set above
+                raise RuntimeError("an embeddings call ended without a result")
+            if failure.usage is not None:
+                await self._record(run, spec, failure.usage, "failed", None, duration_ms)
+            reason = retry_reason(failure)
+            if reason is None:
+                raise failure
+            if failure.retry_after:
+                limiter.cool_down(failure.retry_after)
+            delay = self._retry.delay(
+                attempt, jitter=self._jitter(), retry_after=failure.retry_after
+            )
+            if delay is None:
+                raise failure
+            attempt += 1
+            _logger.info(
+                "ai_retry",
+                extra={
+                    "task": run.task,
+                    "deployment": spec.deployment,
+                    "attempt": attempt,
+                    "delay_ms": round(delay * 1000),
+                    "retry_reason": reason,
+                    "status": failure.status_code,
+                    "job_id": run.job_id,
+                },
+            )
+            await self._clock.sleep(delay)
+
     async def _record(
         self,
         run: _Run,
@@ -746,6 +910,21 @@ class AIRouter:
             )
             if self._brake is not None:
                 self._brake.note_unrecorded(record)
+
+
+def _embedding_inputs(texts: Sequence[str]) -> tuple[str, ...]:
+    """The texts of one embeddings call, checked (``ValueError`` names no content)."""
+    if isinstance(texts, str):
+        raise TypeError("embed takes a sequence of texts, not one string")
+    inputs = tuple(texts)
+    if not 1 <= len(inputs) <= MAX_EMBED_INPUTS:
+        raise ValueError(f"an embeddings call takes 1 to {MAX_EMBED_INPUTS} texts")
+    for index, text in enumerate(inputs):
+        if not isinstance(text, str) or not text.strip():  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise ValueError(f"text {index} is blank")
+        if len(text) > MAX_EMBED_CHARS:
+            raise ValueError(f"text {index} is longer than {MAX_EMBED_CHARS} characters")
+    return inputs
 
 
 def create_providers(

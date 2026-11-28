@@ -1,0 +1,10 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+<ul class="items">
+{% for item in s.items %}
+<li class="items__item">{{ item }}</li>
+{% endfor %}
+</ul>
+{% endcall %}

@@ -10,8 +10,9 @@ terraform {
       source  = "Azure/azapi"
       version = "~> 2.14"
     }
-    # Only used when create_entra_app = true; configured either way (Terraform
-    # configures every provider a module declares resources for).
+    # Entra app registration for Easy Auth (create_entra_app, default on).
+    # Configured in every run (Terraform configures every provider a module
+    # declares resources for).
     azuread = {
       source  = "hashicorp/azuread"
       version = "~> 3.10"
@@ -22,21 +23,17 @@ terraform {
     }
   }
 
-  # Partial configuration. storage_account_name, container_name and key come
-  # from `terraform init -backend-config=backend.hcl` (see backend.hcl.example;
-  # the bootstrap root prints the file). State is read and written with Entra ID
-  # (Storage Blob Data Contributor on the tfstate container); shared-key access
-  # is disabled on the state account.
-  backend "azurerm" {
-    use_azuread_auth = true
-  }
+  # Partial configuration: see backend.hcl.example. State lives in the existing
+  # state account (the one infra/v2/data uses) under its own key, so no new
+  # resources are needed for it.
+  backend "azurerm" {}
 }
 
 provider "azurerm" {
   # null => taken from ARM_SUBSCRIPTION_ID. Never commit a real subscription ID.
   subscription_id = var.subscription_id
 
-  # Shared-key access is disabled on every storage account, so any data-plane
+  # Shared-key access is disabled on the v2 storage account, so any data-plane
   # call the provider makes has to use Entra ID.
   storage_use_azuread = true
 
@@ -45,10 +42,6 @@ provider "azurerm" {
   resource_provider_registrations = "none"
 
   features {
-    resource_group {
-      prevent_deletion_if_contains_resources = true
-    }
-
     key_vault {
       # Purge protection is on, so a purge would fail anyway. Recover a
       # soft-deleted vault with the same name instead of failing the create.
@@ -71,8 +64,8 @@ provider "azurerm" {
 provider "azapi" {
   subscription_id = var.subscription_id
 
-  # Microsoft.WebIQ is registered by the owner (see README). Never let a plan
-  # or apply try to register providers.
+  # Resource providers (Microsoft.WebIQ included) are registered by the owner.
+  # Never let a plan or apply try to register them.
   skip_provider_registration = true
 }
 

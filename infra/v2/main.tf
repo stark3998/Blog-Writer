@@ -1,85 +1,84 @@
-# Blog Writer v2 platform: its own resource group and everything in it.
-# Nothing here references v1 (its resource group, its ACR or its Cosmos
-# account, all shared with other projects).
+# Blog Writer v2 platform root, applied INTO the existing footprint (owner
+# decision 2026-11-26). The v2 app (ca-blog-writer-v2) runs side by side with
+# v1 in the existing Container Apps environment; v1 keeps its custom domain
+# until a later cutover.
+#
+# Read here and never managed or changed (data sources only):
+#   * the resource group, Log Analytics workspace and Container Apps
+#     environment, all shared with v1;
+#   * the container registry, shared with another app (admin user left as is);
+#   * the v2 Cosmos DB account, database and published-blogs container, owned
+#     by infra/v2/data (which also holds the owner's Cosmos role and the lock).
+#
+# The registry, the workspace and the Cosmos account are read with azapi (a
+# plain ARM GET). The azurerm data sources for them also call listCredentials,
+# getSharedKeys and listKeys, which would copy a live registry admin password,
+# workspace keys and Cosmos account keys into the Terraform state.
 
-resource "azurerm_resource_group" "this" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = local.tags # includes Purpose, Owner and "Expiry Date" (lab deny policy)
+data "azurerm_client_config" "current" {}
+
+data "azurerm_resource_group" "this" {
+  name = var.resource_group_name
+}
+
+# Legacy Consumption-only environment (no workload profiles, no VNet). Its
+# logs go to the workspace below through the 'log-analytics' destination
+# (tables ContainerAppConsoleLogs_CL and ContainerAppSystemLogs_CL).
+data "azurerm_container_app_environment" "this" {
+  name                = var.container_app_environment_name
+  resource_group_name = data.azurerm_resource_group.this.name
+}
+
+data "azapi_resource" "log_analytics" {
+  type      = "Microsoft.OperationalInsights/workspaces@2023-09-01"
+  name      = var.log_analytics_workspace_name
+  parent_id = data.azurerm_resource_group.this.id
+}
+
+data "azapi_resource" "registry" {
+  type      = "Microsoft.ContainerRegistry/registries@2023-07-01"
+  name      = var.container_registry_name
+  parent_id = data.azurerm_resource_group.this.id
+
+  response_export_values = {
+    login_server = "properties.loginServer"
+  }
+}
+
+data "azapi_resource" "cosmos_account" {
+  type      = "Microsoft.DocumentDB/databaseAccounts@2024-11-15"
+  name      = var.cosmos_account_name
+  parent_id = data.azurerm_resource_group.this.id
+
+  response_export_values = {
+    endpoint           = "properties.documentEndpoint"
+    disable_local_auth = "properties.disableLocalAuth"
+  }
+}
+
+# Read only to fail the plan early (with a clear error) if the data root has
+# not created the database or the container the portfolio build reads.
+data "azapi_resource" "cosmos_database" {
+  type      = "Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15"
+  name      = var.cosmos_database_name
+  parent_id = data.azapi_resource.cosmos_account.id
+}
+
+data "azapi_resource" "cosmos_portfolio_container" {
+  type      = "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15"
+  name      = local.portfolio_cosmos_container
+  parent_id = data.azapi_resource.cosmos_database.id
 }
 
 # ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-resource "azurerm_log_analytics_workspace" "this" {
-  name                = local.names.log_analytics
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
-  sku                 = "PerGB2018"
-  retention_in_days   = var.log_retention_days
-
-  # Ingestion comes only through diagnostic settings (no workspace shared key
-  # is handed to the Container Apps environment), so key-based auth is off.
-  local_authentication_enabled = false
-
-  tags = local.tags
-}
-
-# ---------------------------------------------------------------------------
-# User-assigned managed identities
+# User-assigned managed identities (new, managed here)
 # ---------------------------------------------------------------------------
 
 resource "azurerm_user_assigned_identity" "this" {
   for_each = local.identities
 
   name                = each.value
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.this.name
   tags                = local.tags
-}
-
-# ---------------------------------------------------------------------------
-# Container Apps environment: workload-profiles type with the Consumption
-# profile only. No dedicated profile, VNet/private endpoint, premium ingress or
-# maintenance window (each costs >= $73/month).
-# ---------------------------------------------------------------------------
-
-resource "azurerm_container_app_environment" "this" {
-  name                = local.names.environment
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
-
-  # Logs flow through Azure Monitor diagnostic settings (below) instead of the
-  # 'log-analytics' destination, which would need the workspace shared key.
-  logs_destination = "azure-monitor"
-
-  workload_profile {
-    name                  = "Consumption"
-    workload_profile_type = "Consumption"
-  }
-
-  tags = local.tags
-}
-
-resource "azurerm_monitor_diagnostic_setting" "environment" {
-  name                           = "to-log-analytics"
-  target_resource_id             = azurerm_container_app_environment.this.id
-  log_analytics_workspace_id     = azurerm_log_analytics_workspace.this.id
-  log_analytics_destination_type = "Dedicated" # ContainerAppConsoleLogs / ContainerAppSystemLogs tables
-
-  enabled_log {
-    category = "ContainerAppConsoleLogs"
-  }
-
-  enabled_log {
-    category = "ContainerAppSystemLogs"
-  }
-
-  # ContainerAppHTTPLogs is deliberately NOT enabled: platform access logs
-  # carry full request URLs, including OAuth callback query strings.
-
-  enabled_metric {
-    category = "AllMetrics"
-  }
 }

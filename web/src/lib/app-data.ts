@@ -5,6 +5,7 @@ import { createApiClient, ME_PATH, type ApiClient, type FetchLike } from '@/lib/
 import { isLoggedOutResponse, pathOf } from '@/lib/api/session';
 import { createAuthController, type AuthController } from '@/lib/auth/auth-controller';
 import { browserSessionStorage, createRedirectGuard } from '@/lib/auth/redirect-guard';
+import { createEventFeed, type EventFeed } from '@/lib/events/event-feed';
 import { createEventRouter } from '@/lib/events/event-router';
 import {
   createEventStream,
@@ -23,6 +24,8 @@ export interface AppData {
   readonly auth: AuthController;
   readonly jobs: JobStore;
   readonly events: EventStream;
+  /** Every stream event after the store and the cache have it (`useStreamEvents`, `useEntityChanged`). */
+  readonly feed: EventFeed;
 }
 
 /** Everything that touches the browser can be replaced, so tests run without network or navigation. */
@@ -79,10 +82,15 @@ export function createAppData(options: AppDataOptions = {}): AppData {
   const api = createApiClient({ auth, baseUrl: options.baseUrl, fetch: options.fetch });
   const queryClient = createQueryClient(options.query);
   const jobs = createJobStore();
+  const route = createEventRouter(jobs, queryClient);
+  const feed = createEventFeed();
   const events = createEventStream({
     createEventSource: options.createEventSource ?? ((url) => new EventSource(url)),
     probe: () => probeSession(api),
-    onEvent: createEventRouter(jobs, queryClient),
+    onEvent: (event) => {
+      route(event);
+      feed.publish(event);
+    },
     onLoggedOut: auth.handleUnauthenticated,
     onForbidden: () => {
       auth.handleForbidden();
@@ -91,7 +99,7 @@ export function createAppData(options: AppDataOptions = {}): AppData {
     lingerMs: options.streamLingerMs,
     now,
   });
-  return { queryClient, api, auth, jobs, events };
+  return { queryClient, api, auth, jobs, events, feed };
 }
 
 let browserAppData: AppData | undefined;

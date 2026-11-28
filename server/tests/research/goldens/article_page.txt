@@ -1,0 +1,9 @@
+Agent identities
+Published October 14, 2026
+An agent identity is a directory object that represents one AI agent. Each agent identity is created from an agent identity blueprint, which holds the credentials that the agents share.
+Limits
+Up to 1,000 agent identities per blueprint during the preview.
+Access tokens last 60 minutes.
+Conditional Access policies apply to agent identities.
+Sign-in logs record each token request.
+az ad agent-identity list --blueprint contoso-agents

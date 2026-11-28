@@ -17,6 +17,9 @@ Semantics (Cosmos SQL as the live contract suite observed it, mirrored by :func:
 - ``limit`` keeps the first N results after ordering.
 - Fields a container excludes from indexing (:data:`~blogwriter.db.base.UNINDEXED_FIELDS`) cannot
   be filtered or ordered on: Cosmos would need a full scan, so :func:`find_spec` refuses them.
+- A projection (``fields``) selects top-level fields after filtering, ordering and the limit:
+  ``SELECT c["id"], c["_etag"], c["<partition key field>"], c["<field>"]...``. A field the
+  document does not have is left out of its body (Cosmos drops undefined values); a null stays.
 
 SQL text only ever contains validated field-path identifiers (bracket notation, so reserved words
 are safe); every value, including the limit, is a query parameter.
@@ -36,6 +39,8 @@ from blogwriter.db.base import (
     InvalidRequest,
     JsonScalar,
     OrderBy,
+    parse_field_path,
+    partition_key_field,
     partition_key_path,
 )
 
@@ -58,6 +63,23 @@ class FindSpec:
     order_by: OrderBy | None
     limit: int | None
     partition_key: str | None
+    fields: tuple[str, ...] | None = None
+    """The top-level fields a projected body keeps: ``id``, the partition key field, then the
+    requested ones (no duplicates). ``None``: whole documents."""
+
+
+def _projection(container: str, fields: object) -> tuple[str, ...] | None:
+    if fields is None:
+        return None
+    if isinstance(fields, (str, bytes, Mapping)) or not isinstance(fields, Iterable):
+        raise InvalidRequest("fields must be a sequence of top-level field names or None")
+    selected = ["id", partition_key_field(container)]
+    for item in cast(Iterable[object], fields):
+        segments = parse_field_path(item)  # plain str segments, never a str subclass
+        if len(segments) != 1:
+            raise InvalidRequest(f"fields: {item!r} is not a top-level field name")
+        selected.append(segments[0])
+    return tuple(dict.fromkeys(selected))
 
 
 def find_spec(
@@ -66,6 +88,7 @@ def find_spec(
     order_by: object,
     limit: object,
     partition_key: object,
+    fields: object = None,
 ) -> FindSpec:
     """Validate ``find`` arguments for ``container`` (both stores call this before any work)."""
     partition_key_path(container)
@@ -94,6 +117,7 @@ def find_spec(
         order_by=order_by,
         limit=limit,
         partition_key=partition_key,
+        fields=_projection(container, fields),
     )
 
 
@@ -168,10 +192,15 @@ def compile_query(spec: FindSpec) -> CompiledQuery:
         ref = _ref(spec.order_by.path)
         clauses.append(f"IS_PRIMITIVE({ref})")
         order = f" ORDER BY {ref} {'DESC' if spec.order_by.descending else 'ASC'}"
-    select = "SELECT * FROM c"
+    columns = "*"
+    if spec.fields is not None:
+        refs = [_ref((name,)) for name in spec.fields]
+        columns = ", ".join([refs[0], 'c["_etag"]', *refs[1:]])
+    top = ""
     if spec.limit is not None:
-        select = "SELECT TOP @limit * FROM c"
+        top = "TOP @limit "
         parameters.append(("@limit", spec.limit))
+    select = f"SELECT {top}{columns} FROM c"  # noqa: S608 - only _ref-checked identifiers
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
     return CompiledQuery(text=f"{select}{where}{order}", parameters=tuple(parameters))
 
@@ -277,7 +306,7 @@ def _sort_key(value: object) -> tuple[int, float | str] | None:
 
 
 def apply(spec: FindSpec, docs: Iterable[Doc]) -> list[Doc]:
-    """Filter, order and limit ``docs`` exactly as Cosmos runs :func:`compile_query`."""
+    """Filter, order, limit and project ``docs`` exactly as Cosmos runs :func:`compile_query`."""
     selected = [
         doc
         for doc in docs
@@ -300,4 +329,12 @@ def apply(spec: FindSpec, docs: Iterable[Doc]) -> list[Doc]:
         selected = [doc for _, doc in keyed]
     if spec.limit is not None:
         selected = selected[: spec.limit]
+    if spec.fields is not None:
+        selected = [_project(doc, spec.fields) for doc in selected]
     return selected
+
+
+def _project(doc: Doc, fields: Sequence[str]) -> Doc:
+    """``doc`` with only ``fields`` (those it has) in its body, as a Cosmos projection."""
+    body = {name: doc.body[name] for name in fields if name in doc.body}
+    return Doc(id=doc.id, partition_key=doc.partition_key, body=body, etag=doc.etag)

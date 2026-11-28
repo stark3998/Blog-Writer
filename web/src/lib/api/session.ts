@@ -20,15 +20,37 @@ export function isLoggedOutResponse(response: Pick<Response, 'status' | 'type'>)
 }
 
 /**
+ * The query parameters the share target (`public/manifest.webmanifest`, `share_target`) puts
+ * other members' text and links in: `/today?share=<text>&share_url=<url>`. That text lives in
+ * component state only (contract section 10), so it never rides along a sign-in round trip.
+ */
+export const SHARE_TARGET_PARAMS = { text: 'share', url: 'share_url' } as const;
+
+/** `path` without the share target's parameters (the other parameters and the fragment kept). */
+function withoutSharedText(path: string): string {
+  const hashAt = path.indexOf('#');
+  const beforeHash = hashAt === -1 ? path : path.slice(0, hashAt);
+  const queryAt = beforeHash.indexOf('?');
+  if (queryAt === -1) return path;
+  const params = new URLSearchParams(beforeHash.slice(queryAt + 1));
+  const names = Object.values(SHARE_TARGET_PARAMS).filter((name) => params.has(name));
+  if (names.length === 0) return path;
+  for (const name of names) params.delete(name);
+  const query = params.toString();
+  return `${beforeHash.slice(0, queryAt)}${query === '' ? '' : `?${query}`}${hashAt === -1 ? '' : path.slice(hashAt)}`;
+}
+
+/**
  * A path the login page may send the browser back to: same-origin, and not an auth or API
- * endpoint (coming back to those would only fail or loop). Anything else becomes `/`.
+ * endpoint (coming back to those would only fail or loop). Anything else becomes `/`. Text from
+ * the share target is dropped: it must not travel through the sign-in page.
  */
 export function safeReturnPath(path: string): string {
   // `//host` and `/\host` are protocol-relative URLs in browsers, not paths.
   if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) return '/';
   const pathname = path.split(/[?#]/, 1)[0] ?? '/';
   if (/^\/(?:\.auth|api)(?:\/|$)/i.test(pathname)) return '/';
-  return path;
+  return withoutSharedText(path);
 }
 
 /** The sign-in URL that brings the browser back to `returnTo` afterwards. */

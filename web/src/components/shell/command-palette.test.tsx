@@ -1,10 +1,17 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { THEME_STORAGE_KEY } from '@/theme/theme';
+import { allFirstInstallHandlers } from '@/test/first-install';
+import { server } from '@/test/msw';
 import { findPageHeading, renderApp } from '@/test/render-app';
 
 import { isCommandPaletteShortcut } from './use-command-palette-shortcut';
+
+// The palette opens pages: every area answers like a first install.
+beforeEach(() => {
+  server.use(...allFirstInstallHandlers());
+});
 
 async function openWith(user: ReturnType<typeof renderApp>['user'], keys: string) {
   await user.keyboard(keys);

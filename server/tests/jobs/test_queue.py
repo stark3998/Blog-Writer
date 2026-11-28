@@ -85,6 +85,19 @@ async def test_cancelling_a_queued_job_is_immediate(store: MemoryStore, clock: F
     assert await subscription.get(max_wait=0) is None
 
 
+async def test_cancelling_a_quarantined_job_dismisses_it(
+    store: MemoryStore, clock: FakeClock
+) -> None:
+    job = await enqueue(store, "crawl", clock=clock)
+    job.status = "quarantined"
+    await save(store, job)
+    dismissed = await request_cancel(store, job.id, clock=clock)
+    assert dismissed.status == "cancelled"
+    assert dismissed.events[-1].data == {"status": "cancelled", "reason": "dismissed"}
+    again = await request_cancel(store, job.id, clock=clock)
+    assert again == dismissed
+
+
 async def test_cancelling_a_running_job_only_flags_it(store: MemoryStore, clock: FakeClock) -> None:
     job = await enqueue(store, "crawl", clock=clock)
     job.status = "running"

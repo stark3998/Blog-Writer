@@ -1,0 +1,372 @@
+{
+  "weeks": 12,
+  "since": "2026-09-03T17:00:00.000000Z",
+  "posts": 5,
+  "ownerMedian": {
+    "reactions": 12.0,
+    "comments": 2.0,
+    "reposts": 1.0,
+    "saves": 2.0,
+    "sends": 1.0,
+    "engagement": 18.0
+  },
+  "rows": [
+    {
+      "dimension": "pillar",
+      "value": "agents",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 15.0,
+        "comments": 4.5,
+        "reposts": 0.5,
+        "saves": 2.0,
+        "sends": 0.5,
+        "engagement": 22.5
+      },
+      "vsMedian": {
+        "reactions": 0.25,
+        "comments": 1.25,
+        "reposts": -0.5,
+        "saves": 0.0,
+        "sends": -0.5,
+        "engagement": 0.25
+      }
+    },
+    {
+      "dimension": "pillar",
+      "value": "identity",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 11.0,
+        "comments": 2.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 15.0
+      },
+      "vsMedian": {
+        "reactions": -0.083,
+        "comments": 0.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": -0.167
+      }
+    },
+    {
+      "dimension": "pillar",
+      "value": "governance",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 20.0,
+        "comments": 2.0,
+        "reposts": 2.0,
+        "saves": 2.0,
+        "sends": 2.0,
+        "engagement": 28.0
+      },
+      "vsMedian": {
+        "reactions": 0.667,
+        "comments": 0.0,
+        "reposts": 1.0,
+        "saves": 0.0,
+        "sends": 1.0,
+        "engagement": 0.556
+      }
+    },
+    {
+      "dimension": "format",
+      "value": "carousel",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 16.0,
+        "comments": 3.5,
+        "reposts": 1.0,
+        "saves": 2.5,
+        "sends": 1.0,
+        "engagement": 24.0
+      },
+      "vsMedian": {
+        "reactions": 0.333,
+        "comments": 0.75,
+        "reposts": 0.0,
+        "saves": 0.25,
+        "sends": 0.0,
+        "engagement": 0.333
+      }
+    },
+    {
+      "dimension": "format",
+      "value": "text",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 15.0,
+        "comments": 3.0,
+        "reposts": 1.0,
+        "saves": 1.5,
+        "sends": 1.0,
+        "engagement": 21.5
+      },
+      "vsMedian": {
+        "reactions": 0.25,
+        "comments": 0.5,
+        "reposts": 0.0,
+        "saves": -0.25,
+        "sends": 0.0,
+        "engagement": 0.194
+      }
+    },
+    {
+      "dimension": "format",
+      "value": "image_card",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 10.0,
+        "comments": 2.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": 12.0
+      },
+      "vsMedian": {
+        "reactions": -0.167,
+        "comments": 0.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": -0.333
+      }
+    },
+    {
+      "dimension": "hook_type",
+      "value": "result_metric",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 20.0,
+        "comments": 3.5,
+        "reposts": 1.5,
+        "saves": 2.5,
+        "sends": 1.5,
+        "engagement": 29.0
+      },
+      "vsMedian": {
+        "reactions": 0.667,
+        "comments": 0.75,
+        "reposts": 0.5,
+        "saves": 0.25,
+        "sends": 0.5,
+        "engagement": 0.611
+      }
+    },
+    {
+      "dimension": "hook_type",
+      "value": "mistake_lesson",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 10.0,
+        "comments": 4.0,
+        "reposts": 0.0,
+        "saves": 1.0,
+        "sends": 0.0,
+        "engagement": 15.0
+      },
+      "vsMedian": {
+        "reactions": -0.167,
+        "comments": 1.0,
+        "reposts": -1.0,
+        "saves": -0.5,
+        "sends": -1.0,
+        "engagement": -0.167
+      }
+    },
+    {
+      "dimension": "hook_type",
+      "value": "none",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 12.0,
+        "comments": 2.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 18.0
+      },
+      "vsMedian": {
+        "reactions": 0.0,
+        "comments": 0.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": 0.0
+      }
+    },
+    {
+      "dimension": "hook_type",
+      "value": "question",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 10.0,
+        "comments": 2.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": 12.0
+      },
+      "vsMedian": {
+        "reactions": -0.167,
+        "comments": 0.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": -0.333
+      }
+    },
+    {
+      "dimension": "lane",
+      "value": "native",
+      "posts": 3,
+      "ratesPer1k": {
+        "reactions": 12.0,
+        "comments": 2.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 18.0
+      },
+      "vsMedian": {
+        "reactions": 0.0,
+        "comments": 0.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": 0.0
+      }
+    },
+    {
+      "dimension": "lane",
+      "value": "derivative",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 20.0,
+        "comments": 5.0,
+        "reposts": 1.0,
+        "saves": 3.0,
+        "sends": 1.0,
+        "engagement": 30.0
+      },
+      "vsMedian": {
+        "reactions": 0.667,
+        "comments": 1.5,
+        "reposts": 0.0,
+        "saves": 0.5,
+        "sends": 0.0,
+        "engagement": 0.667
+      }
+    },
+    {
+      "dimension": "lane",
+      "value": "quick_take",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 10.0,
+        "comments": 2.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": 12.0
+      },
+      "vsMedian": {
+        "reactions": -0.167,
+        "comments": 0.0,
+        "reposts": null,
+        "saves": null,
+        "sends": null,
+        "engagement": -0.333
+      }
+    },
+    {
+      "dimension": "go_live_mode",
+      "value": "one_click",
+      "posts": 4,
+      "ratesPer1k": {
+        "reactions": 16.0,
+        "comments": 2.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 23.0
+      },
+      "vsMedian": {
+        "reactions": 0.333,
+        "comments": 0.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": 0.278
+      }
+    },
+    {
+      "dimension": "go_live_mode",
+      "value": "kit",
+      "posts": 1,
+      "ratesPer1k": {
+        "reactions": 10.0,
+        "comments": 4.0,
+        "reposts": 0.0,
+        "saves": 1.0,
+        "sends": 0.0,
+        "engagement": 15.0
+      },
+      "vsMedian": {
+        "reactions": -0.167,
+        "comments": 1.0,
+        "reposts": -1.0,
+        "saves": -0.5,
+        "sends": -1.0,
+        "engagement": -0.167
+      }
+    },
+    {
+      "dimension": "owner_signal",
+      "value": "with",
+      "posts": 3,
+      "ratesPer1k": {
+        "reactions": 20.0,
+        "comments": 4.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 28.0
+      },
+      "vsMedian": {
+        "reactions": 0.667,
+        "comments": 1.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": 0.556
+      }
+    },
+    {
+      "dimension": "owner_signal",
+      "value": "without",
+      "posts": 2,
+      "ratesPer1k": {
+        "reactions": 11.0,
+        "comments": 2.0,
+        "reposts": 1.0,
+        "saves": 2.0,
+        "sends": 1.0,
+        "engagement": 15.0
+      },
+      "vsMedian": {
+        "reactions": -0.083,
+        "comments": 0.0,
+        "reposts": 0.0,
+        "saves": 0.0,
+        "sends": 0.0,
+        "engagement": -0.167
+      }
+    }
+  ]
+}

@@ -80,6 +80,27 @@ describe('JobTimeline', () => {
     expect(screen.getByRole('list').closest('[aria-live="polite"]')).toBe(region);
   });
 
+  it('shows a running step’s reported progress as a named bar, without repeating it to screen readers', () => {
+    const { appData } = renderTimeline();
+    apply(appData, ev('job', jobEventPayload(1, 'step.started', { step: 'search' })));
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+
+    apply(appData, ev('job', jobEventPayload(2, 'progress', { step: 'search', data: { done: 3, total: 12, label: 'sources' } })));
+    const bar = screen.getByRole('progressbar', { name: 'Search progress' });
+    expect(bar).toHaveAttribute('aria-valuenow', '3');
+    expect(bar).toHaveAttribute('aria-valuetext', '3 of 12 sources');
+    expect(screen.getByText('3 of 12 sources')).toHaveAttribute('aria-hidden', 'true');
+    // The row still reads as the step and its state.
+    expect(rows()).toEqual(['Search: in progress']);
+
+    apply(appData, ev('job', jobEventPayload(3, 'progress', { step: 'search', data: { done: 7, total: 12, label: 'sources' } })));
+    expect(screen.getByRole('progressbar', { name: 'Search progress' })).toHaveAttribute('aria-valuenow', '7');
+
+    apply(appData, ev('job', jobEventPayload(4, 'step.succeeded', { step: 'search' })));
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(rows()).toEqual(['Search: done']);
+  });
+
   it('does not re-render for streamed tokens, only for step changes', () => {
     const appData = createTestAppData();
     appData.jobs.apply(ev('snapshot', snapshotPayload()));

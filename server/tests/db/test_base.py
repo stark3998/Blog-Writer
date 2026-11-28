@@ -90,6 +90,17 @@ def test_unindexed_fields_mirror_terraform() -> None:
     assert "payload" in UNINDEXED_FIELDS["posts"]
 
 
+def test_large_text_fields_are_not_indexed() -> None:
+    """Contract I-8: the large text fields and reports nobody filters or sorts on."""
+    assert {"body", "text"} <= UNINDEXED_FIELDS["stories"]  # style guides, voice samples
+    assert {"payload", "displayText", "finalText", "aiDraftText"} <= UNINDEXED_FIELDS["posts"]
+    assert "pastedText" in UNINDEXED_FIELDS["engagement"]
+    assert {"gates", "servedBy"} <= UNINDEXED_FIELDS["articles"]
+    for container in CONTAINERS:
+        assert {"embedding", "markdown"} <= UNINDEXED_FIELDS[container]
+    assert "text" not in UNINDEXED_FIELDS["ideas"]  # only the containers that hold them
+
+
 def test_published_blogs_contract_partition_keys() -> None:
     assert CONTAINERS["published-blogs"] == "/id"
     assert CONTAINERS["published-blogs-staging"] == "/id"

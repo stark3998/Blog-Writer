@@ -11,9 +11,10 @@ plain :class:`StoreError`), 409 -> :class:`Conflict`, 412 -> :class:`Preconditio
 anything else -> :class:`StoreError` with the status. Messages carry the operation, container,
 id and status only, never document content.
 
-Queries are always parameterized (see :mod:`blogwriter.db.query`). The store never creates or
-deletes containers: :meth:`CosmosStore.ensure_containers` only checks that every registry
-container exists with the expected partition key.
+Queries are always parameterized (see :mod:`blogwriter.db.query`); a projection
+(``find(..., fields=...)``) selects ``id``, ``_etag``, the partition key field and the listed
+fields only. The store never creates or deletes containers: :meth:`CosmosStore.ensure_containers`
+only checks that every registry container exists with the expected partition key.
 """
 
 from __future__ import annotations
@@ -333,9 +334,10 @@ class CosmosStore:
         order_by: OrderBy | None = None,
         limit: int | None = None,
         partition_key: str | None = None,
+        fields: Sequence[str] | None = None,
     ) -> list[Doc]:
         partition_key_path(container)
-        spec = find_spec(container, filters, order_by, limit, partition_key)
+        spec = find_spec(container, filters, order_by, limit, partition_key, fields)
         query = compile_query(spec)
         target = self._container(container)
         docs: list[Doc] = []

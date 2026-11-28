@@ -23,6 +23,7 @@ import {
 import { Input } from './input';
 import { Kbd } from './kbd';
 import { ScrollArea } from './scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Separator } from './separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
 import { Skeleton } from './skeleton';
@@ -326,6 +327,33 @@ describe('styles under the CSP (style-src self blocks style tags added at runtim
 
     const shipped = rules(readProjectFile('src/styles/index.css'));
     for (const [selector, declarations] of injected) {
+      const ours = shipped.get(selector);
+      expect(ours, `index.css has no "${selector}" rule`).toBeDefined();
+      for (const declaration of declarations) {
+        if (OBSOLETE.has(declaration.split(':', 1)[0] ?? '')) continue;
+        expect(ours?.has(declaration), `${selector} { ${declaration} }`).toBe(true);
+      }
+    }
+  });
+
+  it('ships the rules Radix Select injects for its list, so the native scrollbar stays hidden there too', () => {
+    render(
+      <Select open>
+        <SelectTrigger aria-label="Pillar">
+          <SelectValue placeholder="Choose" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="agents">AI agents & security</SelectItem>
+        </SelectContent>
+      </Select>,
+    );
+    // The list renders in a portal, so its style tag is outside the render container.
+    const injected = rules([...document.querySelectorAll('style')].map((style) => style.textContent).join('\n'));
+    const selectRules = [...injected].filter(([selector]) => selector.includes('data-radix-select-viewport'));
+    expect(selectRules.length).toBeGreaterThan(0);
+
+    const shipped = rules(readProjectFile('src/styles/index.css'));
+    for (const [selector, declarations] of selectRules) {
       const ours = shipped.get(selector);
       expect(ours, `index.css has no "${selector}" rule`).toBeDefined();
       for (const declaration of declarations) {

@@ -38,6 +38,310 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Safe mode, runner, brake, services and expiries */
+        get: operations["read_status_api_system_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/safe-mode/exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave safe mode (start the runner and the scheduler)
+         * @description Leave safe mode: clear the boot log, start the runner and the scheduler.
+         */
+        post: operations["exit_safe_mode_api_system_safe_mode_exit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/test-alert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a test alert (and optionally a test push)
+         * @description Raise the ``test`` out-of-band alert and, with ``push``, a test notification.
+         */
+        post: operations["send_test_alert_api_system_test_alert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meta/machines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every status machine: its edges, the owner's edges and the owner's states
+         * @description Every status machine with the owner's part in it (the web enables buttons from it and
+         *     keeps the editor read-only outside the owner's states).
+         */
+        get: operations["machines_api_meta_machines_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Jobs, newest update first
+         * @description Jobs, most recently updated first (``?status=`` and ``?type=`` filter).
+         */
+        get: operations["list_jobs_api_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One job with its events */
+        get: operations["read_job_api_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a job
+         * @description Cancel (a running job gets a cancel request; a finished one is returned unchanged).
+         *
+         *     A child job's waiting parent is told (``jobflow.cancel_job``), and a publish job's article
+         *     is released to ``publish_failed`` once the run stopped (``publish.recovery.after_cancel``),
+         *     so neither is left waiting on a job that ended without running its own code.
+         */
+        post: operations["cancel_job_api_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry a failed, quarantined or cancelled job
+         * @description Re-queue a failed, quarantined or cancelled job (attempts reset).
+         */
+        post: operations["retry_job_api_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Schedule items, soonest first
+         * @description Every schedule item, soonest first (an unreadable item is skipped and logged).
+         */
+        get: operations["list_schedules_api_schedules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedules/{schedule_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run or skip the missed slot of an item that waits for confirmation */
+        post: operations["confirm_schedule_api_schedules__schedule_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedules/{schedule_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause a schedule item */
+        post: operations["pause_schedule_api_schedules__schedule_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedules/{schedule_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused schedule item from its next slot */
+        post: operations["resume_schedule_api_schedules__schedule_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The VAPID public key for PushManager.subscribe */
+        get: operations["push_key_api_push_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subscribe this browser to push notifications
+         * @description Store this browser's subscription (subscribing again re-activates the same record).
+         */
+        post: operations["subscribe_api_push_subscriptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/subscriptions/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a push subscription */
+        delete: operations["unsubscribe_api_push_subscriptions__subscription_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/render/mermaid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render a Mermaid diagram as a sanitised SVG (live preview)
+         * @description Render one diagram's Mermaid source as a sanitised SVG (cached by its hash).
+         */
+        post: operations["render_mermaid_api_render_mermaid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -58,10 +362,4792 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload an image
+         * @description Upload an image (raw body). The bytes are re-encoded; metadata never survives.
+         */
+        post: operations["upload_media_api_media_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a media file
+         * @description Serve one media blob (same origin, private immutable cache, sandboxed).
+         */
+        get: operations["get_media_api_media__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/pillars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The content pillars */
+        get: operations["get_pillars_api_kb_pillars_get"];
+        /** Save the content pillars */
+        put: operations["put_pillars_api_kb_pillars_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/formats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The article format packs */
+        get: operations["get_formats_api_kb_formats_get"];
+        /** Save the article format packs */
+        put: operations["put_formats_api_kb_formats_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/lanes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The post lanes and weekly mix rules */
+        get: operations["get_lanes_api_kb_lanes_get"];
+        /** Save the post lanes and weekly mix rules */
+        put: operations["put_lanes_api_kb_lanes_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The brand kit */
+        get: operations["get_brand_api_kb_brand_get"];
+        /** Save the brand kit */
+        put: operations["put_brand_api_kb_brand_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/blocklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The confidentiality blocklist */
+        get: operations["get_blocklist_api_kb_blocklist_get"];
+        /** Save the confidentiality blocklist */
+        put: operations["put_blocklist_api_kb_blocklist_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The employer policy */
+        get: operations["get_policy_api_kb_policy_get"];
+        /** Save the employer policy */
+        put: operations["put_policy_api_kb_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/cadence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The weekly cadence, slots and modes */
+        get: operations["get_cadence_api_kb_cadence_get"];
+        /** Save the cadence and reseed the schedules */
+        put: operations["put_cadence_api_kb_cadence_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Model routing, prices and preferences */
+        get: operations["get_models_api_kb_models_get"];
+        /** Save the model preferences */
+        put: operations["put_models_api_kb_models_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/autonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Autonomy switches and the auto-publish decision */
+        get: operations["get_autonomy_api_kb_autonomy_get"];
+        /** Turn auto-publish on or off */
+        put: operations["put_autonomy_api_kb_autonomy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/autonomy/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause all autonomy */
+        post: operations["pause_autonomy_api_kb_autonomy_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/autonomy/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume autonomy */
+        post: operations["resume_autonomy_api_kb_autonomy_resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The owner-input checklist */
+        get: operations["get_inputs_api_kb_inputs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/seeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The v1 migration's keyword seeds
+         * @description The v1 migration's keyword seeds by id (``?status=proposed``: the review queue).
+         */
+        get: operations["list_seeds_api_kb_seeds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/seeds/{seed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One keyword seed */
+        get: operations["get_seed_api_kb_seeds__seed_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/seeds/{seed_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a seed's keywords to a pillar
+         * @description Add the seed's keywords to a pillar's vocabulary, then mark it approved (see the module
+         *     docs). 409 ``invalid_transition`` unless it is proposed, 409 ``seed_empty`` without
+         *     keywords, 412 on a stale etag, 422 for an unknown pillar or keyword.
+         */
+        post: operations["approve_seed_api_kb_seeds__seed_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/seeds/{seed_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss a keyword seed
+         * @description Dismiss a proposed seed (``proposed -> rejected``); nothing is applied.
+         */
+        post: operations["dismiss_seed_api_kb_seeds__seed_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/kb/seeds/{seed_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put a dismissed seed back in review
+         * @description Put a dismissed seed back in review (``rejected -> proposed``).
+         */
+        post: operations["restore_seed_api_kb_seeds__seed_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/intake/redact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redact Intake */
+        post: operations["redact_intake_api_stories_intake_redact_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/intake/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Intake */
+        post: operations["check_intake_api_stories_intake_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Stories
+         * @description Propose stories and POVs from public resume or portfolio text (owner approves each).
+         *
+         *     The body is ``SeedIn`` JSON, or the text itself (``text/plain``, ``text/markdown``,
+         *     LaTeX) with ``?source=cv|portfolio``; no multipart. The text is kept as an ephemeral
+         *     ``SeedText`` (1 day) and the job input holds only its id.
+         */
+        post: operations["seed_stories_api_stories_seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Classify Stories
+         * @description Run the classifier over every story and POV whose verdict is missing or stale.
+         */
+        post: operations["classify_stories_api_stories_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stories */
+        get: operations["list_stories_api_stories_get"];
+        put?: never;
+        /** Create Story */
+        post: operations["create_story_api_stories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/{story_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Story */
+        get: operations["get_story_api_stories__story_id__get"];
+        /** Put Story */
+        put: operations["put_story_api_stories__story_id__put"];
+        post?: never;
+        /** Delete Story */
+        delete: operations["delete_story_api_stories__story_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/{story_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Story */
+        post: operations["review_story_api_stories__story_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/povs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Povs */
+        get: operations["list_povs_api_povs_get"];
+        put?: never;
+        /** Create Pov */
+        post: operations["create_pov_api_povs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/povs/{pov_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pov */
+        get: operations["get_pov_api_povs__pov_id__get"];
+        /** Put Pov */
+        put: operations["put_pov_api_povs__pov_id__put"];
+        post?: never;
+        /** Delete Pov */
+        delete: operations["delete_pov_api_povs__pov_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/povs/{pov_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Pov */
+        post: operations["review_pov_api_povs__pov_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Voice samples
+         * @description Voice samples, most recently changed first.
+         */
+        get: operations["list_samples_api_voice_samples_get"];
+        put?: never;
+        /**
+         * Add a sample
+         * @description Add a sample from pasted text, or from an owner-typed URL fetched by the research
+         *     fetcher (``allowed_urls=[url]``). Scored on save; text and title clear the blocklist.
+         */
+        post: operations["create_sample_api_voice_samples_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/samples/{sample_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One sample */
+        get: operations["get_sample_api_voice_samples__sample_id__get"];
+        /**
+         * Edit a sample
+         * @description Edit a sample (fields left out stay; ``null`` clears the title or pillar); re-scored.
+         */
+        put: operations["update_sample_api_voice_samples__sample_id__put"];
+        post?: never;
+        /** Delete a sample */
+        delete: operations["delete_sample_api_voice_samples__sample_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/samples/{sample_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exclude or include a sample
+         * @description Exclude a sample from the corpus, or include it again.
+         */
+        post: operations["set_sample_status_api_voice_samples__sample_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The active guide and its versions */
+        get: operations["get_guide_view_api_voice_guide_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a guide
+         * @description Start ``voice.build-guide`` (409 ``not_enough_samples`` below the required LinkedIn
+         *     posts unless ``provisional``). A second click while a build runs returns the running build.
+         */
+        post: operations["build_guide_api_voice_guide_build_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide/{guide_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One guide version */
+        get: operations["get_guide_api_voice_guide__guide_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide/{guide_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save an edited version
+         * @description The owner's edit of version ``guide_id``: a new ``proposed`` version (``editedByOwner``).
+         */
+        post: operations["create_guide_version_api_voice_guide__guide_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide/{guide_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate
+         * @description Activate a version (the previous active one is superseded). The whole guide clears the
+         *     blocklist first: it goes into every drafting prompt.
+         */
+        post: operations["activate_guide_api_voice_guide__guide_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/guide/{guide_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_guide_api_voice_guide__guide_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/digests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Voice digests
+         * @description Digests, newest period first.
+         */
+        get: operations["list_digests_api_voice_digests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/digests/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a digest
+         * @description Start ``voice.digest`` now (owner origin: runs whatever the cadence or the pause).
+         */
+        post: operations["run_digest_api_voice_digests_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/digests/{digest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One digest */
+        get: operations["get_digest_api_voice_digests__digest_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/digests/{digest_id}/suggestions/{suggestion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or dismiss a suggestion
+         * @description Accept or dismiss one suggestion. Accepting adds its rule to a new ``proposed`` version
+         *     of the active guide (deterministic, no AI); a rule the guide already has adds nothing.
+         */
+        post: operations["decide_suggestion_api_voice_digests__digest_id__suggestions__suggestion_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/seeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The v1 migration's voice seeds
+         * @description The v1 migration's voice seeds by id (``?status=proposed``: the review queue).
+         */
+        get: operations["list_seeds_api_voice_seeds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/seeds/{seed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One voice seed */
+        get: operations["get_seed_api_voice_seeds__seed_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/seeds/{seed_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a seed's sample text to the corpus
+         * @description Add the profile's sample text to the corpus, then mark the seed approved (see the module
+         *     docs). 409 ``invalid_transition`` unless it is proposed, 409 ``seed_empty`` without text,
+         *     412 on a stale etag.
+         */
+        post: operations["approve_seed_api_voice_seeds__seed_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/seeds/{seed_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss a seed
+         * @description Dismiss a proposed seed (``proposed -> rejected``); nothing joins the corpus.
+         */
+        post: operations["dismiss_seed_api_voice_seeds__seed_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/seeds/{seed_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put a dismissed seed back in review
+         * @description Put a dismissed seed back in review (``rejected -> proposed``).
+         */
+        post: operations["restore_seed_api_voice_seeds__seed_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_research_runs_get"];
+        put?: never;
+        /** Post Run */
+        post: operations["post_run_api_research_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_research_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Run */
+        post: operations["cancel_run_api_research_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/briefs/{brief_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Brief */
+        get: operations["get_brief_api_research_briefs__brief_id__get"];
+        /** Put Brief */
+        put: operations["put_brief_api_research_briefs__brief_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/quick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Quick */
+        get: operations["list_quick_api_research_quick_get"];
+        put?: never;
+        /** Post Quick */
+        post: operations["post_quick_api_research_quick_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/quick/{quick_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quick */
+        get: operations["get_quick_api_research_quick__quick_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sources
+         * @description Sources in the order they were added.
+         */
+        get: operations["list_sources_api_sources_get"];
+        put?: never;
+        /** Create Source */
+        post: operations["create_source_api_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover Sources
+         * @description Feeds the owner-typed site links to (or the site itself, when it is a feed).
+         */
+        post: operations["discover_sources_api_sources_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/crawl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crawl Now
+         * @description Crawl every feed now (``signals.crawl``, origin owner). A second tap in the same
+         *     minute returns the same job.
+         */
+        post: operations["crawl_now_api_sources_crawl_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Source */
+        get: operations["get_source_api_sources__source_id__get"];
+        /** Put Source */
+        put: operations["put_source_api_sources__source_id__put"];
+        post?: never;
+        /**
+         * Delete Source
+         * @description Stop following a source. Its ideas stay; its signals age out (90 days).
+         */
+        delete: operations["delete_source_api_sources__source_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/{source_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause Source */
+        post: operations["pause_source_api_sources__source_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sources/{source_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Source
+         * @description Paused or failing -> active (a failing source gets a fresh error budget).
+         */
+        post: operations["resume_source_api_sources__source_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ideas
+         * @description The inbox, newest first (default: ``new`` and ``accepted``).
+         */
+        get: operations["list_ideas_api_ideas_get"];
+        put?: never;
+        /**
+         * Create Idea
+         * @description Quick capture (origin ``quick_capture``).
+         */
+        post: operations["create_idea_api_ideas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ideas/repurpose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Repurpose Post
+         * @description An ``origin: repurpose`` idea from a post that went out (``repurposeOf``): the
+         *     ``repurpose`` post lane and flagship candidates start from it. Asking again answers the
+         *     same idea (200).
+         */
+        post: operations["repurpose_post_api_ideas_repurpose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ideas/{idea_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Idea */
+        get: operations["get_idea_api_ideas__idea_id__get"];
+        /** Edit Idea */
+        put: operations["edit_idea_api_ideas__idea_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ideas/{idea_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transition Idea
+         * @description Accept, snooze (optionally until a time), dismiss, or bring back to ``new``.
+         */
+        post: operations["transition_idea_api_ideas__idea_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Articles */
+        get: operations["list_articles_api_articles_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_articles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Article */
+        get: operations["get_article_api_articles__article_id__get"];
+        /** Save Article */
+        put: operations["save_article_api_articles__article_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Transition */
+        post: operations["post_transition_api_articles__article_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Versions */
+        get: operations["get_versions_api_articles__article_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Version */
+        get: operations["get_version_api_articles__article_id__versions__version__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/versions/{version}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore */
+        post: operations["restore_api_articles__article_id__versions__version__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview */
+        get: operations["preview_api_articles__article_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/export.md": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Markdown */
+        get: operations["export_markdown_api_articles__article_id__export_md_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clearance */
+        post: operations["clearance_api_articles__article_id__clearance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/gates/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Gates Route */
+        post: operations["run_gates_route_api_articles__article_id__gates_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gates */
+        get: operations["get_gates_api_articles__article_id__gates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/gates/{gate}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Override Gate */
+        post: operations["override_gate_api_articles__article_id__gates__gate__override_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/gates/lint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lint Route */
+        post: operations["lint_route_api_gates_lint_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/gates/standards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Standards */
+        get: operations["get_standards_api_gates_standards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/gates/standards/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Standards */
+        post: operations["refresh_standards_api_gates_standards_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/linkedin/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Connection */
+        get: operations["get_connection_api_linkedin_connection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/linkedin/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Oauth Start */
+        post: operations["post_oauth_start_api_linkedin_oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/linkedin/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Oauth Callback
+         * @description LinkedIn's redirect back. Reflects nothing; failures land in ``connection.lastError``.
+         */
+        get: operations["get_oauth_callback_api_linkedin_oauth_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/linkedin/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Disconnect */
+        post: operations["post_disconnect_api_linkedin_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/linkedin/introspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Introspect */
+        post: operations["post_introspect_api_linkedin_introspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/go-live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Go Live */
+        get: operations["get_go_live_api_posts__post_id__go_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Publish
+         * @description The owner's tap: one attempt; read ``status`` in the answer.
+         */
+        post: operations["post_publish_api_posts__post_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Mode */
+        post: operations["post_mode_api_posts__post_id__mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/kit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Kit */
+        get: operations["get_kit_api_posts__post_id__kit_get"];
+        put?: never;
+        /** Post Kit */
+        post: operations["post_kit_api_posts__post_id__kit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Resolve */
+        post: operations["post_resolve_api_posts__post_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/linkedin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Live Post
+         * @description Edit a live post's text (lint must pass; one ``PARTIAL_UPDATE``).
+         */
+        patch: operations["patch_live_post_api_posts__post_id__linkedin_patch"];
+        trace?: never;
+    };
+    "/api/posts/{post_id}/linkedin/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Delete Live Post
+         * @description Delete a live post on LinkedIn; the post becomes ``deleted``.
+         */
+        post: operations["post_delete_live_post_api_posts__post_id__linkedin_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Backup status and recent dumps
+         * @description The backup status, the dumps of the last 35 days and whether a restore drill is due.
+         */
+        get: operations["get_backups_api_backups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backups/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Back up now
+         * @description Start a backup of today (UTC) now; a second click while it runs returns the same job.
+         */
+        post: operations["run_backup_api_backups_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backups/restore-drill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a restore drill
+         * @description The owner attests that the monthly restore drill (``RESTORE.md``) was done now.
+         */
+        post: operations["record_restore_drill_api_backups_restore_drill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backups/{date}/{container}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download one dump file
+         * @description One day's dump of one container (gzip JSON Lines) as a download.
+         */
+        get: operations["download_dump_api_backups__date___container__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Pipeline */
+        post: operations["post_pipeline_api_articles__article_id__pipeline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/pipeline/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Cancel */
+        post: operations["post_cancel_api_articles__article_id__pipeline_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Revise */
+        post: operations["post_revise_api_articles__article_id__revise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Selection */
+        post: operations["post_selection_api_articles__article_id__selection_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Interviews */
+        get: operations["list_interviews_api_interviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interviews/{interview_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Interview */
+        get: operations["get_interview_api_interviews__interview_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interviews/{interview_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Answers */
+        post: operations["post_answers_api_interviews__interview_id__answers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/interviews/{interview_id}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Skip */
+        post: operations["post_skip_api_interviews__interview_id__skip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Article */
+        post: operations["approve_article_api_articles__article_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/publish-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Now */
+        post: operations["publish_now_api_articles__article_id__publish_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unpublish */
+        post: operations["unpublish_api_articles__article_id__unpublish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/staging-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Staging Preview */
+        post: operations["staging_preview_api_articles__article_id__staging_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/publish-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Publish Status */
+        get: operations["get_publish_status_api_articles__article_id__publish_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Posts */
+        get: operations["list_posts_api_posts_get"];
+        put?: never;
+        /** Create Post */
+        post: operations["create_post_api_posts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Post */
+        get: operations["get_post_api_posts__post_id__get"];
+        /** Edit Post */
+        put: operations["edit_post_api_posts__post_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/posts/derive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Derive Posts */
+        post: operations["derive_posts_api_articles__article_id__posts_derive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/lint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lint Text */
+        post: operations["lint_text_api_posts__post_id__lint_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Post Route */
+        post: operations["check_post_route_api_posts__post_id__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/carousel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Carousel */
+        put: operations["put_carousel_api_posts__post_id__carousel_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/carousel/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Carousel Preview */
+        get: operations["carousel_preview_api_posts__post_id__carousel_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Render Post */
+        post: operations["render_post_api_posts__post_id__render_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_api_posts__post_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_posts__post_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/unapprove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unapprove */
+        post: operations["unapprove_api_posts__post_id__unapprove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive */
+        post: operations["archive_api_posts__post_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Today */
+        get: operations["get_today_api_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/weeks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Weeks
+         * @description Plans from the week containing ``from`` (default: this week), oldest first.
+         */
+        get: operations["list_weeks_api_plan_weeks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/weeks/{week_start}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Week */
+        get: operations["get_week_api_plan_weeks__week_start__get"];
+        /** Put Week */
+        put: operations["put_week_api_plan_weeks__week_start__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/weeks/{week_start}/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Week
+         * @description Regenerate a week's plan (``planner.plan-week``, origin owner). A run already in
+         *     progress is returned; an approved or closed plan is 409 ``plan_approved``.
+         */
+        post: operations["generate_week_api_plan_weeks__week_start__generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/weeks/{week_start}/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Mode */
+        put: operations["put_mode_api_plan_weeks__week_start__mode_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/weeks/{week_start}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Week */
+        post: operations["approve_week_api_plan_weeks__week_start__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scorecards
+         * @description The scorecards of the last ``weeks`` complete weeks, newest first (stored on the
+         *     week's plan, else computed from the documents).
+         */
+        get: operations["scorecards_api_plan_scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/reslot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reslot
+         * @description Snooze 30 minutes, take the next free slot or set one (staged and missed posts go
+         *     back to approved; new ``posts.stage`` and ``planner.slot-check`` jobs).
+         */
+        post: operations["reslot_api_posts__post_id__reslot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reminders
+         * @description Reminders of one status by due time (soonest first).
+         */
+        get: operations["list_reminders_api_reminders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/{reminder_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss */
+        post: operations["dismiss_api_reminders__reminder_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/veto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Veto */
+        get: operations["get_veto_api_articles__article_id__veto_get"];
+        put?: never;
+        /**
+         * Post Veto
+         * @description Stop an approved article from publishing: back to review, the publish job cancelled,
+         *     the calibration streak restarted.
+         */
+        post: operations["post_veto_api_articles__article_id__veto_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open items (other members' text)
+         * @description Items within their 48 hours, newest first (expired ones are filtered out).
+         */
+        get: operations["list_items_api_engagement_items_get"];
+        put?: never;
+        /**
+         * Paste a post or comment
+         * @description Keep pasted text for 48 hours (``expiresAt`` and ``ttl``).
+         */
+        post: operations["post_item_api_engagement_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/items/{item_id}/angles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Angles for a reply
+         * @description Up to three angles grounded in the owner's stories, POVs and briefs (ENGAGEMENT).
+         */
+        post: operations["post_angles_api_engagement_items__item_id__angles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/items/{item_id}/lint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lint a reply draft
+         * @description Lint a draft: restating, links, AI tells and slop, over 1,000 characters, blocklist.
+         *
+         *     No model call and nothing stored. Without a saved blocklist the findings carry the hard
+         *     ``blocklist-not-configured`` block (fail closed).
+         */
+        post: operations["post_lint_api_engagement_items__item_id__lint_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/items/{item_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep what was posted
+         * @description Keep what the owner posted (final text, URL) and delete the item at once.
+         */
+        post: operations["post_finalize_api_engagement_items__item_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/items/{item_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss an item
+         * @description Delete an item without answering it.
+         */
+        post: operations["post_dismiss_api_engagement_items__item_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read text from a screenshot
+         * @description Read the post or comment text from the owner's screenshot (nothing is stored).
+         */
+        post: operations["post_extract_api_engagement_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Posted replies and comments
+         * @description What the owner posted, newest first.
+         */
+        get: operations["list_records_api_engagement_records_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/watchlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The watchlist
+         * @description The niche voices, in the order they were added.
+         */
+        get: operations["list_watchlist_api_engagement_watchlist_get"];
+        put?: never;
+        /** Add a niche voice */
+        post: operations["post_watch_entry_api_engagement_watchlist_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/watchlist/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edit a watch entry */
+        put: operations["put_watch_entry_api_engagement_watchlist__entry_id__put"];
+        post?: never;
+        /** Remove a watch entry */
+        delete: operations["delete_watch_entry_api_engagement_watchlist__entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/watchlist/{entry_id}/engaged": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a voice as engaged today
+         * @description One tap in the daily session: ``lastEngagedAt`` = now (idempotent, no If-Match).
+         */
+        post: operations["post_engaged_api_engagement_watchlist__entry_id__engaged_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/engagement/profile-checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profile checklist
+         * @description The profile-alignment checklist (``etag: null`` until the first save).
+         */
+        get: operations["get_checklist_api_engagement_profile_checklist_get"];
+        /**
+         * Save the checklist
+         * @description Save the whole checklist; ``doneAt`` is kept while an item stays done.
+         */
+        put: operations["put_checklist_api_engagement_profile_checklist_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{post_id}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a metrics snapshot
+         * @description The +48 h / +7 d snapshot form (409 ``not_posted`` before the post is live).
+         */
+        post: operations["add_snapshot_api_posts__post_id__snapshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export imports
+         * @description Imports, newest first.
+         */
+        get: operations["list_imports_api_analytics_imports_get"];
+        put?: never;
+        /**
+         * Import a LinkedIn analytics export (beta)
+         * @description Import a LinkedIn analytics export (raw ``.xlsx`` or ``.csv`` body; **beta**).
+         *
+         *     201 with the new import; 200 with the earlier one when the same bytes were imported before.
+         */
+        post: operations["upload_import_api_analytics_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * MetricRates vs median
+         * @description Rates per 1K impressions vs the owner's trailing median, by dimension.
+         */
+        get: operations["get_overview_api_analytics_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * AI spend
+         * @description Daily AI spend, the brake's numbers, the fallback and review-only rates.
+         */
+        get: operations["get_spend_api_analytics_spend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/experiments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Experiments
+         * @description Experiments, most recently changed first.
+         */
+        get: operations["list_experiments_api_analytics_experiments_get"];
+        put?: never;
+        /**
+         * Pre-register an experiment
+         * @description Pre-register an experiment (``draft``).
+         */
+        post: operations["create_experiment_api_analytics_experiments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/experiments/{experiment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One experiment */
+        get: operations["get_experiment_api_analytics_experiments__experiment_id__get"];
+        /**
+         * Edit an experiment
+         * @description Edit a draft; assign posts to the arms of a running experiment (409
+         *     ``experiment_locked`` for anything else).
+         */
+        put: operations["update_experiment_api_analytics_experiments__experiment_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/experiments/{experiment_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start, conclude or abandon
+         * @description Start (409 ``experiment_running``), conclude (409 ``too_few_posts``) or abandon.
+         */
+        post: operations["transition_experiment_api_analytics_experiments__experiment_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggestions
+         * @description Insight suggestions, newest first.
+         */
+        get: operations["list_suggestions_api_analytics_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/suggestions/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the suggestions job
+         * @description Start ``analytics.suggest`` now (owner origin: runs even while autonomy is paused).
+         */
+        post: operations["run_suggestions_api_analytics_suggestions_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/suggestions/{suggestion_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or dismiss a suggestion
+         * @description Accept or dismiss: records the decision only (nothing self-adjusts).
+         */
+        post: operations["decide_suggestion_api_analytics_suggestions__suggestion_id__decide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/evals/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eval topics
+         * @description Eval topics, oldest first.
+         */
+        get: operations["list_topics_api_evals_topics_get"];
+        put?: never;
+        /**
+         * Add an eval topic
+         * @description Add an eval topic (a configured pillar and format; the topic clears the blocklist).
+         */
+        post: operations["create_topic_api_evals_topics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/evals/topics/{topic_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit a topic
+         * @description Edit a topic. A new topic text or pillar, or ``refreshBrief``, clears its brief.
+         */
+        put: operations["update_topic_api_evals_topics__topic_id__put"];
+        post?: never;
+        /**
+         * Delete a topic
+         * @description Delete a topic (its earlier results stay).
+         */
+        delete: operations["delete_topic_api_evals_topics__topic_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/evals/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the evals
+         * @description Start ``analytics.eval`` (owner origin). 409 ``no_eval_topics``, ``voice_guide_missing``,
+         *     ``blocklist_not_configured``, ``ai_use_not_confirmed``.
+         */
+        post: operations["start_eval_run_api_evals_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/evals/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eval results
+         * @description Eval results, newest first (``runId``: one run).
+         */
+        get: operations["list_results_api_evals_results_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/evals/results/{result_id}/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Label an eval result
+         * @description Label a result and recompute ``autonomy.judge`` for its run.
+         */
+        post: operations["label_result_api_evals_results__result_id__label_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AlertCheckIn */
+        AlertCheckIn: {
+            /**
+             * Push
+             * @default false
+             */
+            push: boolean;
+        };
+        /** AlertCheckView */
+        AlertCheckView: {
+            /**
+             * Alert
+             * @default sent
+             * @constant
+             */
+            alert: "sent";
+            push?: components["schemas"]["PushResultView"] | null;
+        };
+        /**
+         * AnalyticsImport
+         * @description One upload of LinkedIn's native analytics export (matched by date, then URN).
+         */
+        AnalyticsImport: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Filename */
+            filename?: string | null;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Rows
+             * @default 0
+             */
+            rows: number;
+            /**
+             * Matched
+             * @default 0
+             */
+            matched: number;
+            /**
+             * Unmatched
+             * @default 0
+             */
+            unmatched: number;
+            errorCode?: components["schemas"]["Code"] | null;
+            importedAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /**
+         * Angle
+         * @description A reply or comment angle grounded in the owner's material.
+         */
+        Angle: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Groundedin */
+            groundedIn?: components["schemas"]["DocId"][];
+        } & Record<string, unknown>;
+        /**
+         * AnswerIn
+         * @description One answer as the owner confirmed it through stories intake (never raw dictation).
+         */
+        AnswerIn: {
+            /** Questionid */
+            questionId: string;
+            /** Text */
+            text: string;
+            /**
+             * Redactionfindings
+             * @default 0
+             */
+            redactionFindings: number;
+        };
+        /**
+         * AnswersIn
+         * @description ``POST /api/interviews/{id}/answers``.
+         */
+        AnswersIn: {
+            /** Answers */
+            answers: components["schemas"]["AnswerIn"][];
+        };
+        /**
+         * Approval
+         * @description Approval bound to :func:`blogwriter.domain.hashing.approval_hash` of text plus media.
+         */
+        Approval: {
+            sha256: components["schemas"]["Sha256Hex"];
+            approvedAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /** ApprovalOut */
+        ApprovalOut: {
+            article: components["schemas"]["Versioned_Article_"];
+            /** Jobid */
+            jobId: string;
+        };
+        /** ApproveOut */
+        ApproveOut: {
+            plan: components["schemas"]["Versioned_WeekPlan_"];
+            /** Articleid */
+            articleId?: string | null;
+            /** Jobids */
+            jobIds?: string[];
+            /** Postids */
+            postIds?: string[];
+        };
+        /**
+         * Article
+         * @description A flagship article from plan to publication.
+         */
+        Article: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default planned */
+            status: components["schemas"]["ArticleStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /**
+             * Purpose
+             * @default flagship
+             * @enum {string}
+             */
+            purpose: "flagship" | "eval";
+            /**
+             * Updatedby
+             * @default owner
+             * @enum {string}
+             */
+            updatedBy: "owner" | "pipeline" | "system";
+            meta?: components["schemas"]["ArticleMeta"];
+            /**
+             * Markdown
+             * @default
+             */
+            markdown: string;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+            contentSha256?: components["schemas"]["Sha256Hex"] | null;
+            /**
+             * Wordcount
+             * @default 0
+             */
+            wordCount: number;
+            /**
+             * Readingtimeminutes
+             * @default 0
+             */
+            readingTimeMinutes: number;
+            ideaId?: components["schemas"]["DocId"] | null;
+            weekPlanId?: components["schemas"]["DocId"] | null;
+            researchRunId?: components["schemas"]["DocId"] | null;
+            briefId?: components["schemas"]["DocId"] | null;
+            interviewId?: components["schemas"]["DocId"] | null;
+            /** Ownersignals */
+            ownerSignals?: components["schemas"]["OwnerSignalRef"][];
+            pipelineJobId?: components["schemas"]["DocId"] | null;
+            /**
+             * Pipelineruns
+             * @default 0
+             */
+            pipelineRuns: number;
+            gates?: components["schemas"]["GateReport"] | null;
+            /** Media */
+            media?: components["schemas"]["MediaRef"][];
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            /**
+             * Reviewonly
+             * @default false
+             */
+            reviewOnly: boolean;
+            /** Reviewonlyreasons */
+            reviewOnlyReasons?: string[];
+            /** Embedding */
+            embedding?: number[] | null;
+            embeddingSha256?: components["schemas"]["Sha256Hex"] | null;
+            calibration?: components["schemas"]["CalibrationFlags"] | null;
+            clearance?: components["schemas"]["Clearance"];
+            /** Corrections */
+            corrections?: components["schemas"]["Correction"][];
+            publish?: components["schemas"]["PublishState"];
+            veto?: components["schemas"]["VetoNotice"] | null;
+            /** Lasterror */
+            lastError?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * ArticleIn
+         * @description ``POST /api/articles``.
+         */
+        ArticleIn: {
+            meta?: components["schemas"]["ArticleMetaIn"] | null;
+            ideaId?: components["schemas"]["DocId"] | null;
+            weekPlanId?: components["schemas"]["DocId"] | null;
+        };
+        /**
+         * ArticleJobAccepted
+         * @description 202 answer of the pipeline and revise routes: the moved article and the job.
+         */
+        ArticleJobAccepted: {
+            article: components["schemas"]["Versioned_Article_"];
+            /** Jobid */
+            jobId: string;
+        };
+        /**
+         * ArticleMeta
+         * @description The frontmatter fields (dialect section 2). Optional while drafting; all but ``series``
+         *     are required to publish (:meth:`missing_for_publish`).
+         */
+        ArticleMeta: {
+            /** Title */
+            title?: string | null;
+            slug?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+            /** Excerpt */
+            excerpt?: string | null;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            format?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** Tags */
+            tags?: components["schemas"]["TagSlug"][];
+            series?: components["schemas"]["SeriesRef"] | null;
+        } & Record<string, unknown>;
+        /**
+         * ArticleMetaIn
+         * @description The frontmatter fields as the editor sends them (all optional while drafting).
+         */
+        ArticleMetaIn: {
+            /** Title */
+            title?: string | null;
+            slug?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+            /** Excerpt */
+            excerpt?: string | null;
+            pillar?: components["schemas"]["_ShortSlug"] | null;
+            format?: components["schemas"]["_ShortSlug"] | null;
+            /** Tags */
+            tags?: components["schemas"]["_ShortSlug"][];
+            series?: components["schemas"]["SeriesIn"] | null;
+        };
+        /**
+         * ArticleSaveIn
+         * @description ``PUT /api/articles/{id}`` (autosave). The 512 KiB cap on ``markdown`` is checked by the
+         *     route (413 ``markdown_too_large``), not here (that would be a 422).
+         */
+        ArticleSaveIn: {
+            meta: components["schemas"]["ArticleMetaIn"];
+            /** Markdown */
+            markdown: string;
+            /** Baseversion */
+            baseVersion: number;
+        };
+        /**
+         * ArticleSaved
+         * @description The autosave answer: the stored article, its etag and the normalizer's findings.
+         */
+        ArticleSaved: {
+            item: components["schemas"]["Article"];
+            /** Etag */
+            etag: string;
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+        };
+        /**
+         * ArticleStatus
+         * @enum {string}
+         */
+        ArticleStatus: "planned" | "researching" | "interviewing" | "drafting" | "gating" | "in_review" | "approved" | "publishing" | "published" | "publish_failed" | "unpublishing" | "unpublished" | "needs_attention" | "archived";
+        /**
+         * ArticleSummary
+         * @description A list item (``GET /api/articles``): no Markdown, report findings or embedding.
+         */
+        ArticleSummary: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["ArticleStatus"];
+            /** Statuschangedat */
+            statusChangedAt: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "flagship" | "eval";
+            meta: components["schemas"]["MetaSummary"];
+            /** Version */
+            version: number;
+            /** Wordcount */
+            wordCount: number;
+            /** Updatedat */
+            updatedAt: string;
+            /** Updatedby */
+            updatedBy: string;
+            /** Reviewonly */
+            reviewOnly: boolean;
+            gates: components["schemas"]["GatesSummary"] | null;
+            publish: components["schemas"]["PublishSummary"];
+            /** Ideaid */
+            ideaId: string | null;
+            /** Weekplanid */
+            weekPlanId: string | null;
+        };
+        /**
+         * ArticleVersion
+         * @description A saved copy of one article version (partition ``/articleId``; keep the last N).
+         */
+        ArticleVersion: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            articleId: components["schemas"]["DocId"];
+            /** Version */
+            version: number;
+            meta: components["schemas"]["ArticleMeta"];
+            /** Markdown */
+            markdown: string;
+            contentSha256: components["schemas"]["Sha256Hex"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "autosave" | "pipeline" | "restore" | "publish" | "correction";
+            /**
+             * Author
+             * @enum {string}
+             */
+            author: "owner" | "pipeline" | "system";
+            statusAtSave: components["schemas"]["ArticleStatus"];
+            /** Note */
+            note?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * Attribution
+         * @description Inline attribution for a research-derived claim: publisher and title, never a URL.
+         */
+        Attribution: {
+            /** Publisher */
+            publisher: string;
+            /** Title */
+            title: string;
+            citationId?: components["schemas"]["blogwriter__domain__base__Slug__3"] | null;
+        } & Record<string, unknown>;
+        /** AttributionIn */
+        AttributionIn: {
+            /** Publisher */
+            publisher: string;
+            /** Title */
+            title: string;
+            citationId?: components["schemas"]["blogwriter__domain__base__Slug__3"] | null;
+        };
+        /**
+         * AutonomyIn
+         * @description Only the owner's switch: calibration and judge fields are read-only here.
+         */
+        AutonomyIn: {
+            /** Autopublishenabled */
+            autoPublishEnabled: boolean;
+        };
+        /**
+         * AutonomySettings
+         * @description Autonomy switches and the auto-publish calibration (owner: kb; pipeline and publish
+         *     update ``calibration`` through :func:`record_review` / :func:`record_correction`).
+         */
+        AutonomySettings: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /**
+             * Autopublishenabled
+             * @default false
+             */
+            autoPublishEnabled: boolean;
+            /**
+             * Paused
+             * @default false
+             */
+            paused: boolean;
+            pausedAt?: components["schemas"]["Timestamp"] | null;
+            calibration?: components["schemas"]["Calibration"];
+            judge?: components["schemas"]["JudgeCalibration"];
+            lastCorrectionAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** AutonomyView */
+        AutonomyView: {
+            settings: components["schemas"]["Versioned_AutonomySettings_"];
+            decision: components["schemas"]["DecisionView"];
+        };
+        /** BackupDumpFileView */
+        BackupDumpFileView: {
+            /** Container */
+            container: string;
+            /** Blob */
+            blob: string;
+            /** Sizebytes */
+            sizeBytes: number;
+            /** Sha256 */
+            sha256: string;
+        };
+        /** BackupDumpView */
+        BackupDumpView: {
+            /** Date */
+            date: string;
+            /** Complete */
+            complete: boolean;
+            /** Files */
+            files: components["schemas"]["BackupDumpFileView"][];
+        };
+        /** BackupFile */
+        BackupFile: {
+            /** Container */
+            container: string;
+            /** Blob */
+            blob: string;
+            /** Documents */
+            documents: number;
+            /** Sizebytes */
+            sizeBytes: number;
+            sha256: components["schemas"]["Sha256Hex"];
+        } & Record<string, unknown>;
+        /** BackupManifest */
+        BackupManifest: {
+            date: components["schemas"]["LocalDate"];
+            startedAt: components["schemas"]["Timestamp"];
+            finishedAt: components["schemas"]["Timestamp"];
+            /** Files */
+            files?: components["schemas"]["BackupFile"][];
+            /** Appsha */
+            appSha?: string | null;
+        } & Record<string, unknown>;
+        /** BackupStatus */
+        BackupStatus: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            lastSuccess?: components["schemas"]["BackupManifest"] | null;
+            lastAttemptAt?: components["schemas"]["Timestamp"] | null;
+            lastError?: components["schemas"]["Code"] | null;
+            /**
+             * Consecutivefailures
+             * @default 0
+             */
+            consecutiveFailures: number;
+            lastRestoreDrillAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** BackupsView */
+        BackupsView: {
+            status: components["schemas"]["Versioned_BackupStatus_"];
+            /** Dumps */
+            dumps: components["schemas"]["BackupDumpView"][];
+            /** Restoredrilldue */
+            restoreDrillDue: boolean;
+        };
+        /** @enum {string} */
+        BlobContainer: "media" | "published" | "backups";
+        /**
+         * Blocklist
+         * @description Confidential names (clients, internal projects). Never leaves the app (module docs).
+         *
+         *     ``configured`` is false until the owner saves the list once; gates fail closed until then.
+         */
+        Blocklist: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Terms */
+            terms?: components["schemas"]["BlocklistTerm"][];
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
+        } & Record<string, unknown>;
+        /**
+         * BlocklistIn
+         * @description The whole blocklist. Saving it, even empty, marks it ``configured``.
+         */
+        BlocklistIn: {
+            /** Terms */
+            terms: components["schemas"]["BlocklistTermIn"][];
+        };
+        /** BlocklistTerm */
+        BlocklistTerm: {
+            /** Id */
+            id: string;
+            /** Term */
+            term: string;
+            /**
+             * Category
+             * @default client
+             * @enum {string}
+             */
+            category: "client" | "project" | "person" | "internal" | "vendor" | "other";
+            /**
+             * Match
+             * @default word
+             * @enum {string}
+             */
+            match: "word" | "substring";
+        } & Record<string, unknown>;
+        /**
+         * BlocklistTermIn
+         * @description One term. Leave ``id`` out for a new term; the server assigns ``t-<n>``.
+         */
+        BlocklistTermIn: {
+            /** Id */
+            id?: string | null;
+            /** Term */
+            term: string;
+            /**
+             * Category
+             * @default client
+             * @enum {string}
+             */
+            category: "client" | "project" | "person" | "internal" | "vendor" | "other";
+            /**
+             * Match
+             * @default word
+             * @enum {string}
+             */
+            match: "word" | "substring";
+        };
+        /** BootView */
+        BootView: {
+            /** Boots */
+            boots: number;
+            /** Safemode */
+            safeMode: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** BrakeView */
+        BrakeView: {
+            /** Spendtodayusd */
+            spendTodayUsd: number | null;
+            /** Thresholdusd */
+            thresholdUsd: number | null;
+            /** Engaged */
+            engaged: boolean;
+        };
+        /**
+         * BrandColors
+         * @description Semantic colour tokens of the carousel and card templates.
+         *
+         *     The defaults are the render spike's placeholder palette, which passes WCAG AA. The render
+         *     package checks every text pair again before rendering (kb validates on save through it).
+         */
+        BrandColors: {
+            /** @default #0E2A24 */
+            ink: components["schemas"]["HexColor"];
+            /** @default #F3F5F2 */
+            paper: components["schemas"]["HexColor"];
+            /** @default #4A5D56 */
+            muted: components["schemas"]["HexColor"];
+            /** @default #A8C1B8 */
+            mutedOnInk: components["schemas"]["HexColor"];
+            /** @default #F2A93B */
+            signal: components["schemas"]["HexColor"];
+            /** @default #8A4F00 */
+            signalText: components["schemas"]["HexColor"];
+            /** @default #C5D1CB */
+            rule: components["schemas"]["HexColor"];
+            /** @default #2E4A43 */
+            ruleOnInk: components["schemas"]["HexColor"];
+        } & Record<string, unknown>;
+        /**
+         * BrandIn
+         * @description The brand kit. ``headshot`` and ``nameMark`` are references returned by
+         *     ``POST /api/media`` (role ``headshot`` / ``name_mark``).
+         */
+        BrandIn: {
+            /** Authorname */
+            authorName: string | null;
+            /** Authorheadline */
+            authorHeadline: string | null;
+            /** Sitename */
+            siteName: string | null;
+            colors: components["schemas"]["BrandColors"];
+            /**
+             * Font
+             * @default inter
+             * @constant
+             */
+            font: "inter";
+            headshot: components["schemas"]["MediaRef"] | null;
+            nameMark: components["schemas"]["MediaRef"] | null;
+            /** Artbriefs */
+            artBriefs?: Record<string, string>;
+        };
+        /**
+         * BrandKit
+         * @description Owner identity on carousels, image cards and OG images. No employer branding.
+         */
+        BrandKit: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Authorname */
+            authorName?: string | null;
+            /** Authorheadline */
+            authorHeadline?: string | null;
+            /** Sitename */
+            siteName?: string | null;
+            colors?: components["schemas"]["BrandColors"];
+            /**
+             * Font
+             * @default inter
+             * @constant
+             */
+            font: "inter";
+            headshot?: components["schemas"]["MediaRef"] | null;
+            nameMark?: components["schemas"]["MediaRef"] | null;
+            /** Artbriefs */
+            artBriefs?: Record<string, string>;
+        } & Record<string, unknown>;
+        /**
+         * Brief
+         * @description The research brief. The drafter only ever receives the brief (structural guarantee).
+         */
+        Brief: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            runId?: components["schemas"]["DocId"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            /** Topic */
+            topic: string;
+            pillar: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Audience */
+            audience?: string | null;
+            /** Executivesummary */
+            executiveSummary: string;
+            /** Findings */
+            findings?: components["schemas"]["BriefFinding"][];
+            /** Stats */
+            stats?: components["schemas"]["BriefStat"][];
+            /** Counterpoints */
+            counterpoints?: string[];
+            /** Openquestions */
+            openQuestions?: string[];
+            /** Angles */
+            angles?: string[];
+            /** Hookseeds */
+            hookSeeds?: string[];
+            /** Claims */
+            claims?: components["schemas"]["BriefClaim"][];
+            /** Quotes */
+            quotes?: components["schemas"]["Quote"][];
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /**
+             * Webiqfallback
+             * @default false
+             */
+            webiqFallback: boolean;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            /**
+             * Editedbyowner
+             * @default false
+             */
+            editedByOwner: boolean;
+        } & Record<string, unknown>;
+        /**
+         * BriefClaim
+         * @description A checkable claim with its citation (used by the drafter, gate 2 and derived-claim
+         *     checks).
+         */
+        BriefClaim: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            citationId: components["schemas"]["CitationId"];
+            /** Quoteids */
+            quoteIds?: string[];
+            /**
+             * Status
+             * @default unverified
+             * @enum {string}
+             */
+            status: "verified" | "unverified" | "conflict";
+            /** Conflictnote */
+            conflictNote?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * BriefEditIn
+         * @description ``PUT /api/research/briefs/{id}``: the owner edits summaries and removes items.
+         *
+         *     ``findings`` is the new list of findings: each id must already exist (its citations are
+         *     kept), findings left out are removed. The owner never adds quotes, claims or citations.
+         */
+        BriefEditIn: {
+            /** Executivesummary */
+            executiveSummary?: string | null;
+            /** Findings */
+            findings?: components["schemas"]["FindingEdit"][] | null;
+            /** Counterpoints */
+            counterpoints?: string[] | null;
+            /** Openquestions */
+            openQuestions?: string[] | null;
+            /** Angles */
+            angles?: string[] | null;
+            /** Hookseeds */
+            hookSeeds?: string[] | null;
+            /** Removeclaimids */
+            removeClaimIds?: components["schemas"]["ItemId"][];
+            /** Removecitationids */
+            removeCitationIds?: components["schemas"]["ItemId"][];
+        };
+        /** BriefFinding */
+        BriefFinding: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Citationids */
+            citationIds?: components["schemas"]["CitationId"][];
+        } & Record<string, unknown>;
+        /** BriefStat */
+        BriefStat: {
+            /** Id */
+            id: string;
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+            /**
+             * Key
+             * @default false
+             */
+            key: boolean;
+            /** Citationids */
+            citationIds?: components["schemas"]["CitationId"][];
+            /** Asof */
+            asOf?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * BuildGuideIn
+         * @description ``POST /api/voice/guide/build`` (optional body).
+         */
+        BuildGuideIn: {
+            /**
+             * Provisional
+             * @default false
+             */
+            provisional: boolean;
+        };
+        /**
+         * CadenceIn
+         * @description Every :class:`~blogwriter.domain.settings.CadenceSettings` field (local times in
+         *     ``timezone``). Saving reseeds the schedule items.
+         */
+        CadenceIn: {
+            timezone: components["schemas"]["ZoneName"];
+            planWeek: components["schemas"]["WeeklyTime"];
+            /** Planleadminutes */
+            planLeadMinutes: number;
+            researchStart: components["schemas"]["WeeklyTime"];
+            interviewDue: components["schemas"]["WeeklyTime"];
+            draftDay: components["schemas"]["WeeklyTime"];
+            vetoNotice: components["schemas"]["WeeklyTime"];
+            articlePublish: components["schemas"]["WeeklyTime"];
+            /** Minvetoleadhours */
+            minVetoLeadHours: number;
+            businessHoursStart: components["schemas"]["LocalTime"];
+            businessHoursEnd: components["schemas"]["LocalTime"];
+            /** Postslots */
+            postSlots: components["schemas"]["SlotTemplate"][];
+            postsPerWeek: components["schemas"]["PostsPerWeek"];
+            /** Samedayblock */
+            sameDayBlock: boolean;
+            /** Mingaphourswarn */
+            minGapHoursWarn: number;
+            /** Missedslotgraceminutes */
+            missedSlotGraceMinutes: number;
+            /** Stageleadminutes */
+            stageLeadMinutes: number;
+            reminders: components["schemas"]["ReminderOffsets"];
+            /** Crawlintervalhours */
+            crawlIntervalHours: number;
+            scout: components["schemas"]["WeeklyTime"];
+            digest: components["schemas"]["WeeklyTime"];
+            backupTime: components["schemas"]["LocalTime"];
+            defaultMode: components["schemas"]["WeekMode"];
+        };
+        /**
+         * CadenceSettings
+         * @description The weekly production calendar (all times local to ``timezone``).
+         */
+        CadenceSettings: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default America/New_York */
+            timezone: components["schemas"]["ZoneName"];
+            planWeek?: components["schemas"]["WeeklyTime"];
+            /**
+             * Planleadminutes
+             * @default 60
+             */
+            planLeadMinutes: number;
+            researchStart?: components["schemas"]["WeeklyTime"];
+            interviewDue?: components["schemas"]["WeeklyTime"];
+            draftDay?: components["schemas"]["WeeklyTime"];
+            vetoNotice?: components["schemas"]["WeeklyTime"];
+            articlePublish?: components["schemas"]["WeeklyTime"];
+            /**
+             * Minvetoleadhours
+             * @default 48
+             */
+            minVetoLeadHours: number;
+            /** @default 09:00 */
+            businessHoursStart: components["schemas"]["LocalTime"];
+            /** @default 17:00 */
+            businessHoursEnd: components["schemas"]["LocalTime"];
+            /** Postslots */
+            postSlots?: components["schemas"]["SlotTemplate"][];
+            postsPerWeek?: components["schemas"]["PostsPerWeek"];
+            /**
+             * Samedayblock
+             * @default true
+             */
+            sameDayBlock: boolean;
+            /**
+             * Mingaphourswarn
+             * @default 24
+             */
+            minGapHoursWarn: number;
+            /**
+             * Missedslotgraceminutes
+             * @default 120
+             */
+            missedSlotGraceMinutes: number;
+            /**
+             * Stageleadminutes
+             * @default 60
+             */
+            stageLeadMinutes: number;
+            reminders?: components["schemas"]["ReminderOffsets"];
+            /**
+             * Crawlintervalhours
+             * @default 6
+             */
+            crawlIntervalHours: number;
+            scout?: components["schemas"]["WeeklyTime"];
+            digest?: components["schemas"]["WeeklyTime"];
+            /** @default 03:30 */
+            backupTime: components["schemas"]["LocalTime"];
+            /** @default normal */
+            defaultMode: components["schemas"]["WeekMode"];
+        } & Record<string, unknown>;
+        /**
+         * Calibration
+         * @description Auto-publish switches on after ``required`` consecutive clean reviewed articles.
+         */
+        Calibration: {
+            /**
+             * Cleanstreak
+             * @default 0
+             */
+            cleanStreak: number;
+            /**
+             * Required
+             * @default 6
+             */
+            required: number;
+            /** Events */
+            events?: components["schemas"]["CalibrationEvent"][];
+        } & Record<string, unknown>;
+        /** CalibrationEvent */
+        CalibrationEvent: {
+            articleId: components["schemas"]["DocId"];
+            at: components["schemas"]["Timestamp"];
+            outcome: components["schemas"]["CalibrationOutcome"];
+            contentSha256?: components["schemas"]["Sha256Hex"] | null;
+        } & Record<string, unknown>;
+        /**
+         * CalibrationFlags
+         * @description How this article counted toward auto-publish calibration (owner: pipeline).
+         */
+        CalibrationFlags: {
+            gatedSha256?: components["schemas"]["Sha256Hex"] | null;
+            /** Gatedversion */
+            gatedVersion?: number | null;
+            approvedSha256?: components["schemas"]["Sha256Hex"] | null;
+            /** Substantiveedit */
+            substantiveEdit?: boolean | null;
+            /** Gatespassed */
+            gatesPassed?: boolean | null;
+            /**
+             * Reviewonly
+             * @default false
+             */
+            reviewOnly: boolean;
+            /** Outcome */
+            outcome?: ("clean" | "edited" | "gates_failed" | "review_only" | "correction" | "vetoed") | null;
+            countedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        CalibrationOutcome: "clean" | "edited" | "gates_failed" | "review_only" | "correction" | "vetoed";
+        /** CarouselIn */
+        CarouselIn: {
+            /** Spec */
+            spec: Record<string, components["schemas"]["JsonValue"]>;
+        };
+        /**
+         * CheckIn
+         * @description Owner-confirmed text to check locally before saving (no model call).
+         */
+        CheckIn: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * CheckOut
+         * @description ``ok`` is false when any finding blocks a save.
+         */
+        CheckOut: {
+            /** Ok */
+            ok: boolean;
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+        };
+        /**
+         * CheckState
+         * @description The result of one check (lint, derived claims, near-duplicate) on exact content.
+         *
+         *     ``findings`` keeps at most :data:`~blogwriter.domain.common.MAX_STORED_FINDINGS`
+         *     (:func:`~blogwriter.domain.common.cap_findings`: blockers first); ``truncated`` counts the
+         *     rest, so a screen can say "and N more".
+         */
+        CheckState: {
+            ranAt: components["schemas"]["Timestamp"];
+            contentSha256: components["schemas"]["Sha256Hex"];
+            /** Passed */
+            passed: boolean;
+            /** Findings */
+            findings?: components["schemas"]["Finding"][];
+            /**
+             * Truncated
+             * @default 0
+             */
+            truncated: number;
+        } & Record<string, unknown>;
+        /**
+         * ChecklistIn
+         * @description The whole profile checklist (``doneAt`` is set by the server).
+         */
+        ChecklistIn: {
+            /** Items */
+            items: components["schemas"]["ChecklistItemIn"][];
+        };
+        /** ChecklistItem */
+        ChecklistItem: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Label */
+            label: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            doneAt?: components["schemas"]["Timestamp"] | null;
+            /** Note */
+            note?: string | null;
+        } & Record<string, unknown>;
+        /** ChecklistItemIn */
+        ChecklistItemIn: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Label */
+            label: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * Citation
+         * @description A source a brief, quick search or article cites. No passages, ever.
+         *
+         *     ``id`` is the ``[^src-id]`` footnote label of the article dialect and the
+         *     ``citations[].id`` of the published-blogs contract.
+         */
+        Citation: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__3"];
+            url: components["schemas"]["HttpsUrl"];
+            /** Title */
+            title: string;
+            /** Publisher */
+            publisher?: string | null;
+            date?: components["schemas"]["PartialDate"] | null;
+            domain: components["schemas"]["HostName"];
+            /**
+             * Allowlisted
+             * @default false
+             */
+            allowlisted: boolean;
+            accessedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        CitationId: string;
+        /**
+         * ClassifierCheck
+         * @description The confidentiality classifier's verdict on a story, POV entry or exemplar.
+         *
+         *     ``passed`` is ``None`` until the classifier has run (an unchecked entry is not used).
+         */
+        ClassifierCheck: {
+            /** Passed */
+            passed?: boolean | null;
+            checkedAt?: components["schemas"]["Timestamp"] | null;
+            /** Findings */
+            findings?: components["schemas"]["Finding"][];
+            servedBy?: components["schemas"]["ServedByRecord"] | null;
+            contentSha256?: components["schemas"]["Sha256Hex"] | null;
+        } & Record<string, unknown>;
+        /**
+         * Clearance
+         * @description The owner's per-version attestation, required for case studies and anonymized stories.
+         */
+        Clearance: {
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+            contentSha256?: components["schemas"]["Sha256Hex"] | null;
+            attestedAt?: components["schemas"]["Timestamp"] | null;
+            /** Statement */
+            statement?: string | null;
+        } & Record<string, unknown>;
+        /** ClearanceIn */
+        ClearanceIn: {
+            /** Statement */
+            statement?: string | null;
+        };
+        Code: string;
+        /** @enum {string} */
+        Confidentiality: "anonymized" | "public";
+        /** ConnectionBrief */
+        ConnectionBrief: {
+            status: components["schemas"]["ConnectionStatus"];
+            /** Tokenday */
+            tokenDay?: number | null;
+        };
+        /**
+         * ConnectionStatus
+         * @description The LinkedIn connection. Any vault decrypt failure means ``needs_reconnect``.
+         * @enum {string}
+         */
+        ConnectionStatus: "disconnected" | "connected" | "needs_reconnect";
+        /**
+         * ConnectionView
+         * @description ``GET /api/linkedin/connection``: everything about the connection except the token.
+         */
+        ConnectionView: {
+            status: components["schemas"]["ConnectionStatus"];
+            /** Memberurn */
+            memberUrn?: string | null;
+            /** Connectedat */
+            connectedAt?: string | null;
+            /** Expiresat */
+            expiresAt?: string | null;
+            /** Tokenday */
+            tokenDay?: number | null;
+            /**
+             * Bannerdue
+             * @default false
+             */
+            bannerDue: boolean;
+            /** Lastintrospectedat */
+            lastIntrospectedAt?: string | null;
+            /** Lasterror */
+            lastError?: string | null;
+            /** Scopes */
+            scopes: string[];
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
+            /**
+             * Apiversion
+             * @default 202611
+             */
+            apiVersion: string;
+        };
+        /**
+         * Correction
+         * @description A dated post-publish correction note (published-blogs ``corrections[]``).
+         */
+        Correction: {
+            date: components["schemas"]["LocalDate"];
+            /** Note */
+            note: string;
+            createdAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /**
+         * DecisionView
+         * @description ``domain.settings.auto_publish_decision``: reasons are ``paused``, ``not_enabled``,
+         *     ``calibrating``, ``judge_uncalibrated``, ``judge_below_threshold``, ``judge_stale``.
+         */
+        DecisionView: {
+            /** Allowed */
+            allowed: boolean;
+            /** Reasons */
+            reasons: string[];
+        };
+        /** DiscoverIn */
+        DiscoverIn: {
+            siteUrl: components["schemas"]["HttpsUrl"];
+        };
+        /** DiscoverOut */
+        DiscoverOut: {
+            /** Feeds */
+            feeds: components["schemas"]["DiscoveredFeedOut"][];
+        };
+        /** DiscoveredFeedOut */
+        DiscoveredFeedOut: {
+            /** Url */
+            url: string;
+            /** Title */
+            title?: string | null;
+        };
+        DocId: string;
+        /**
+         * DraftComparison
+         * @description AI draft vs. final posted text of one piece (kit text included).
+         */
+        DraftComparison: {
+            /**
+             * Targetkind
+             * @enum {string}
+             */
+            targetKind: "post" | "article";
+            targetId: components["schemas"]["DocId"];
+            /** Editratio */
+            editRatio: number;
+            /** Notableedits */
+            notableEdits?: string[];
+        } & Record<string, unknown>;
+        /**
+         * EmployerPolicy
+         * @description The employer social-media and AI-use policy profile.
+         */
+        EmployerPolicy: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Disclaimershort */
+            disclaimerShort?: string | null;
+            /** Disclaimerlong */
+            disclaimerLong?: string | null;
+            /** Forbiddentopics */
+            forbiddenTopics?: string[];
+            /**
+             * Noemployerbranding
+             * @default true
+             */
+            noEmployerBranding: boolean;
+            /**
+             * Aiuseconfirmed
+             * @default false
+             */
+            aiUseConfirmed: boolean;
+            aiUseConfirmedAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Clearancestatement
+             * @default I confirm this piece is anonymized and cleared for publication.
+             */
+            clearanceStatement: string;
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
+        } & Record<string, unknown>;
+        /**
+         * EngagementItem
+         * @description One reply (on the owner's post) or comment (on someone else's post).
+         */
+        EngagementItem: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            expiresAt: components["schemas"]["Timestamp"];
+            /** Ttl */
+            ttl?: number | null;
+            /**
+             * Itemkind
+             * @enum {string}
+             */
+            itemKind: "reply" | "comment";
+            /** @default open */
+            status: components["schemas"]["EngagementStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            postId?: components["schemas"]["DocId"] | null;
+            targetUrl?: components["schemas"]["HttpsUrl"] | null;
+            /** Pastedtext */
+            pastedText: string;
+            /** Angles */
+            angles?: components["schemas"]["Angle"][];
+            /** Drafttext */
+            draftText?: string | null;
+            /** Lint */
+            lint?: components["schemas"]["Finding"][];
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+        } & Record<string, unknown>;
+        /**
+         * EngagementRecord
+         * @description What the owner actually posted (kept; no third-party text).
+         */
+        EngagementRecord: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /**
+             * Itemkind
+             * @enum {string}
+             */
+            itemKind: "reply" | "comment";
+            /** Finaltext */
+            finalText: string;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            postId?: components["schemas"]["DocId"] | null;
+            postedAt: components["schemas"]["Timestamp"];
+            /**
+             * Substantive
+             * @default true
+             */
+            substantive: boolean;
+            watchEntryId?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * EngagementStatus
+         * @enum {string}
+         */
+        EngagementStatus: "open" | "finalized" | "dismissed" | "expired";
+        /** @enum {string} */
+        EvalLabel: "as_is" | "needs_edits" | "reject";
+        /** EvalLabelIn */
+        EvalLabelIn: {
+            label: components["schemas"]["EvalLabel"];
+        };
+        /**
+         * EvalResult
+         * @description A generated eval article (in ``articles``, ``purpose=eval``, drafted by the real
+         *     ``pipeline.article``), the judge's verdict (gate 1 alone) and the owner's label.
+         */
+        EvalResult: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            topicId: components["schemas"]["DocId"];
+            /** Runid */
+            runId: string;
+            articleId?: components["schemas"]["DocId"] | null;
+            /** Judgepassed */
+            judgePassed?: boolean | null;
+            /** Judgescore */
+            judgeScore?: number | null;
+            ownerLabel?: components["schemas"]["EvalLabel"] | null;
+            labelledAt?: components["schemas"]["Timestamp"] | null;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            errorCode?: components["schemas"]["Code"] | null;
+        } & Record<string, unknown>;
+        EvalSlug: string;
+        /**
+         * EvalTopic
+         * @description One of the 12 eval topics (4 formats x 3 pillars). ``brief_id``: the brief the eval
+         *     pipeline drafts from (``analytics.eval`` makes it with one ``research.run`` per topic).
+         */
+        EvalTopic: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            pillar: components["schemas"]["PillarId-Output"];
+            format: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Topic */
+            topic: string;
+            briefId?: components["schemas"]["DocId"] | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        } & Record<string, unknown>;
+        /**
+         * EvalTopicIn
+         * @description ``POST /api/evals/topics``.
+         */
+        EvalTopicIn: {
+            pillar: components["schemas"]["EvalSlug"];
+            format: components["schemas"]["EvalSlug"];
+            /** Topic */
+            topic: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /**
+         * EvalTopicUpdate
+         * @description ``PUT /api/evals/topics/{id}``; ``refreshBrief`` makes the next run research it again.
+         */
+        EvalTopicUpdate: {
+            pillar: components["schemas"]["EvalSlug"];
+            format: components["schemas"]["EvalSlug"];
+            /** Topic */
+            topic: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Refreshbrief
+             * @default false
+             */
+            refreshBrief: boolean;
+        };
+        /** Exemplar */
+        Exemplar: {
+            sampleId: components["schemas"]["DocId"];
+            /** Excerpt */
+            excerpt: string;
+        } & Record<string, unknown>;
+        /**
+         * Experiment
+         * @description A pre-registered experiment (one running at a time, at least 8 posts per arm).
+         */
+        Experiment: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default draft */
+            status: components["schemas"]["ExperimentStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /**
+             * Question
+             * @enum {string}
+             */
+            question: "links_vs_none" | "slot_timing" | "carousel_vs_image_card" | "custom";
+            /** Hypothesis */
+            hypothesis: string;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "impressions" | "reactions" | "comments" | "saves" | "sends" | "engagement_rate";
+            /**
+             * Minpostsperarm
+             * @default 8
+             */
+            minPostsPerArm: number;
+            /** Arms */
+            arms: components["schemas"]["ExperimentArm"][];
+            startedAt?: components["schemas"]["Timestamp"] | null;
+            concludedAt?: components["schemas"]["Timestamp"] | null;
+            /** Conclusion */
+            conclusion?: string | null;
+        } & Record<string, unknown>;
+        /** ExperimentArm */
+        ExperimentArm: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Postids */
+            postIds?: components["schemas"]["DocId"][];
+        } & Record<string, unknown>;
+        /** ExperimentArmIn */
+        ExperimentArmIn: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Postids */
+            postIds?: components["schemas"]["DocId"][];
+        };
+        /**
+         * ExperimentIn
+         * @description ``POST``/``PUT /api/analytics/experiments``: the pre-registration.
+         */
+        ExperimentIn: {
+            question: components["schemas"]["ExperimentQuestion"];
+            /** Hypothesis */
+            hypothesis: string;
+            metric: components["schemas"]["ExperimentMetric"];
+            /** Arms */
+            arms: components["schemas"]["ExperimentArmIn"][];
+            /**
+             * Minpostsperarm
+             * @default 8
+             */
+            minPostsPerArm: number;
+        };
+        /** @enum {string} */
+        ExperimentMetric: "impressions" | "reactions" | "comments" | "saves" | "sends" | "engagement_rate";
+        /** @enum {string} */
+        ExperimentQuestion: "links_vs_none" | "slot_timing" | "carousel_vs_image_card" | "custom";
+        /**
+         * ExperimentStatus
+         * @enum {string}
+         */
+        ExperimentStatus: "draft" | "running" | "concluded" | "abandoned";
+        /** ExperimentTransitionIn */
+        ExperimentTransitionIn: {
+            /**
+             * To
+             * @enum {string}
+             */
+            to: "running" | "concluded" | "abandoned";
+            /** Conclusion */
+            conclusion?: string | null;
+        };
+        /** ExpiryView */
+        ExpiryView: {
+            /** Linkedintokenday */
+            linkedinTokenDay?: number | null;
+            /** Patexpiresat */
+            patExpiresAt?: string | null;
+        };
+        /**
+         * ExtractOut
+         * @description The text read from a screenshot, for the owner to check before creating an item.
+         *
+         *     Nothing is stored: neither the image nor the text. ``findings`` are the blocklist's on the
+         *     text (term ids only), so the owner sees what to remove first.
+         */
+        ExtractOut: {
+            /** Text */
+            text: string;
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+        };
+        /**
+         * FinalizeIn
+         * @description What the owner actually posted: the final text and, optionally, its LinkedIn URL.
+         *
+         *     ``watchEntryId`` (an extension of the contract) links the comment to a watchlist voice and
+         *     marks that voice as engaged.
+         */
+        FinalizeIn: {
+            /** Finaltext */
+            finalText: string;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            watchEntryId?: components["schemas"]["DocId"] | null;
+        };
+        /**
+         * Finding
+         * @description One problem found in a text: by a gate, a lint, a check or input-side redaction.
+         *
+         *     ``start``/``end`` are code-point offsets into the text that was checked (the Markdown body,
+         *     the post display text, a slide's text...). ``field`` names that text when a document has
+         *     several (``displayText``, ``slides[2]``, ``documentTitle``: the web highlights by field and
+         *     span); it is left out when unset, so findings without one serialize as before. ``message``
+         *     is owner-facing and must not quote confidential matches (say "matches a blocklisted name",
+         *     never the name). ``ref`` points at a related document part (a citation id, a story id, a
+         *     similar post id). ``overridable`` findings may be overridden by the owner with a recorded
+         *     reason (manual publish only).
+         */
+        Finding: {
+            code: components["schemas"]["Code"];
+            severity: components["schemas"]["Severity"];
+            /** Message */
+            message: string;
+            /** Start */
+            start?: number | null;
+            /** End */
+            end?: number | null;
+            /** Ref */
+            ref?: string | null;
+            /**
+             * Overridable
+             * @default false
+             */
+            overridable: boolean;
+            /** Field */
+            field?: string | null;
+        } & Record<string, unknown>;
+        /** FindingEdit */
+        FindingEdit: {
+            id: components["schemas"]["ItemId"];
+            /** Text */
+            text: string;
+        };
+        /** FlagshipIn */
+        FlagshipIn: {
+            /** Title */
+            title: string;
+            pillar: components["schemas"]["PillarRef"];
+            /** Format */
+            format: string;
+            ideaId?: components["schemas"]["DocId"] | null;
+            /**
+             * Optional
+             * @default false
+             */
+            optional: boolean;
+        };
+        /**
+         * FlagshipPlan
+         * @description The week's flagship article (optional in light weeks, none in away weeks).
+         */
+        FlagshipPlan: {
+            /** Title */
+            title: string;
+            pillar: components["schemas"]["PillarId-Output"];
+            format: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            ideaId?: components["schemas"]["DocId"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            publishAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Optional
+             * @default false
+             */
+            optional: boolean;
+        } & Record<string, unknown>;
+        /**
+         * FormatPack
+         * @description An article format: length, required parts and the owner input it needs.
+         */
+        FormatPack: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Name */
+            name: string;
+            /** Minwords */
+            minWords: number;
+            /** Maxwords */
+            maxWords: number;
+            /** Mustcontain */
+            mustContain?: string[];
+            /**
+             * Ownerinput
+             * @enum {string}
+             */
+            ownerInput: "full_interview" | "micro_interview";
+            /** Minquestions */
+            minQuestions: number;
+            /** Maxquestions */
+            maxQuestions: number;
+            /** Banned */
+            banned?: string[];
+        } & Record<string, unknown>;
+        /** FormatPacks */
+        FormatPacks: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Packs */
+            packs?: components["schemas"]["FormatPack"][];
+        } & Record<string, unknown>;
+        /** FormatPacksIn */
+        FormatPacksIn: {
+            /** Packs */
+            packs: components["schemas"]["FormatPack"][];
+        };
+        /**
+         * GateName
+         * @description The seven gates, in the plan's order.
+         * @enum {string}
+         */
+        GateName: "rubric" | "fact_check" | "confidentiality" | "originality" | "lint" | "owner_signal" | "outbound";
+        /**
+         * GateOverride
+         * @description The owner overrode a failing gate for a manual publish (never for auto-publish).
+         */
+        GateOverride: {
+            /** Reason */
+            reason: string;
+            at: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /**
+         * GateReport
+         * @description One run of the seven gates over one exact article version.
+         */
+        GateReport: {
+            contentSha256: components["schemas"]["Sha256Hex"];
+            /** Version */
+            version: number;
+            ranAt: components["schemas"]["Timestamp"];
+            /** Jobid */
+            jobId?: string | null;
+            /** Results */
+            results?: components["schemas"]["GateResult"][];
+        } & Record<string, unknown>;
+        /** GateResult */
+        GateResult: {
+            gate: components["schemas"]["GateName"];
+            verdict: components["schemas"]["GateVerdict"];
+            /** Score */
+            score?: number | null;
+            /** Dimensions */
+            dimensions?: Record<string, number>;
+            /** Findings */
+            findings?: components["schemas"]["Finding"][];
+            /**
+             * Truncated
+             * @default 0
+             */
+            truncated: number;
+            ranAt: components["schemas"]["Timestamp"];
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            override?: components["schemas"]["GateOverride"] | null;
+        } & Record<string, unknown>;
+        /**
+         * GateVerdict
+         * @enum {string}
+         */
+        GateVerdict: "pass" | "warn" | "fail" | "skipped" | "error";
+        /** GatesSummary */
+        GatesSummary: {
+            /** Stale */
+            stale: boolean;
+            /** Autopublishready */
+            autoPublishReady: boolean;
+            /** Manualpublishready */
+            manualPublishReady: boolean;
+            /** Blocking */
+            blocking: components["schemas"]["GateName"][];
+        };
+        /**
+         * GatesView
+         * @description ``GET /api/articles/{id}/gates``: the report and what it allows for this version.
+         */
+        GatesView: {
+            report: components["schemas"]["GateReport"] | null;
+            /** Stale */
+            stale: boolean;
+            /** Autopublishready */
+            autoPublishReady: boolean;
+            /** Manualpublishready */
+            manualPublishReady: boolean;
+            /** Blocking */
+            blocking: components["schemas"]["GateName"][];
+        };
+        /** @enum {string} */
+        GoLiveMode: "one_click" | "kit";
+        /**
+         * GoLiveView
+         * @description ``GET /api/posts/{id}/go-live``: the exact final render's ingredients and the tap's
+         *     preconditions. ``confirmToken`` is set whenever the post has an approval (publish, and edit
+         *     or delete once it is live).
+         */
+        GoLiveView: {
+            post: components["schemas"]["Versioned_Post_"];
+            /** Foldindex */
+            foldIndex: number;
+            cover?: components["schemas"]["MediaRef"] | null;
+            /** Documenttitle */
+            documentTitle?: string | null;
+            /** Alttexts */
+            altTexts: (string | null)[];
+            /** Approvalsha256 */
+            approvalSha256?: string | null;
+            /** Approvalcurrent */
+            approvalCurrent: boolean;
+            connection: components["schemas"]["ConnectionBrief"];
+            /** Confirmtoken */
+            confirmToken?: string | null;
+            /** Confirmexpiresat */
+            confirmExpiresAt?: string | null;
+            /** Canpublish */
+            canPublish: boolean;
+            /** Reasons */
+            reasons: string[];
+        };
+        /**
+         * GuideEditIn
+         * @description The owner's edit of a version: a new ``proposed`` version with this body and rules.
+         */
+        GuideEditIn: {
+            /** Body */
+            body: string;
+            rules?: components["schemas"]["GuideRulesIn"];
+        };
+        /** GuideRules */
+        GuideRules: {
+            /** Prefer */
+            prefer?: string[];
+            /** Avoid */
+            avoid?: string[];
+            /** Bannedphrases */
+            bannedPhrases?: string[];
+            /** Vocabulary */
+            vocabulary?: Record<string, string>;
+        } & Record<string, unknown>;
+        /** GuideRulesIn */
+        GuideRulesIn: {
+            /** Prefer */
+            prefer?: components["schemas"]["RuleText"][];
+            /** Avoid */
+            avoid?: components["schemas"]["RuleText"][];
+            /** Bannedphrases */
+            bannedPhrases?: components["schemas"]["PhraseText"][];
+            /** Vocabulary */
+            vocabulary?: Record<string, components["schemas"]["NoteText"]>;
+        };
+        /**
+         * GuideStatus
+         * @enum {string}
+         */
+        GuideStatus: "proposed" | "active" | "superseded" | "rejected";
+        /** GuideSuggestion */
+        GuideSuggestion: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Rationale */
+            rationale?: string | null;
+            /**
+             * Kind
+             * @default prefer
+             * @enum {string}
+             */
+            kind: "prefer" | "avoid" | "banned_phrase" | "vocabulary";
+            /** @default proposed */
+            status: components["schemas"]["SuggestionStatus"];
+            decidedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** GuideVersionSummary */
+        GuideVersionSummary: {
+            /** Id */
+            id: string;
+            /** Version */
+            version: number;
+            status: components["schemas"]["GuideStatus"];
+            /** Createdat */
+            createdAt: string;
+            /** Approvedat */
+            approvedAt?: string | null;
+        };
+        /**
+         * GuideView
+         * @description ``GET /api/voice/guide``: the active guide, every version and whether one can be built.
+         */
+        GuideView: {
+            active: components["schemas"]["Versioned_StyleGuide_"] | null;
+            /** Versions */
+            versions: components["schemas"]["GuideVersionSummary"][];
+            /** Linkedinsamples */
+            linkedinSamples: number;
+            /** Required */
+            required: number;
+            /** Canbuild */
+            canBuild: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -77,6 +5163,625 @@ export interface components {
             /** Sha */
             sha: string;
         };
+        HexColor: string;
+        /**
+         * HookType
+         * @description The hook taxonomy (plan: "LinkedIn Studio / Hooks").
+         * @enum {string}
+         */
+        HookType: "result_metric" | "mistake_lesson" | "decision_tradeoff" | "counter_evidence" | "checklist_promise" | "story_in_motion" | "question";
+        /** HookVariant */
+        HookVariant: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            hookType: components["schemas"]["HookType"];
+            /** Concretedetail */
+            concreteDetail: string;
+            /**
+             * Usesownerwording
+             * @default false
+             */
+            usesOwnerWording: boolean;
+        } & Record<string, unknown>;
+        HostName: string;
+        HttpsUrl: string;
+        /**
+         * Idea
+         * @description An item in the ideas inbox: owner-captured, triaged from feeds or found by scouting.
+         */
+        Idea: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default new */
+            status: components["schemas"]["IdeaStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            origin: components["schemas"]["IdeaOrigin"];
+            /** Title */
+            title: string;
+            /** Note */
+            note?: string | null;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            urlSha256?: components["schemas"]["Sha256Hex"] | null;
+            /** Publisher */
+            publisher?: string | null;
+            publishedAt?: components["schemas"]["Timestamp"] | null;
+            sourceId?: components["schemas"]["DocId"] | null;
+            signalId?: components["schemas"]["DocId"] | null;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** Relevance */
+            relevance?: number | null;
+            /** Novelty */
+            novelty?: number | null;
+            /** Suggestedlane */
+            suggestedLane?: components["schemas"]["Lane"] | "flagship" | null;
+            /** Suggestedformat */
+            suggestedFormat?: string | null;
+            /** Angle */
+            angle?: string | null;
+            /**
+             * Timesensitive
+             * @default false
+             */
+            timeSensitive: boolean;
+            expiresAt?: components["schemas"]["Timestamp"] | null;
+            snoozedUntil?: components["schemas"]["Timestamp"] | null;
+            triage?: components["schemas"]["TriageInfo"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            postId?: components["schemas"]["DocId"] | null;
+            repurposeOf?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        IdeaAngle: string;
+        /**
+         * IdeaEditIn
+         * @description An owner edit: fields left out stay as they are; ``null`` clears an optional field.
+         */
+        IdeaEditIn: {
+            title?: components["schemas"]["IdeaTitle"] | null;
+            note?: components["schemas"]["IdeaNote"] | null;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+            suggestedLane?: components["schemas"]["IdeaLane"] | null;
+            /** Suggestedformat */
+            suggestedFormat?: string | null;
+            angle?: components["schemas"]["IdeaAngle"] | null;
+        };
+        /**
+         * IdeaIn
+         * @description Quick capture (origin ``quick_capture``).
+         */
+        IdeaIn: {
+            title: components["schemas"]["IdeaTitle"];
+            note?: components["schemas"]["IdeaNote"] | null;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+            suggestedLane?: components["schemas"]["IdeaLane"] | null;
+            /**
+             * Timesensitive
+             * @default false
+             */
+            timeSensitive: boolean;
+        };
+        IdeaLane: components["schemas"]["Lane"] | "flagship";
+        IdeaNote: string;
+        /** @enum {string} */
+        IdeaOrigin: "feed" | "scout" | "quick_capture" | "owner" | "repurpose" | "plan";
+        /**
+         * IdeaStatus
+         * @enum {string}
+         */
+        IdeaStatus: "new" | "accepted" | "snoozed" | "used" | "dismissed" | "expired";
+        IdeaTitle: string;
+        /**
+         * IdeaTransitionIn
+         * @description The owner's status changes (``used`` and ``expired`` are set by the system).
+         */
+        IdeaTransitionIn: {
+            /**
+             * To
+             * @enum {string}
+             */
+            to: "accepted" | "snoozed" | "dismissed" | "new";
+            snoozedUntil?: components["schemas"]["Timestamp"] | null;
+        };
+        /** InsightDecisionIn */
+        InsightDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "dismiss";
+        };
+        /** @enum {string} */
+        InsightDimension: "pillar" | "format" | "hook_type" | "lane" | "go_live_mode" | "owner_signal";
+        /**
+         * InsightSuggestion
+         * @description A suggestion from the weekly insights job, decided by the owner.
+         */
+        InsightSuggestion: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default proposed */
+            status: components["schemas"]["SuggestionStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /** Weekstart */
+            weekStart: string;
+            /**
+             * Dimension
+             * @enum {string}
+             */
+            dimension: "pillar" | "format" | "hook_type" | "lane" | "go_live_mode" | "owner_signal";
+            /** Value */
+            value?: string | null;
+            /** Text */
+            text: string;
+            /** Evidence */
+            evidence?: string | null;
+            servedBy?: components["schemas"]["ServedByRecord"] | null;
+            decidedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /**
+         * InsightsOverview
+         * @description ``GET /api/analytics/overview``.
+         */
+        InsightsOverview: {
+            /** Weeks */
+            weeks: number;
+            /** Since */
+            since: string;
+            /** Posts */
+            posts: number;
+            ownerMedian: components["schemas"]["MetricRates"];
+            /** Rows */
+            rows: components["schemas"]["InsightsRow"][];
+        };
+        /** InsightsRow */
+        InsightsRow: {
+            dimension: components["schemas"]["InsightDimension"];
+            /** Value */
+            value: string;
+            /** Posts */
+            posts: number;
+            ratesPer1k: components["schemas"]["MetricRates"];
+            vsMedian: components["schemas"]["MetricRates"];
+        };
+        /** @enum {string} */
+        IntakePurpose: "story" | "pov" | "interview_answer" | "voice_sample" | "idea_note" | "take";
+        /**
+         * Interview
+         * @description A micro (2 questions) or full (5-8 questions) interview for one piece.
+         */
+        Interview: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default pending */
+            status: components["schemas"]["InterviewStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "micro" | "full";
+            articleId?: components["schemas"]["DocId"] | null;
+            postId?: components["schemas"]["DocId"] | null;
+            /** Questions */
+            questions: components["schemas"]["InterviewQuestion"][];
+            /** Answers */
+            answers?: components["schemas"]["InterviewAnswer"][];
+            dueAt?: components["schemas"]["Timestamp"] | null;
+            jobId?: components["schemas"]["DocId"] | null;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+        } & Record<string, unknown>;
+        /**
+         * InterviewAnswer
+         * @description An answer as the owner confirmed it after redaction (never the raw dictation).
+         */
+        InterviewAnswer: {
+            /** Questionid */
+            questionId: string;
+            /** Text */
+            text: string;
+            confirmedAt: components["schemas"]["Timestamp"];
+            /**
+             * Redactionfindings
+             * @default 0
+             */
+            redactionFindings: number;
+        } & Record<string, unknown>;
+        /** InterviewQuestion */
+        InterviewQuestion: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Purpose */
+            purpose?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * InterviewStatus
+         * @enum {string}
+         */
+        InterviewStatus: "pending" | "answered" | "skipped" | "expired";
+        ItemId: string;
+        /**
+         * ItemIn
+         * @description A reply (to a comment on the owner's post) or a comment (on someone else's post).
+         */
+        ItemIn: {
+            itemKind: components["schemas"]["ItemKind"];
+            /** Pastedtext */
+            pastedText: string;
+            postId?: components["schemas"]["DocId"] | null;
+            targetUrl?: components["schemas"]["HttpsUrl"] | null;
+        };
+        /** @enum {string} */
+        ItemKind: "reply" | "comment";
+        /** JobAccepted */
+        JobAccepted: {
+            /** Jobid */
+            jobId: string;
+            /**
+             * Status
+             * @default queued
+             */
+            status: string;
+        };
+        /** JobAwaitingView */
+        JobAwaitingView: {
+            /** Step */
+            step: string;
+            /** Key */
+            key: string;
+            /** Prompt */
+            prompt: string;
+            /** Requestedat */
+            requestedAt: string;
+        };
+        /** JobErrorView */
+        JobErrorView: {
+            /** Code */
+            code: string;
+            /** Step */
+            step?: string | null;
+            /** Errortype */
+            errorType?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** At */
+            at: string;
+        };
+        /** JobEventView */
+        JobEventView: {
+            /** Seq */
+            seq: number;
+            /** At */
+            at: string;
+            /** Type */
+            type: string;
+            /** Step */
+            step?: string | null;
+            /** Data */
+            data: Record<string, components["schemas"]["JsonValue"]>;
+        };
+        /** @enum {string} */
+        JobStatus: "queued" | "running" | "waiting_input" | "succeeded" | "failed" | "quarantined" | "cancelled";
+        /** JobStepView */
+        JobStepView: {
+            /** Name */
+            name: string;
+            status: components["schemas"]["StepStatus"];
+            /** Runs */
+            runs: number;
+            /** Startedat */
+            startedAt?: string | null;
+            /** Finishedat */
+            finishedAt?: string | null;
+        };
+        /**
+         * JobView
+         * @description A job as the System page and the timelines show it (the SSE snapshot shape).
+         */
+        JobView: {
+            /** Jobid */
+            jobId: string;
+            /** Type */
+            type: string;
+            status: components["schemas"]["JobStatus"];
+            /** Attempt */
+            attempt: number;
+            /** Maxattempts */
+            maxAttempts: number;
+            /** Seq */
+            seq: number;
+            /** Cancelrequested */
+            cancelRequested: boolean;
+            /** Createdat */
+            createdAt: string;
+            /** Updatedat */
+            updatedAt: string;
+            /** Startedat */
+            startedAt?: string | null;
+            /** Finishedat */
+            finishedAt?: string | null;
+            /** Scheduledfor */
+            scheduledFor?: string | null;
+            /** Steps */
+            steps: components["schemas"]["JobStepView"][];
+            awaiting?: components["schemas"]["JobAwaitingView"] | null;
+            error?: components["schemas"]["JobErrorView"] | null;
+            /** Events */
+            events?: components["schemas"]["JobEventView"][] | null;
+        };
+        JsonValue: unknown;
+        /**
+         * JudgeCalibration
+         * @description The rubric judge against the owner's labels on the eval topics (re-checked monthly).
+         */
+        JudgeCalibration: {
+            /** Asisrate */
+            asIsRate?: number | null;
+            /**
+             * Samplesize
+             * @default 0
+             */
+            sampleSize: number;
+            checkedAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Threshold
+             * @default 0.9
+             */
+            threshold: number;
+            /**
+             * Maxagedays
+             * @default 31
+             */
+            maxAgeDays: number;
+        } & Record<string, unknown>;
+        /**
+         * KbSeed
+         * @description One v1 keyword list (``keywords`` container), proposed as pillar vocabulary.
+         */
+        KbSeed: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default proposed */
+            status: components["schemas"]["ReviewStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /**
+             * Source
+             * @default v1_keywords
+             * @constant
+             */
+            source: "v1_keywords";
+            /** Topic */
+            topic: string;
+            /** Keywords */
+            keywords?: string[];
+            suggestedPillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            appliedPillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** Appliedkeywords */
+            appliedKeywords?: string[];
+        } & Record<string, unknown>;
+        /**
+         * KbSeedApproveIn
+         * @description ``POST /api/kb/seeds/{id}/approve`` (the body may be left out): which pillar's vocabulary
+         *     takes the keywords (default: the seed's suggested pillar) and which keywords, each spelled
+         *     as on the seed (default: all of them).
+         */
+        KbSeedApproveIn: {
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** Keywords */
+            keywords?: string[] | null;
+        };
+        /** KitDownload */
+        KitDownload: {
+            media: components["schemas"]["MediaRef"];
+            /** Url */
+            url: string;
+            /** Filename */
+            filename: string;
+        };
+        /**
+         * KitIn
+         * @description ``natively_scheduled`` needs ``scheduledAt`` (again: the new time); ``posted`` needs
+         *     ``postUrl`` and ``finalText`` (the web prefills it with the display text).
+         */
+        KitIn: {
+            /**
+             * To
+             * @enum {string}
+             */
+            to: "native_draft_saved" | "natively_scheduled" | "posted";
+            /** Scheduledat */
+            scheduledAt?: string | null;
+            postUrl?: components["schemas"]["HttpsUrl"] | null;
+            /** Finaltext */
+            finalText?: string | null;
+        };
+        /**
+         * KitInfo
+         * @description Ready-to-post kit progress. ``scheduled_at`` is the native schedule time T the owner
+         *     entered; reminders and spacing key on it.
+         */
+        KitInfo: {
+            /** @default prepared */
+            state: components["schemas"]["KitState"];
+            preparedAt: components["schemas"]["Timestamp"];
+            draftSavedAt?: components["schemas"]["Timestamp"] | null;
+            scheduledAt?: components["schemas"]["Timestamp"] | null;
+            postedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /**
+         * KitState
+         * @description Ready-to-post kit progress (``post.kit.state`` while ``post.status == kit``).
+         * @enum {string}
+         */
+        KitState: "prepared" | "native_draft_saved" | "natively_scheduled" | "posted";
+        /**
+         * KitView
+         * @description ``GET /api/posts/{id}/kit``: what the owner copies and downloads, and the 4 steps.
+         */
+        KitView: {
+            /** Displaytext */
+            displayText: string;
+            /** Documenttitle */
+            documentTitle?: string | null;
+            /** Alttexts */
+            altTexts: (string | null)[];
+            /** Downloads */
+            downloads: components["schemas"]["KitDownload"][];
+            /** Checklist */
+            checklist: string[];
+            /**
+             * Openlinkedinurl
+             * @default https://www.linkedin.com/feed/
+             */
+            openLinkedInUrl: string;
+            state?: components["schemas"]["KitState"] | null;
+            /** Scheduledat */
+            scheduledAt?: string | null;
+        };
+        /** @enum {string} */
+        Lane: "derivative" | "native" | "quick_take" | "repurpose";
+        /**
+         * LaneSettings
+         * @description Post lanes and the weekly mix rules.
+         */
+        LaneSettings: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /**
+             * Derivativesmaxperweek
+             * @default 2
+             */
+            derivativesMaxPerWeek: number;
+            /**
+             * Nativeminperweek
+             * @default 1
+             */
+            nativeMinPerWeek: number;
+            /**
+             * Nativeotherpillar
+             * @default true
+             */
+            nativeOtherPillar: boolean;
+            /**
+             * Onpillarminshare
+             * @default 0.8
+             */
+            onPillarMinShare: number;
+            /**
+             * Hookvariants
+             * @default 3
+             */
+            hookVariants: number;
+            quickTake?: components["schemas"]["QuickTakeRules"];
+            formats?: components["schemas"]["PostFormatRules"];
+            repurpose?: components["schemas"]["RepurposeRules"];
+            /** Series */
+            series?: components["schemas"]["SeriesDef"][];
+        } & Record<string, unknown>;
+        /**
+         * LanesIn
+         * @description Every :class:`~blogwriter.domain.settings.LaneSettings` field.
+         */
+        LanesIn: {
+            /** Derivativesmaxperweek */
+            derivativesMaxPerWeek: number;
+            /** Nativeminperweek */
+            nativeMinPerWeek: number;
+            /** Nativeotherpillar */
+            nativeOtherPillar: boolean;
+            /** Onpillarminshare */
+            onPillarMinShare: number;
+            /** Hookvariants */
+            hookVariants: number;
+            quickTake: components["schemas"]["QuickTakeRules"];
+            formats: components["schemas"]["PostFormatRules"];
+            repurpose: components["schemas"]["RepurposeRules"];
+            /** Series */
+            series: components["schemas"]["SeriesDef"][];
+        };
+        /**
+         * LinkException
+         * @description A per-post exception to the zero-links rule (logged for the link experiment).
+         */
+        LinkException: {
+            url: components["schemas"]["HttpsUrl"];
+            /** Reason */
+            reason: string;
+            experimentId?: components["schemas"]["DocId"] | null;
+            approvedAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /** LinkExceptionIn */
+        LinkExceptionIn: {
+            url: components["schemas"]["HttpsUrl"];
+            /** Reason */
+            reason: string;
+        };
+        /** LiveDeleteIn */
+        LiveDeleteIn: {
+            /** Confirmtoken */
+            confirmToken: string;
+        };
+        /** LiveEditIn */
+        LiveEditIn: {
+            /** Displaytext */
+            displayText: string;
+            /** Confirmtoken */
+            confirmToken: string;
+        };
+        LocalDate: string;
+        LocalTime: string;
+        /**
+         * MachineView
+         * @description One status machine (contract section 2) and the owner's part in it.
+         */
+        MachineView: {
+            /** Initial */
+            initial: string;
+            /** States */
+            states: string[];
+            /** Edges */
+            edges: Record<string, string[]>;
+            /** Owneredges */
+            ownerEdges: Record<string, string[]>;
+            /** Ownerwrites */
+            ownerWrites: string[];
+            /** Writers */
+            writers?: Record<string, string> | null;
+        };
         /** MeResponse */
         MeResponse: {
             /** Oid */
@@ -84,6 +5789,2205 @@ export interface components {
             /** Name */
             name: string | null;
         };
+        /**
+         * MediaRef
+         * @description A binary in Blob storage, addressed by container and name, with its SHA-256.
+         *
+         *     Names are content-addressed (``<area>/<owner id>/<sha256>.<ext>``) so a reference can never
+         *     silently point at changed bytes. ``alt_text`` is required for anything shown to readers.
+         */
+        MediaRef: {
+            role: components["schemas"]["MediaRole"];
+            /** @default media */
+            container: components["schemas"]["BlobContainer"];
+            /** Name */
+            name: string;
+            sha256: components["schemas"]["Sha256Hex"];
+            /**
+             * Contenttype
+             * @enum {string}
+             */
+            contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml" | "application/pdf";
+            /** Sizebytes */
+            sizeBytes: number;
+            /** Width */
+            width?: number | null;
+            /** Height */
+            height?: number | null;
+            /** Pagecount */
+            pageCount?: number | null;
+            /** Alttext */
+            altText?: string | null;
+            /** Filename */
+            filename?: string | null;
+            /** Linkedinurn */
+            linkedinUrn?: string | null;
+            /** Linkedinstatus */
+            linkedinStatus?: ("uploading" | "available" | "failed") | null;
+            uploadedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        MediaRole: "upload" | "carousel_pdf" | "carousel_cover" | "image" | "image_card" | "diagram_svg" | "diagram_png" | "og_image" | "hero_image" | "headshot" | "name_mark";
+        /** MermaidOut */
+        MermaidOut: {
+            /** Svg */
+            svg: string;
+            /** Width */
+            width?: number | null;
+            /** Height */
+            height?: number | null;
+        };
+        /** MetaSummary */
+        MetaSummary: {
+            /** Title */
+            title: string | null;
+            /** Slug */
+            slug: string | null;
+            /** Pillar */
+            pillar: string | null;
+            /** Format */
+            format: string | null;
+        };
+        /** MetricIn */
+        MetricIn: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /**
+             * Bucketed
+             * @default true
+             */
+            bucketed: boolean;
+            publicSource?: components["schemas"]["HttpsUrl"] | null;
+        };
+        /**
+         * MetricRates
+         * @description Rates per 1K impressions (or, in ``vsMedian``, the relative difference to the median).
+         */
+        MetricRates: {
+            /** Reactions */
+            reactions?: number | null;
+            /** Comments */
+            comments?: number | null;
+            /** Reposts */
+            reposts?: number | null;
+            /** Saves */
+            saves?: number | null;
+            /** Sends */
+            sends?: number | null;
+            /** Engagement */
+            engagement?: number | null;
+        };
+        /**
+         * MetricsSnapshot
+         * @description Metrics the owner typed (+48 h, +7 d form) or imported from LinkedIn's export.
+         */
+        MetricsSnapshot: {
+            /** Id */
+            id: string;
+            takenAt: components["schemas"]["Timestamp"];
+            /**
+             * Offset
+             * @enum {string}
+             */
+            offset: "h48" | "d7" | "other";
+            /** Impressions */
+            impressions?: number | null;
+            /** Reactions */
+            reactions?: number | null;
+            /** Comments */
+            comments?: number | null;
+            /** Reposts */
+            reposts?: number | null;
+            /** Saves */
+            saves?: number | null;
+            /** Sends */
+            sends?: number | null;
+            /**
+             * Source
+             * @default form
+             * @enum {string}
+             */
+            source: "form" | "import";
+            importId?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * MetricsSnapshotIn
+         * @description ``POST /api/posts/{id}/snapshots``: what the owner read off LinkedIn's post analytics.
+         */
+        MetricsSnapshotIn: {
+            offset: components["schemas"]["SnapshotOffset"];
+            /** Impressions */
+            impressions?: number | null;
+            /** Reactions */
+            reactions?: number | null;
+            /** Comments */
+            comments?: number | null;
+            /** Reposts */
+            reposts?: number | null;
+            /** Saves */
+            saves?: number | null;
+            /** Sends */
+            sends?: number | null;
+            takenAt?: components["schemas"]["Timestamp"] | null;
+        };
+        /**
+         * ModelPreferences
+         * @description Owner-tunable AI preferences. Routing and prices come from ``BW_AI_*`` (read-only here).
+         */
+        ModelPreferences: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /**
+             * Imagesenabled
+             * @default false
+             */
+            imagesEnabled: boolean;
+            /**
+             * Noveltymaxsimilarity
+             * @default 0.92
+             */
+            noveltyMaxSimilarity: number;
+            /**
+             * Nearduplicatemaxsimilarity
+             * @default 0.5
+             */
+            nearDuplicateMaxSimilarity: number;
+        } & Record<string, unknown>;
+        /** ModelPreferencesIn */
+        ModelPreferencesIn: {
+            /** Imagesenabled */
+            imagesEnabled: boolean;
+            /** Noveltymaxsimilarity */
+            noveltyMaxSimilarity: number;
+            /** Nearduplicatemaxsimilarity */
+            nearDuplicateMaxSimilarity: number;
+        };
+        /** ModelsView */
+        ModelsView: {
+            preferences: components["schemas"]["Versioned_ModelPreferences_"];
+            /** Routes */
+            routes: components["schemas"]["RouteView"][];
+            /** Prices */
+            prices: components["schemas"]["PriceView"][];
+            /** Websearchusdper1K */
+            webSearchUsdPer1k: number | null;
+        };
+        NoteText: string;
+        /** OAuthStartOut */
+        OAuthStartOut: {
+            /** Authorizeurl */
+            authorizeUrl: string;
+        };
+        /** OverrideIn */
+        OverrideIn: {
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * OwnerInput
+         * @description One item: ``have``/``need`` are counts where the item is counted, else ``null``.
+         */
+        OwnerInput: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Done */
+            done: boolean;
+            /** Have */
+            have?: number | null;
+            /** Need */
+            need?: number | null;
+            /** Href */
+            href: string;
+        };
+        /**
+         * OwnerInputs
+         * @description Codes, in this order: ``linkedin_samples``, ``stories_approved``, ``povs_per_pillar``,
+         *     ``blocklist``, ``employer_policy``, ``ai_use_confirmed``, ``brand_kit``,
+         *     ``linkedin_connected``, ``watchlist``, ``eval_labels``.
+         */
+        OwnerInputs: {
+            /** Items */
+            items: components["schemas"]["OwnerInput"][];
+        };
+        /**
+         * OwnerSignalRef
+         * @description Owner material a version draws on (gate 6 needs at least one).
+         */
+        OwnerSignalRef: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "story" | "pov" | "interview";
+            id: components["schemas"]["DocId"];
+            /** Quote */
+            quote?: string | null;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        OwnerSourceType: "portfolio_post" | "portfolio_about" | "linkedin_post" | "linkedin_comment";
+        /** Page[AnalyticsImport] */
+        Page_AnalyticsImport_: {
+            /** Items */
+            items: components["schemas"]["Versioned_AnalyticsImport_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[ArticleSummary] */
+        Page_ArticleSummary_: {
+            /** Items */
+            items: components["schemas"]["Versioned_ArticleSummary_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[EngagementItem] */
+        Page_EngagementItem_: {
+            /** Items */
+            items: components["schemas"]["Versioned_EngagementItem_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[EngagementRecord] */
+        Page_EngagementRecord_: {
+            /** Items */
+            items: components["schemas"]["Versioned_EngagementRecord_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[EvalResult] */
+        Page_EvalResult_: {
+            /** Items */
+            items: components["schemas"]["Versioned_EvalResult_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[EvalTopic] */
+        Page_EvalTopic_: {
+            /** Items */
+            items: components["schemas"]["Versioned_EvalTopic_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[Experiment] */
+        Page_Experiment_: {
+            /** Items */
+            items: components["schemas"]["Versioned_Experiment_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[Idea] */
+        Page_Idea_: {
+            /** Items */
+            items: components["schemas"]["Versioned_Idea_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[InsightSuggestion] */
+        Page_InsightSuggestion_: {
+            /** Items */
+            items: components["schemas"]["Versioned_InsightSuggestion_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[Interview] */
+        Page_Interview_: {
+            /** Items */
+            items: components["schemas"]["Versioned_Interview_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[JobView] */
+        Page_JobView_: {
+            /** Items */
+            items: components["schemas"]["Versioned_JobView_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[KbSeed] */
+        Page_KbSeed_: {
+            /** Items */
+            items: components["schemas"]["Versioned_KbSeed_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[PostSummary] */
+        Page_PostSummary_: {
+            /** Items */
+            items: components["schemas"]["Versioned_PostSummary_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[PovEntry] */
+        Page_PovEntry_: {
+            /** Items */
+            items: components["schemas"]["Versioned_PovEntry_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[QuickSearch] */
+        Page_QuickSearch_: {
+            /** Items */
+            items: components["schemas"]["Versioned_QuickSearch_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[Reminder] */
+        Page_Reminder_: {
+            /** Items */
+            items: components["schemas"]["Versioned_Reminder_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[ResearchRun] */
+        Page_ResearchRun_: {
+            /** Items */
+            items: components["schemas"]["Versioned_ResearchRun_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[Source] */
+        Page_Source_: {
+            /** Items */
+            items: components["schemas"]["Versioned_Source_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[StoryEntry] */
+        Page_StoryEntry_: {
+            /** Items */
+            items: components["schemas"]["Versioned_StoryEntry_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[VersionSummary] */
+        Page_VersionSummary_: {
+            /** Items */
+            items: components["schemas"]["Versioned_VersionSummary_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[VoiceDigest] */
+        Page_VoiceDigest_: {
+            /** Items */
+            items: components["schemas"]["Versioned_VoiceDigest_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[VoiceSample] */
+        Page_VoiceSample_: {
+            /** Items */
+            items: components["schemas"]["Versioned_VoiceSample_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[VoiceSeed] */
+        Page_VoiceSeed_: {
+            /** Items */
+            items: components["schemas"]["Versioned_VoiceSeed_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[WatchEntry] */
+        Page_WatchEntry_: {
+            /** Items */
+            items: components["schemas"]["Versioned_WatchEntry_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        /** Page[WeekPlan] */
+        Page_WeekPlan_: {
+            /** Items */
+            items: components["schemas"]["Versioned_WeekPlan_"][];
+            /** Nextcursor */
+            nextCursor?: string | null;
+        };
+        PartialDate: string;
+        PhraseText: string;
+        /**
+         * Pillar
+         * @description One content pillar (plan: "Pillars, format packs, post lanes").
+         */
+        "Pillar-Output": {
+            id: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Name */
+            name: string;
+            /**
+             * Topics
+             * @default
+             */
+            topics: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Audience
+             * @default
+             */
+            audience: string;
+            /** Vocabulary */
+            vocabulary?: string[];
+            /** Renames */
+            renames?: Record<string, string>;
+            /** Hashtags */
+            hashtags?: string[];
+            /** Researchdomains */
+            researchDomains?: components["schemas"]["HostName"][];
+            /**
+             * Targetshare
+             * @default 0.33
+             */
+            targetShare: number;
+        } & Record<string, unknown>;
+        "PillarId-Input": string;
+        "PillarId-Output": components["schemas"]["blogwriter__domain__base__Slug__1"];
+        PillarRef: string;
+        /**
+         * PillarSettings
+         * @description The pillars (1-5). Ids are stable: articles, posts and ideas reference them.
+         */
+        PillarSettings: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Pillars */
+            pillars?: components["schemas"]["Pillar-Output"][];
+        } & Record<string, unknown>;
+        /**
+         * PillarsIn
+         * @description ``PUT /api/kb/pillars``: the whole list (1-5). Removing or renaming an id that anything
+         *     references is refused (409 ``pillar_in_use``).
+         */
+        PillarsIn: {
+            /** Pillars */
+            pillars: components["schemas"]["blogwriter__domain__settings__Pillar"][];
+        };
+        /**
+         * PipelineStartIn
+         * @description ``POST /api/articles/{id}/pipeline``.
+         */
+        PipelineStartIn: {
+            /** @default research */
+            startFrom: components["schemas"]["StartFrom"];
+        };
+        /**
+         * PlanEditIn
+         * @description ``PUT /api/plan/weeks/{weekStart}``. ``flagship`` set to ``null`` removes it; leaving
+         *     it out keeps it.
+         */
+        PlanEditIn: {
+            mode?: components["schemas"]["WeekMode"] | null;
+            flagship?: components["schemas"]["FlagshipIn"] | null;
+            /** Slots */
+            slots: components["schemas"]["PlanSlotIn"][];
+        };
+        PlanSlotId: string;
+        /**
+         * PlanSlotIn
+         * @description One slot of a plan edit (drag and drop): where it goes and what fills it.
+         */
+        PlanSlotIn: {
+            /** Id */
+            id: string;
+            localDate: components["schemas"]["LocalDate"];
+            localTime: components["schemas"]["LocalTime"];
+            postId?: components["schemas"]["DocId"] | null;
+            lane?: components["schemas"]["Lane"] | null;
+            pillar?: components["schemas"]["PillarRef"] | null;
+            format?: components["schemas"]["PostFormat"] | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
+         * PlanSlotRef
+         * @description A slot of a week plan (``WeekPlan.weekStart`` and ``PlannedSlot.id``).
+         */
+        PlanSlotRef: {
+            weekStart: components["schemas"]["LocalDate"];
+            /** Slotid */
+            slotId: string;
+        };
+        /**
+         * PlanStatus
+         * @enum {string}
+         */
+        PlanStatus: "generating" | "proposed" | "approved" | "closed";
+        /**
+         * PlannedSlot
+         * @description A post slot of the week and what fills it.
+         *
+         *     ``post_id`` is the post written for the slot (plan approval, or a quick take created for it
+         *     with ``POST /api/posts {planSlot}``; :func:`blogwriter.domain.golive.link_plan_slot`). The
+         *     references say what the post draws on: ``story_ids``, ``pov_ids``, ``idea_id`` and, for a
+         *     derivative, the flagship ``article_id``.
+         */
+        PlannedSlot: {
+            /** Id */
+            id: string;
+            slot: components["schemas"]["Slot"];
+            postId?: components["schemas"]["DocId"] | null;
+            lane?: components["schemas"]["Lane"] | null;
+            pillar?: components["schemas"]["PillarId-Output"] | null;
+            format?: components["schemas"]["PostFormat"] | null;
+            /** Title */
+            title?: string | null;
+            /** Storyids */
+            storyIds?: components["schemas"]["DocId"][];
+            /** Povids */
+            povIds?: components["schemas"]["DocId"][];
+            ideaId?: components["schemas"]["DocId"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * PolicyIn
+         * @description The employer policy. Empty disclaimers mean "none".
+         */
+        PolicyIn: {
+            /** Disclaimershort */
+            disclaimerShort: string | null;
+            /** Disclaimerlong */
+            disclaimerLong: string | null;
+            /** Forbiddentopics */
+            forbiddenTopics: string[];
+            /** Noemployerbranding */
+            noEmployerBranding: boolean;
+            /** Aiuseconfirmed */
+            aiUseConfirmed: boolean;
+            /** Clearancestatement */
+            clearanceStatement: string;
+        };
+        /**
+         * Post
+         * @description One LinkedIn post through approval, go-live and insights.
+         */
+        Post: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default draft */
+            status: components["schemas"]["PostStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            lane: components["schemas"]["Lane"];
+            pillar: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            format: components["schemas"]["PostFormat"];
+            seriesId?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+            hookType?: components["schemas"]["HookType"] | null;
+            /** Hookvariants */
+            hookVariants?: components["schemas"]["HookVariant"][];
+            /** Selectedhookid */
+            selectedHookId?: string | null;
+            /**
+             * Displaytext
+             * @default
+             */
+            displayText: string;
+            /**
+             * Payload
+             * @default
+             */
+            payload: string;
+            /** Aidrafttext */
+            aiDraftText?: string | null;
+            /** Documenttitle */
+            documentTitle?: string | null;
+            /** Hashtags */
+            hashtags?: string[];
+            /** Media */
+            media?: components["schemas"]["MediaRef"][];
+            /** Carouselspec */
+            carouselSpec?: Record<string, unknown> | null;
+            /** Poll */
+            poll?: Record<string, unknown> | null;
+            /** Attributions */
+            attributions?: components["schemas"]["Attribution"][];
+            linkException?: components["schemas"]["LinkException"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            /** Storyids */
+            storyIds?: components["schemas"]["DocId"][];
+            /** Povids */
+            povIds?: components["schemas"]["DocId"][];
+            ideaId?: components["schemas"]["DocId"] | null;
+            briefId?: components["schemas"]["DocId"] | null;
+            quickSearchId?: components["schemas"]["DocId"] | null;
+            weekPlanId?: components["schemas"]["DocId"] | null;
+            planSlotId?: components["schemas"]["PlanSlotId"] | null;
+            experimentId?: components["schemas"]["DocId"] | null;
+            /** Experimentarm */
+            experimentArm?: string | null;
+            slot?: components["schemas"]["Slot"] | null;
+            /** @default one_click */
+            goLiveMode: components["schemas"]["GoLiveMode"];
+            /**
+             * Timesensitive
+             * @default false
+             */
+            timeSensitive: boolean;
+            expiresAt?: components["schemas"]["Timestamp"] | null;
+            lint?: components["schemas"]["CheckState"] | null;
+            derivedClaims?: components["schemas"]["CheckState"] | null;
+            nearDuplicate?: components["schemas"]["CheckState"] | null;
+            approval?: components["schemas"]["Approval"] | null;
+            staging?: components["schemas"]["StagingState"] | null;
+            intent?: components["schemas"]["PublishIntent"] | null;
+            kit?: components["schemas"]["KitInfo"] | null;
+            /** Linkedinurn */
+            linkedinUrn?: string | null;
+            postUrl?: components["schemas"]["HttpsUrl"] | null;
+            postedAt?: components["schemas"]["Timestamp"] | null;
+            /** Finaltext */
+            finalText?: string | null;
+            /** Snapshots */
+            snapshots?: components["schemas"]["MetricsSnapshot"][];
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            /**
+             * Reviewonly
+             * @default false
+             */
+            reviewOnly: boolean;
+            /** Reviewonlyreasons */
+            reviewOnlyReasons?: string[];
+            /** Lasterror */
+            lastError?: string | null;
+            /**
+             * Approvalcurrent
+             * @description An approval exists and still matches the content (nothing changed since). A read-only
+             *     view for the web (``approvalCurrent``): never stored, never taken from input.
+             */
+            readonly approvalCurrent: boolean;
+        } & Record<string, unknown>;
+        /**
+         * PostCreateIn
+         * @description ``POST /api/posts``: a standalone post (native, quick take or repurpose).
+         */
+        PostCreateIn: {
+            /**
+             * Lane
+             * @enum {string}
+             */
+            lane: "native" | "quick_take" | "repurpose";
+            pillar: components["schemas"]["PillarId-Input"];
+            format: components["schemas"]["PostFormat"];
+            /** Storyids */
+            storyIds?: components["schemas"]["DocId"][];
+            /** Povids */
+            povIds?: components["schemas"]["DocId"][];
+            ideaId?: components["schemas"]["DocId"] | null;
+            quickSearchId?: components["schemas"]["DocId"] | null;
+            /** Taketext */
+            takeText?: string | null;
+            slot?: components["schemas"]["blogwriter__linkedin__posts__models__SlotIn"] | null;
+            planSlot?: components["schemas"]["PlanSlotRef"] | null;
+            goLiveMode?: components["schemas"]["GoLiveMode"] | null;
+        };
+        /**
+         * PostCreated
+         * @description ``202``: the post (``generating``) and the ``posts.generate`` job.
+         */
+        PostCreated: {
+            post: components["schemas"]["Versioned_Post_"];
+            /** Jobid */
+            jobId: string;
+        };
+        /**
+         * PostEditIn
+         * @description ``PUT /api/posts/{id}``: the owner's edit (an approved or staged post goes back to
+         *     draft; the approval is invalidated).
+         */
+        PostEditIn: {
+            /** Displaytext */
+            displayText: string;
+            /** Selectedhookid */
+            selectedHookId?: string | null;
+            /** Documenttitle */
+            documentTitle?: string | null;
+            /** Hashtags */
+            hashtags?: string[] | null;
+            format?: components["schemas"]["PostFormat"] | null;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+            /** Attributions */
+            attributions?: components["schemas"]["AttributionIn"][] | null;
+            linkException?: components["schemas"]["LinkExceptionIn"] | null;
+        };
+        /** @enum {string} */
+        PostFormat: "carousel" | "text" | "image_card" | "poll";
+        /** PostFormatRules */
+        PostFormatRules: {
+            /**
+             * Carouselminslides
+             * @default 8
+             */
+            carouselMinSlides: number;
+            /**
+             * Carouselmaxslides
+             * @default 12
+             */
+            carouselMaxSlides: number;
+            /**
+             * Textminchars
+             * @default 1200
+             */
+            textMinChars: number;
+            /**
+             * Textmaxchars
+             * @default 2000
+             */
+            textMaxChars: number;
+            /**
+             * Imagecardenabled
+             * @default true
+             */
+            imageCardEnabled: boolean;
+            /**
+             * Pollmaxpermonth
+             * @default 1
+             */
+            pollMaxPerMonth: number;
+        } & Record<string, unknown>;
+        /**
+         * PostStatus
+         * @enum {string}
+         */
+        PostStatus: "generating" | "draft" | "approved" | "staged" | "publishing" | "posted" | "kit" | "needs_attention" | "missed" | "expired" | "deleted" | "archived";
+        /**
+         * PostSummary
+         * @description A post in a list (no text, payload or carousel spec).
+         */
+        PostSummary: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["PostStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            lane: components["schemas"]["Lane"];
+            /** Pillar */
+            pillar: string;
+            format: components["schemas"]["PostFormat"];
+            /** Hook */
+            hook: string;
+            slot: components["schemas"]["Slot"] | null;
+            goLiveMode: components["schemas"]["GoLiveMode"];
+            kitState: components["schemas"]["KitState"] | null;
+            /** Approvalcurrent */
+            approvalCurrent: boolean;
+            postedAt: components["schemas"]["Timestamp"] | null;
+            /** Reviewonly */
+            reviewOnly: boolean;
+            /** Articleid */
+            articleId: string | null;
+            /** Weekplanid */
+            weekPlanId?: string | null;
+            /** Planslotid */
+            planSlotId?: string | null;
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        /** PostsPerWeek */
+        PostsPerWeek: {
+            /**
+             * Normal
+             * @default 3
+             */
+            normal: number;
+            /**
+             * Light
+             * @default 2
+             */
+            light: number;
+            /**
+             * Away
+             * @default 0
+             */
+            away: number;
+            /**
+             * Max
+             * @default 5
+             */
+            max: number;
+        } & Record<string, unknown>;
+        /**
+         * PovEntry
+         * @description One of the owner's positions on a pillar, in their own words.
+         */
+        PovEntry: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default proposed */
+            status: components["schemas"]["ReviewStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            origin: components["schemas"]["PovOrigin"];
+            pillar: components["schemas"]["PillarId-Output"];
+            /** Statement */
+            statement: string;
+            /** Context */
+            context?: string | null;
+            /** @default anonymized */
+            confidentiality: components["schemas"]["Confidentiality"];
+            ideaId?: components["schemas"]["DocId"] | null;
+            interviewId?: components["schemas"]["DocId"] | null;
+            classifier?: components["schemas"]["ClassifierCheck"];
+            approvedAt?: components["schemas"]["Timestamp"] | null;
+            servedBy?: components["schemas"]["ServedByRecord"] | null;
+        } & Record<string, unknown>;
+        /**
+         * PovIn
+         * @description A POV entry in the owner's confirmed wording. ``origin`` is kept from the first save.
+         */
+        PovIn: {
+            pillar: components["schemas"]["PillarId-Input"];
+            /** Statement */
+            statement: string;
+            /** Context */
+            context?: string | null;
+            /** @default anonymized */
+            confidentiality: components["schemas"]["Confidentiality"];
+            /**
+             * Origin
+             * @default owner
+             * @enum {string}
+             */
+            origin: "owner" | "quick_capture" | "idea_take";
+            ideaId?: components["schemas"]["DocId"] | null;
+        };
+        /** @enum {string} */
+        PovOrigin: "interview" | "quick_capture" | "idea_take" | "seed" | "owner";
+        /**
+         * PriceView
+         * @description USD per 1M tokens (``BW_AI_PRICE_OVERRIDES`` over the defaults).
+         */
+        PriceView: {
+            /** Model */
+            model: string;
+            /** Input */
+            input: number;
+            /** Output */
+            output: number;
+            /** Cachedinput */
+            cachedInput: number | null;
+            /** Cachewrite */
+            cacheWrite: number | null;
+        };
+        /** @enum {string} */
+        Priority: "urgent" | "high" | "normal" | "low";
+        /** ProfileChecklist */
+        ProfileChecklist: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Items */
+            items?: components["schemas"]["ChecklistItem"][];
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        ProposalReason: "strict_mode" | "ai_unavailable" | "ai_use_not_confirmed" | "refused";
+        /**
+         * PublishIn
+         * @description ``POST /api/posts/{id}/publish``: the approval the owner saw and the page's token.
+         */
+        PublishIn: {
+            approvalSha256: components["schemas"]["Sha256Hex"];
+            /** Confirmtoken */
+            confirmToken: string;
+        };
+        /**
+         * PublishIntent
+         * @description Written by the tap before the single ``POST /rest/posts`` (never retried).
+         *
+         *     On a restart with an intent but no URN, or a 5xx or timeout, the post goes to
+         *     ``needs_attention`` and the owner checks LinkedIn.
+         */
+        PublishIntent: {
+            /** Id */
+            id: string;
+            createdAt: components["schemas"]["Timestamp"];
+            approvalSha256: components["schemas"]["Sha256Hex"];
+            /**
+             * Status
+             * @default pending
+             * @enum {string}
+             */
+            status: "pending" | "succeeded" | "unknown" | "failed";
+            resolvedAt?: components["schemas"]["Timestamp"] | null;
+            /** Httpstatus */
+            httpStatus?: number | null;
+            errorCode?: components["schemas"]["Code"] | null;
+        } & Record<string, unknown>;
+        /** PublishJobView */
+        PublishJobView: {
+            /** Id */
+            id: string;
+            /** Type */
+            type: string;
+            /** Status */
+            status: string;
+            /** Steps */
+            steps: components["schemas"]["PublishStepView"][];
+            /** Errorcode */
+            errorCode?: string | null;
+            /** Awaiting */
+            awaiting?: string | null;
+        };
+        /**
+         * PublishNowIn
+         * @description ``POST /api/articles/{id}/publish-now`` (optional body): as approve, at once.
+         */
+        PublishNowIn: {
+            /** Correctionnote */
+            correctionNote?: string | null;
+            slug?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+        };
+        /**
+         * PublishState
+         * @description Publication bookkeeping (owner: publish). The slug is immutable after first publish.
+         */
+        PublishState: {
+            slug?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+            /**
+             * Live
+             * @default false
+             */
+            live: boolean;
+            publishedAt?: components["schemas"]["Timestamp"] | null;
+            lastPublishedAt?: components["schemas"]["Timestamp"] | null;
+            /** Lastpublishedversion */
+            lastPublishedVersion?: number | null;
+            lastPublishedSha256?: components["schemas"]["Sha256Hex"] | null;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            verifiedAt?: components["schemas"]["Timestamp"] | null;
+            publishAt?: components["schemas"]["Timestamp"] | null;
+            /** Previousslugs */
+            previousSlugs?: components["schemas"]["blogwriter__domain__base__Slug__2"][];
+            /**
+             * Auto
+             * @default false
+             */
+            auto: boolean;
+            /** Lastoperation */
+            lastOperation?: ("publish" | "unpublish") | null;
+            /** Jobid */
+            jobId?: string | null;
+            /** Portfoliorunid */
+            portfolioRunId?: string | null;
+            /** Assets */
+            assets?: components["schemas"]["PublishedAsset"][];
+            /** Lasterror */
+            lastError?: string | null;
+        } & Record<string, unknown>;
+        /**
+         * PublishStatusOut
+         * @description ``GET /api/articles/{id}/publish-status``.
+         */
+        PublishStatusOut: {
+            status: components["schemas"]["ArticleStatus"];
+            publish: components["schemas"]["PublishState"];
+            /** Lasterror */
+            lastError?: string | null;
+            job?: components["schemas"]["PublishJobView"] | null;
+        };
+        /** PublishStepView */
+        PublishStepView: {
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+        };
+        /** PublishSummary */
+        PublishSummary: {
+            /** Live */
+            live: boolean;
+            /** Publishat */
+            publishAt: string | null;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * PublishedAsset
+         * @description published-blogs ``assets[]``: a file the portfolio copies from Blob ``published``.
+         */
+        PublishedAsset: {
+            /** Path */
+            path: string;
+            /** Blob */
+            blob: string;
+            sha256: components["schemas"]["Sha256Hex"];
+        } & Record<string, unknown>;
+        /** PushKeyView */
+        PushKeyView: {
+            /** Applicationserverkey */
+            applicationServerKey: string;
+        };
+        /** PushKeysIn */
+        PushKeysIn: {
+            /** P256Dh */
+            p256Dh: string;
+            /** Auth */
+            auth: string;
+        };
+        /** PushResultView */
+        PushResultView: {
+            /** Delivered */
+            delivered: number;
+            /** Failed */
+            failed: number;
+            /** Expired */
+            expired: number;
+        };
+        /**
+         * PushSubscriptionIn
+         * @description ``PushSubscription.toJSON()``: ``{endpoint, expirationTime, keys: {p256dh, auth}}``.
+         */
+        PushSubscriptionIn: {
+            /** Endpoint */
+            endpoint: string;
+            /** Expirationtime */
+            expirationTime?: number | null;
+            keys: components["schemas"]["PushKeysIn"];
+        };
+        /** PushSubscriptionView */
+        PushSubscriptionView: {
+            /** Id */
+            id: string;
+            /** Active */
+            active: boolean;
+            /** Createdat */
+            createdAt: string;
+        };
+        /**
+         * QuickIn
+         * @description ``POST /api/research/quick``.
+         */
+        QuickIn: {
+            /** Query */
+            query: string;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            postId?: components["schemas"]["DocId"] | null;
+            ideaId?: components["schemas"]["DocId"] | null;
+        };
+        /**
+         * QuickSearch
+         * @description A quick search from the Studio sidebar (persisted so quick takes can cite it).
+         */
+        QuickSearch: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Query */
+            query: string;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /**
+             * Answer
+             * @default
+             */
+            answer: string;
+            /** Claims */
+            claims?: components["schemas"]["BriefClaim"][];
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /** Queries */
+            queries?: components["schemas"]["SearchQuery"][];
+            articleId?: components["schemas"]["DocId"] | null;
+            postId?: components["schemas"]["DocId"] | null;
+            ideaId?: components["schemas"]["DocId"] | null;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+        } & Record<string, unknown>;
+        /** QuickTakeRules */
+        QuickTakeRules: {
+            /**
+             * Minchars
+             * @default 1200
+             */
+            minChars: number;
+            /**
+             * Maxchars
+             * @default 1500
+             */
+            maxChars: number;
+            /**
+             * Maxagehours
+             * @default 72
+             */
+            maxAgeHours: number;
+            /**
+             * Ownertakerequired
+             * @default true
+             */
+            ownerTakeRequired: boolean;
+        } & Record<string, unknown>;
+        /**
+         * Quote
+         * @description A verbatim quote from one citation: at most :data:`MAX_QUOTE_CHARS` characters.
+         */
+        Quote: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__3"];
+            citationId: components["schemas"]["blogwriter__domain__base__Slug__3"];
+            /** Text */
+            text: string;
+        } & Record<string, unknown>;
+        /**
+         * RedactIn
+         * @description Raw owner text to redact (the only place raw text is accepted; never stored).
+         *
+         *     The length limit is ``BW_STORIES_INTAKE_MAX_CHARS`` (8000 by default; the route checks it).
+         */
+        RedactIn: {
+            /** Text */
+            text: string;
+            purpose: components["schemas"]["IntakePurpose"];
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+        };
+        /**
+         * RedactionProposal
+         * @description What ``POST /api/stories/intake/redact`` answers (never stored).
+         *
+         *     ``findings`` index the raw text the owner sent (highlighting); ``proposal`` is the
+         *     anonymizer's public-safe wording for the owner to edit and confirm, or ``None`` with the
+         *     ``reason`` no model proposed one.
+         */
+        RedactionProposal: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+            /** Proposal */
+            proposal: string | null;
+            reason: components["schemas"]["ProposalReason"] | null;
+            /** Anonymizerused */
+            anonymizerUsed: boolean;
+        };
+        /** RegenerateIn */
+        RegenerateIn: {
+            what: components["schemas"]["RegenerateWhat"];
+            /** Instruction */
+            instruction?: string | null;
+        };
+        /** @enum {string} */
+        RegenerateWhat: "hooks" | "text" | "carousel";
+        /**
+         * Reminder
+         * @description A push reminder delivered by a delayed ``planner.remind`` job at ``due_at``.
+         *
+         *     The id is :meth:`id_for` its dedupe ``key``, so creating the same reminder twice is a
+         *     ``Conflict``. The job id is ``remind-<reminder id>``; cancelling a reminder (status
+         *     ``cancelled``) turns the job into a no-op, and the job expires a reminder it finds past
+         *     ``expires_at`` (a reply nudge hours late is noise). Title and URL pass the push payload's
+         *     own checks, so a stored reminder can always be sent. Stored in ``engagement`` with a per-item
+         *     TTL (garbage collection only).
+         */
+        Reminder: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            expiresAt: components["schemas"]["Timestamp"];
+            /** Ttl */
+            ttl?: number | null;
+            reminderKind: components["schemas"]["ReminderKind"];
+            /** @default pending */
+            status: components["schemas"]["ReminderStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            dueAt: components["schemas"]["Timestamp"];
+            /**
+             * Targetkind
+             * @enum {string}
+             */
+            targetKind: "post" | "article" | "week_plan" | "interview" | "linkedin" | "system";
+            /** Targetid */
+            targetId?: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            sentAt?: components["schemas"]["Timestamp"] | null;
+            /** Delivered */
+            delivered?: boolean | null;
+            /** Key */
+            key: string;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        ReminderKind: "reply" | "snapshot" | "kit_confirm";
+        /** ReminderOffsets */
+        ReminderOffsets: {
+            /** Replyminutes */
+            replyMinutes?: number[];
+            /** Snapshothours */
+            snapshotHours?: number[];
+        } & Record<string, unknown>;
+        /**
+         * ReminderStatus
+         * @enum {string}
+         */
+        ReminderStatus: "pending" | "sent" | "cancelled" | "expired";
+        /**
+         * RepurposeIn
+         * @description ``POST /api/ideas/repurpose``: an idea from a post that went out (``recut``: a new angle
+         *     on it as a post; ``flagship``: an article built from it).
+         */
+        RepurposeIn: {
+            /** Postid */
+            postId: string;
+            /**
+             * Kind
+             * @default recut
+             * @enum {string}
+             */
+            kind: "recut" | "flagship";
+        };
+        /** RepurposeRules */
+        RepurposeRules: {
+            /**
+             * Minweeks
+             * @default 8
+             */
+            minWeeks: number;
+            /**
+             * Maxweeks
+             * @default 12
+             */
+            maxWeeks: number;
+            /**
+             * Requiresnoveltycheck
+             * @default true
+             */
+            requiresNoveltyCheck: boolean;
+        } & Record<string, unknown>;
+        /**
+         * ResearchRun
+         * @description One standard research run (deep mode is deferred).
+         */
+        ResearchRun: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default queued */
+            status: components["schemas"]["ResearchStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /** Topic */
+            topic: string;
+            pillar: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Audience */
+            audience?: string | null;
+            /**
+             * Recencydays
+             * @default 365
+             */
+            recencyDays: number;
+            articleId?: components["schemas"]["DocId"] | null;
+            ideaId?: components["schemas"]["DocId"] | null;
+            /** Ownerurls */
+            ownerUrls?: components["schemas"]["HttpsUrl"][];
+            /** Subquestions */
+            subQuestions?: string[];
+            /** Queries */
+            queries?: components["schemas"]["SearchQuery"][];
+            /** Sources */
+            sources?: components["schemas"]["SourceRef"][];
+            briefId?: components["schemas"]["DocId"] | null;
+            jobId?: components["schemas"]["DocId"] | null;
+            /**
+             * Webiqfallback
+             * @default false
+             */
+            webiqFallback: boolean;
+            /**
+             * Blocklistconfigured
+             * @default false
+             */
+            blocklistConfigured: boolean;
+            quarantineReason?: components["schemas"]["Code"] | null;
+            errorCode?: components["schemas"]["Code"] | null;
+            /**
+             * Costusd
+             * @default 0
+             */
+            costUsd: number;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            startedAt?: components["schemas"]["Timestamp"] | null;
+            finishedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /**
+         * ResearchStatus
+         * @enum {string}
+         */
+        ResearchStatus: "queued" | "running" | "succeeded" | "failed" | "quarantined" | "cancelled";
+        /**
+         * ReslotIn
+         * @description ``snooze`` (30 minutes later), ``next_slot`` (the next free template slot) or ``set``
+         *     (``slot`` required).
+         */
+        ReslotIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "snooze" | "next_slot" | "set";
+            slot?: components["schemas"]["blogwriter__planner__models__SlotIn"] | null;
+        };
+        /** ResolveIn */
+        ResolveIn: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "posted" | "not_posted";
+            postUrl?: components["schemas"]["HttpsUrl"] | null;
+        };
+        /** @enum {string} */
+        ReviewDecision: "approve" | "reject" | "archive" | "restore";
+        /** ReviewIn */
+        ReviewIn: {
+            decision: components["schemas"]["ReviewDecision"];
+        };
+        /**
+         * ReviewStatus
+         * @description Stories and POV entries: only ``approved`` entries (with a classifier pass) are used.
+         * @enum {string}
+         */
+        ReviewStatus: "proposed" | "approved" | "rejected" | "archived";
+        /**
+         * ReviseIn
+         * @description ``POST /api/articles/{id}/revise``: the owner's revision instruction.
+         */
+        ReviseIn: {
+            /** Instruction */
+            instruction: string;
+        };
+        /** RouteModelView */
+        RouteModelView: {
+            /** Model */
+            model: string;
+            /** Deployment */
+            deployment: string;
+            /** Provider */
+            provider: string;
+            /** Effort */
+            effort: string | null;
+        };
+        /**
+         * RouteView
+         * @description One task's route, primary first (read-only: ``BW_AI_*``).
+         */
+        RouteView: {
+            /** Task */
+            task: string;
+            /** Maxclass */
+            maxClass: string;
+            /** Tools */
+            tools: boolean;
+            /** Chain */
+            chain: components["schemas"]["RouteModelView"][];
+        };
+        RuleText: string;
+        /**
+         * RunAccepted
+         * @description 202 answer of ``POST /api/research/runs``: the run and the job that works on it.
+         */
+        RunAccepted: {
+            run: components["schemas"]["Versioned_ResearchRun_"];
+            /** Jobid */
+            jobId: string;
+        };
+        /**
+         * RunIn
+         * @description ``POST /api/research/runs``.
+         */
+        RunIn: {
+            /** Topic */
+            topic: string;
+            pillar: components["schemas"]["PillarId-Input"];
+            /** Audience */
+            audience?: string | null;
+            /** Recencydays */
+            recencyDays?: number | null;
+            articleId?: components["schemas"]["DocId"] | null;
+            ideaId?: components["schemas"]["DocId"] | null;
+            /** Ownerurls */
+            ownerUrls?: components["schemas"]["HttpsUrl"][];
+        };
+        /** RunnerView */
+        RunnerView: {
+            /** Running */
+            running: boolean;
+            /** Claimed */
+            claimed: number;
+            /** Schedulerrunning */
+            schedulerRunning: boolean;
+        };
+        /**
+         * SampleIn
+         * @description A new sample: ``text``, or an owner-typed ``url`` the research fetcher turns into text.
+         */
+        SampleIn: {
+            sourceType: components["schemas"]["OwnerSourceType"];
+            /** Text */
+            text?: string | null;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            title?: components["schemas"]["Title"] | null;
+            postedAt?: components["schemas"]["Timestamp"] | null;
+            pillar?: components["schemas"]["blogwriter__voice__models__Pillar"] | null;
+            /**
+             * Ownerunassisted
+             * @default false
+             */
+            ownerUnassisted: boolean;
+        };
+        /**
+         * SampleStatus
+         * @enum {string}
+         */
+        SampleStatus: "active" | "excluded";
+        /** SampleStatusIn */
+        SampleStatusIn: {
+            status: components["schemas"]["SampleStatus"];
+        };
+        /**
+         * SampleUpdateIn
+         * @description Fields to change; a field left out stays as it is, ``null`` clears ``title``/``pillar``.
+         */
+        SampleUpdateIn: {
+            /** Text */
+            text?: string | null;
+            title?: components["schemas"]["Title"] | null;
+            pillar?: components["schemas"]["blogwriter__voice__models__Pillar"] | null;
+            /** Ownerunassisted */
+            ownerUnassisted?: boolean | null;
+        };
+        /** ScheduleConfirmIn */
+        ScheduleConfirmIn: {
+            /** Run */
+            run: boolean;
+        };
+        /**
+         * ScheduleRuleView
+         * @description ``daily`` (``at``), ``weekly`` (``days``, ``at``) or ``interval`` (``seconds`` from
+         *     ``anchor``); times are local to the item's ``timezone``.
+         */
+        ScheduleRuleView: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "daily" | "weekly" | "interval";
+            /** At */
+            at?: string | null;
+            /** Days */
+            days?: components["schemas"]["Weekday"][] | null;
+            /** Seconds */
+            seconds?: number | null;
+            /** Anchor */
+            anchor?: string | null;
+        };
+        /** ScheduleView */
+        ScheduleView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Jobtype */
+            jobType: string;
+            rule: components["schemas"]["ScheduleRuleView"];
+            /** Timezone */
+            timezone: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "needs_confirmation" | "paused";
+            /** Nextrunat */
+            nextRunAt: string;
+            /** Pendingrunat */
+            pendingRunAt?: string | null;
+            /** Lastrunat */
+            lastRunAt?: string | null;
+            /** Skippedruns */
+            skippedRuns: number;
+        };
+        /** @enum {string} */
+        SchedulesState: "current" | "out_of_date" | "unknown";
+        /**
+         * SchedulesView
+         * @description Whether the schedule items match the cadence (contract I-4).
+         */
+        SchedulesView: {
+            state: components["schemas"]["SchedulesState"];
+            /** Reason */
+            reason?: string | null;
+            /** Seededat */
+            seededAt?: string | null;
+            /**
+             * Retrying
+             * @default false
+             */
+            retrying: boolean;
+        };
+        /**
+         * Scorecard
+         * @description The weekly quality scorecard (replaces streaks).
+         */
+        Scorecard: {
+            /**
+             * Postspublished
+             * @default 0
+             */
+            postsPublished: number;
+            /**
+             * Postswithownersignal
+             * @default 0
+             */
+            postsWithOwnerSignal: number;
+            /**
+             * Replies
+             * @default 0
+             */
+            replies: number;
+            /**
+             * Substantivecomments
+             * @default 0
+             */
+            substantiveComments: number;
+            /** Onpillarshare */
+            onPillarShare?: number | null;
+            computedAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        ScoutQuery: string;
+        /**
+         * SearchQuery
+         * @description A ``web_search`` query the run issued (audited against the blocklist).
+         */
+        SearchQuery: {
+            /** Text */
+            text: string;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "allowlist" | "open" | "quick" | "scout";
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        SeedSource: "cv" | "portfolio";
+        /**
+         * SelectionIn
+         * @description ``POST /api/articles/{id}/selection``: a passage of the draft and what to do with it.
+         */
+        SelectionIn: {
+            /** Text */
+            text: string;
+            /** Instruction */
+            instruction: string;
+        };
+        /**
+         * SelectionOut
+         * @description The proposal for the selected passage (nothing is saved; the editor shows a diff and
+         *     applies it through autosave). ``proposal`` is ``None`` with the ``reason`` when there is no
+         *     usable proposal.
+         */
+        SelectionOut: {
+            /** Proposal */
+            proposal: string | null;
+            /** Reason */
+            reason?: ("refused" | "empty" | "blocklist_hit") | null;
+            /**
+             * Reviewonly
+             * @default false
+             */
+            reviewOnly: boolean;
+        };
+        /** SeriesDef */
+        SeriesDef: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__2"];
+            pillar: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Title */
+            title: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        } & Record<string, unknown>;
+        /** SeriesIn */
+        SeriesIn: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__2"];
+            /** Title */
+            title: string;
+            /** Part */
+            part: number;
+            /** Total */
+            total?: number | null;
+        };
+        /** SeriesRef */
+        SeriesRef: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__2"];
+            /** Title */
+            title: string;
+            /** Part */
+            part: number;
+            /** Total */
+            total?: number | null;
+        } & Record<string, unknown>;
+        /**
+         * ServedByRecord
+         * @description Which model served one AI step (``ai.router.ServedBy``), stored on the document it wrote.
+         *
+         *     ``refused`` records a refusal anywhere in the chain; refusals and fallbacks make drafts
+         *     review-only (plan: "Auto-publish calibration").
+         */
+        ServedByRecord: {
+            step: components["schemas"]["Code"];
+            at: components["schemas"]["Timestamp"];
+            task: components["schemas"]["Code"];
+            /** Model */
+            model: string;
+            /** Deployment */
+            deployment: string;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "openai" | "anthropic";
+            /** Effort */
+            effort?: string | null;
+            /** Fallbackreason */
+            fallbackReason?: string | null;
+            /**
+             * Reviewonly
+             * @default false
+             */
+            reviewOnly: boolean;
+            /**
+             * Repaired
+             * @default false
+             */
+            repaired: boolean;
+            /**
+             * Refused
+             * @default false
+             */
+            refused: boolean;
+            /** Promptversion */
+            promptVersion?: string | null;
+            /** Costusd */
+            costUsd?: number | null;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        ServiceState: "on" | "off" | "degraded" | "unknown";
+        /** ServiceView */
+        ServiceView: {
+            state: components["schemas"]["ServiceState"];
+            /** Reason */
+            reason?: string | null;
+            /** Expiresat */
+            expiresAt?: string | null;
+        };
+        /** ServicesView */
+        ServicesView: {
+            ai: components["schemas"]["ServiceView"];
+            storage: components["schemas"]["ServiceView"];
+            render: components["schemas"]["ServiceView"];
+            fetcher: components["schemas"]["ServiceView"];
+            webiq: components["schemas"]["ServiceView"];
+            vault: components["schemas"]["ServiceView"];
+            push: components["schemas"]["ServiceView"];
+            portfolio: components["schemas"]["ServiceView"];
+            embeddings: components["schemas"]["ServiceView"];
+            linkedin: components["schemas"]["ServiceView"];
+        };
+        /** @enum {string} */
+        Severity: "block" | "warn" | "info";
+        Sha256Hex: string;
+        /**
+         * Slot
+         * @description A post slot: local date and time in an IANA zone, plus the UTC instant (checked).
+         */
+        Slot: {
+            localDate: components["schemas"]["LocalDate"];
+            localTime: components["schemas"]["LocalTime"];
+            timezone: components["schemas"]["ZoneName"];
+            utc: components["schemas"]["Timestamp"];
+            /**
+             * Kind
+             * @default primary
+             * @enum {string}
+             */
+            kind: "primary" | "optional" | "custom";
+        } & Record<string, unknown>;
+        /**
+         * SlotTemplate
+         * @description A recurring post slot. ``optional`` slots are used only in weeks with more than 3 posts.
+         */
+        SlotTemplate: {
+            day: components["schemas"]["Weekday"];
+            time: components["schemas"]["LocalTime"];
+            /**
+             * Kind
+             * @default primary
+             * @enum {string}
+             */
+            kind: "primary" | "optional";
+            /**
+             * Windowminutes
+             * @default 120
+             */
+            windowMinutes: number;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        SnapshotOffset: "h48" | "d7" | "other";
+        /** Source */
+        Source: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            type: components["schemas"]["SourceType"];
+            /** Title */
+            title: string;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            siteUrl?: components["schemas"]["HttpsUrl"] | null;
+            /** Query */
+            query?: string | null;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** @default active */
+            status: components["schemas"]["SourceStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /** Etag */
+            etag?: string | null;
+            /** Lastmodified */
+            lastModified?: string | null;
+            lastCrawledAt?: components["schemas"]["Timestamp"] | null;
+            lastSuccessAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Consecutivefailures
+             * @default 0
+             */
+            consecutiveFailures: number;
+            lastError?: components["schemas"]["Code"] | null;
+            /**
+             * Itemsseen
+             * @default 0
+             */
+            itemsSeen: number;
+        } & Record<string, unknown>;
+        /**
+         * SourceIn
+         * @description A feed (``url`` required, ``https``) or a weekly scouting query (``query`` required).
+         */
+        SourceIn: {
+            type: components["schemas"]["SourceType"];
+            title: components["schemas"]["SourceTitle"];
+            url?: components["schemas"]["HttpsUrl"] | null;
+            siteUrl?: components["schemas"]["HttpsUrl"] | null;
+            query?: components["schemas"]["ScoutQuery"] | null;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+        };
+        /**
+         * SourceRef
+         * @description A URL a search returned. Only these (or owner-typed URLs) may be fetched.
+         */
+        SourceRef: {
+            url: components["schemas"]["HttpsUrl"];
+            /** Title */
+            title?: string | null;
+            domain: components["schemas"]["HostName"];
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "allowlist" | "open" | "owner";
+            /**
+             * Allowlisted
+             * @default false
+             */
+            allowlisted: boolean;
+            /**
+             * Fetched
+             * @default false
+             */
+            fetched: boolean;
+            /** Via */
+            via?: ("webiq" | "egress") | null;
+            citationId?: components["schemas"]["CitationId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * SourceStatus
+         * @enum {string}
+         */
+        SourceStatus: "active" | "paused" | "failing";
+        SourceTitle: string;
+        /** @enum {string} */
+        SourceType: "feed" | "scout_query";
+        /** SpendDay */
+        SpendDay: {
+            /** Date */
+            date: string;
+            /** Costusd */
+            costUsd: number;
+            /** Bytask */
+            byTask: Record<string, number>;
+            /** Bymodel */
+            byModel: Record<string, number>;
+        };
+        /**
+         * SpendView
+         * @description ``GET /api/analytics/spend``.
+         */
+        SpendView: {
+            /** Days */
+            days: components["schemas"]["SpendDay"][];
+            /** Total */
+            total: number;
+            /** Trailingmedian */
+            trailingMedian: number;
+            /** Brakethreshold */
+            brakeThreshold: number;
+            /** Fallbackrate */
+            fallbackRate: number | null;
+            /** Reviewonlyrate */
+            reviewOnlyRate: number | null;
+            /** Timezone */
+            timezone: string;
+        };
+        /**
+         * StagingState
+         * @description T-60 staging (owner: linkedin posts): rendered, uploaded, documents AVAILABLE, token ok.
+         */
+        StagingState: {
+            slotUtc: components["schemas"]["Timestamp"];
+            /** Jobid */
+            jobId?: string | null;
+            stagedAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Mediaready
+             * @default false
+             */
+            mediaReady: boolean;
+            /**
+             * Tokenok
+             * @default false
+             */
+            tokenOk: boolean;
+            approvalSha256?: components["schemas"]["Sha256Hex"] | null;
+            errorCode?: components["schemas"]["Code"] | null;
+        } & Record<string, unknown>;
+        /**
+         * StandardsCatalog
+         * @description Canonical standards ids for the standards-ID validator (refreshed weekly by gates).
+         *
+         *     CVE ids are checked by pattern only.
+         */
+        StandardsCatalog: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Families */
+            families?: Record<string, string[]>;
+            refreshedAt?: components["schemas"]["Timestamp"] | null;
+            /** Sourceversions */
+            sourceVersions?: Record<string, string>;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        StandardsFamily: "owasp_llm" | "owasp_agentic" | "mitre_atlas" | "nist_ai_rmf" | "nist_sp_800_63_4";
+        /** @enum {string} */
+        StartFrom: "research" | "interview" | "draft";
+        /** @enum {string} */
+        StepStatus: "pending" | "running" | "waiting_input" | "succeeded" | "failed";
+        /**
+         * StoryEntry
+         * @description One story: problem, actions, decisions, metrics, lessons (plan: "Story bank").
+         */
+        StoryEntry: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default proposed */
+            status: components["schemas"]["ReviewStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            origin: components["schemas"]["StoryOrigin"];
+            /** Title */
+            title: string;
+            /**
+             * Problem
+             * @default
+             */
+            problem: string;
+            /**
+             * Actions
+             * @default
+             */
+            actions: string;
+            /**
+             * Decisions
+             * @default
+             */
+            decisions: string;
+            /** Metrics */
+            metrics?: components["schemas"]["StoryMetric"][];
+            /**
+             * Lessons
+             * @default
+             */
+            lessons: string;
+            /** Pillars */
+            pillars?: components["schemas"]["PillarId-Output"][];
+            /** @default anonymized */
+            confidentiality: components["schemas"]["Confidentiality"];
+            /** Tags */
+            tags?: components["schemas"]["blogwriter__domain__base__Slug__1"][];
+            classifier?: components["schemas"]["ClassifierCheck"];
+            approvedAt?: components["schemas"]["Timestamp"] | null;
+            interviewId?: components["schemas"]["DocId"] | null;
+            /** Seedsource */
+            seedSource?: ("cv" | "portfolio") | null;
+            servedBy?: components["schemas"]["ServedByRecord"] | null;
+        } & Record<string, unknown>;
+        /**
+         * StoryIn
+         * @description A story in the owner's confirmed wording.
+         */
+        StoryIn: {
+            /** Title */
+            title: string;
+            /**
+             * Problem
+             * @default
+             */
+            problem: string;
+            /**
+             * Actions
+             * @default
+             */
+            actions: string;
+            /**
+             * Decisions
+             * @default
+             */
+            decisions: string;
+            /** Metrics */
+            metrics?: components["schemas"]["MetricIn"][];
+            /**
+             * Lessons
+             * @default
+             */
+            lessons: string;
+            /** Pillars */
+            pillars: components["schemas"]["PillarId-Input"][];
+            /** @default anonymized */
+            confidentiality: components["schemas"]["Confidentiality"];
+            /** Tags */
+            tags?: components["schemas"]["TagSlug"][];
+        };
+        /**
+         * StoryMetric
+         * @description A metric, rounded into a bucket unless it is already public.
+         */
+        StoryMetric: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /**
+             * Bucketed
+             * @default true
+             */
+            bucketed: boolean;
+            publicSource?: components["schemas"]["HttpsUrl"] | null;
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        StoryOrigin: "interview" | "seed" | "quick_capture" | "owner";
+        /**
+         * StyleGuide
+         * @description One version of the Voice & Style Guide. Exactly one version is ``active``.
+         */
+        StyleGuide: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Version */
+            version: number;
+            /** @default proposed */
+            status: components["schemas"]["GuideStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /** Body */
+            body: string;
+            rules?: components["schemas"]["GuideRules"];
+            /** Exemplars */
+            exemplars?: components["schemas"]["Exemplar"][];
+            /** Sourcesampleids */
+            sourceSampleIds?: components["schemas"]["DocId"][];
+            /** Basedonversion */
+            basedOnVersion?: number | null;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            approvedAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Editedbyowner
+             * @default false
+             */
+            editedByOwner: boolean;
+            /**
+             * Provisional
+             * @default false
+             */
+            provisional: boolean;
+        } & Record<string, unknown>;
+        /** SuggestionDecisionIn */
+        SuggestionDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "dismiss";
+        };
+        /**
+         * SuggestionStatus
+         * @description Voice digest suggestions and insight suggestions: the owner approves each one.
+         * @enum {string}
+         */
+        SuggestionStatus: "proposed" | "accepted" | "dismissed";
+        /** SystemStatus */
+        SystemStatus: {
+            /** Safemode */
+            safeMode: boolean;
+            boot: components["schemas"]["BootView"] | null;
+            runner: components["schemas"]["RunnerView"];
+            brake: components["schemas"]["BrakeView"] | null;
+            services: components["schemas"]["ServicesView"];
+            schedules: components["schemas"]["SchedulesView"];
+            expiry: components["schemas"]["ExpiryView"];
+            /** Buildsha */
+            buildSha: string;
+        };
+        TagSlug: components["schemas"]["blogwriter__domain__base__Slug__1"];
+        TermText: string;
+        Timestamp: string;
+        Title: string;
+        /** Today */
+        Today: {
+            /** Generatedat */
+            generatedAt: string;
+            week: components["schemas"]["TodayWeek"];
+            /** Items */
+            items: components["schemas"]["TodayItem"][];
+        };
+        /** TodayItem */
+        TodayItem: {
+            /** Id */
+            id: string;
+            kind: components["schemas"]["TodayKind"];
+            /** Title */
+            title: string;
+            /** Href */
+            href: string;
+            /** Dueat */
+            dueAt?: string | null;
+            /** @default normal */
+            priority: components["schemas"]["Priority"];
+            refs?: components["schemas"]["TodayRefs"];
+        };
+        /** @enum {string} */
+        TodayKind: "approve_plan" | "answer_interview" | "review_article" | "veto_window" | "approve_post" | "take_needed" | "publish_post" | "kit_confirm" | "schedule_kit" | "missed_slot" | "reply" | "snapshot" | "needs_attention" | "schedule_confirm" | "reconnect_linkedin" | "owner_input" | "restore_drill";
+        /**
+         * TodayRefs
+         * @description Ids the web needs to act on an item (only the relevant ones are set).
+         */
+        TodayRefs: {
+            /** Articleid */
+            articleId?: string | null;
+            /** Postid */
+            postId?: string | null;
+            /** Interviewid */
+            interviewId?: string | null;
+            /** Scheduleid */
+            scheduleId?: string | null;
+            /** Reminderid */
+            reminderId?: string | null;
+            /** Jobid */
+            jobId?: string | null;
+            /** Ideaid */
+            ideaId?: string | null;
+            /** Weekstart */
+            weekStart?: string | null;
+        };
+        /** TodayWeek */
+        TodayWeek: {
+            /** Weekstart */
+            weekStart: string;
+            mode: components["schemas"]["WeekMode"];
+            planStatus?: components["schemas"]["PlanStatus"] | null;
+            scorecard?: components["schemas"]["Scorecard"] | null;
+        };
+        /** TransitionIn */
+        TransitionIn: {
+            to: components["schemas"]["ArticleStatus"];
+            /** Reason */
+            reason?: string | null;
+        };
+        /** TriageInfo */
+        TriageInfo: {
+            ranAt: components["schemas"]["Timestamp"];
+            /** Reasons */
+            reasons?: string | null;
+            servedBy?: components["schemas"]["ServedByRecord"] | null;
+        } & Record<string, unknown>;
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -97,6 +8001,678 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * VersionSummary
+         * @description A list item of ``GET /api/articles/{id}/versions`` (no meta, no Markdown).
+         */
+        VersionSummary: {
+            /** Version */
+            version: number;
+            /** Source */
+            source: string;
+            /** Author */
+            author: string;
+            statusAtSave: components["schemas"]["ArticleStatus"];
+            /** Createdat */
+            createdAt: string;
+            /** Contentsha256 */
+            contentSha256: string;
+            /** Note */
+            note: string | null;
+            /** Pinned */
+            pinned: boolean;
+        };
+        /** Versioned[AnalyticsImport] */
+        Versioned_AnalyticsImport_: {
+            item: components["schemas"]["AnalyticsImport"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[ArticleSummary] */
+        Versioned_ArticleSummary_: {
+            item: components["schemas"]["ArticleSummary"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[ArticleVersion] */
+        Versioned_ArticleVersion_: {
+            item: components["schemas"]["ArticleVersion"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Article] */
+        Versioned_Article_: {
+            item: components["schemas"]["Article"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[AutonomySettings] */
+        Versioned_AutonomySettings_: {
+            item: components["schemas"]["AutonomySettings"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[BackupStatus] */
+        Versioned_BackupStatus_: {
+            item: components["schemas"]["BackupStatus"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Blocklist] */
+        Versioned_Blocklist_: {
+            item: components["schemas"]["Blocklist"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[BrandKit] */
+        Versioned_BrandKit_: {
+            item: components["schemas"]["BrandKit"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Brief] */
+        Versioned_Brief_: {
+            item: components["schemas"]["Brief"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[CadenceSettings] */
+        Versioned_CadenceSettings_: {
+            item: components["schemas"]["CadenceSettings"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[EmployerPolicy] */
+        Versioned_EmployerPolicy_: {
+            item: components["schemas"]["EmployerPolicy"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[EngagementItem] */
+        Versioned_EngagementItem_: {
+            item: components["schemas"]["EngagementItem"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[EngagementRecord] */
+        Versioned_EngagementRecord_: {
+            item: components["schemas"]["EngagementRecord"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[EvalResult] */
+        Versioned_EvalResult_: {
+            item: components["schemas"]["EvalResult"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[EvalTopic] */
+        Versioned_EvalTopic_: {
+            item: components["schemas"]["EvalTopic"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Experiment] */
+        Versioned_Experiment_: {
+            item: components["schemas"]["Experiment"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[FormatPacks] */
+        Versioned_FormatPacks_: {
+            item: components["schemas"]["FormatPacks"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Idea] */
+        Versioned_Idea_: {
+            item: components["schemas"]["Idea"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[InsightSuggestion] */
+        Versioned_InsightSuggestion_: {
+            item: components["schemas"]["InsightSuggestion"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Interview] */
+        Versioned_Interview_: {
+            item: components["schemas"]["Interview"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[JobView] */
+        Versioned_JobView_: {
+            item: components["schemas"]["JobView"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[KbSeed] */
+        Versioned_KbSeed_: {
+            item: components["schemas"]["KbSeed"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[LaneSettings] */
+        Versioned_LaneSettings_: {
+            item: components["schemas"]["LaneSettings"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[ModelPreferences] */
+        Versioned_ModelPreferences_: {
+            item: components["schemas"]["ModelPreferences"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[PillarSettings] */
+        Versioned_PillarSettings_: {
+            item: components["schemas"]["PillarSettings"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[PostSummary] */
+        Versioned_PostSummary_: {
+            item: components["schemas"]["PostSummary"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Post] */
+        Versioned_Post_: {
+            item: components["schemas"]["Post"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[PovEntry] */
+        Versioned_PovEntry_: {
+            item: components["schemas"]["PovEntry"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[ProfileChecklist] */
+        Versioned_ProfileChecklist_: {
+            item: components["schemas"]["ProfileChecklist"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[QuickSearch] */
+        Versioned_QuickSearch_: {
+            item: components["schemas"]["QuickSearch"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Reminder] */
+        Versioned_Reminder_: {
+            item: components["schemas"]["Reminder"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[ResearchRun] */
+        Versioned_ResearchRun_: {
+            item: components["schemas"]["ResearchRun"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[Source] */
+        Versioned_Source_: {
+            item: components["schemas"]["Source"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[StandardsCatalog] */
+        Versioned_StandardsCatalog_: {
+            item: components["schemas"]["StandardsCatalog"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[StoryEntry] */
+        Versioned_StoryEntry_: {
+            item: components["schemas"]["StoryEntry"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[StyleGuide] */
+        Versioned_StyleGuide_: {
+            item: components["schemas"]["StyleGuide"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[VersionSummary] */
+        Versioned_VersionSummary_: {
+            item: components["schemas"]["VersionSummary"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[VoiceDigest] */
+        Versioned_VoiceDigest_: {
+            item: components["schemas"]["VoiceDigest"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[VoiceSample] */
+        Versioned_VoiceSample_: {
+            item: components["schemas"]["VoiceSample"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[VoiceSeed] */
+        Versioned_VoiceSeed_: {
+            item: components["schemas"]["VoiceSeed"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[WatchEntry] */
+        Versioned_WatchEntry_: {
+            item: components["schemas"]["WatchEntry"];
+            /** Etag */
+            etag: string | null;
+        };
+        /** Versioned[WeekPlan] */
+        Versioned_WeekPlan_: {
+            item: components["schemas"]["WeekPlan"];
+            /** Etag */
+            etag: string | null;
+        };
+        /**
+         * VetoNotice
+         * @description The veto notice for an auto-published article (owner: planner).
+         *
+         *     Auto-publish proceeds only with a delivery receipt (push 201); otherwise the article is
+         *     held and the owner is alerted out of band.
+         */
+        VetoNotice: {
+            sentAt?: components["schemas"]["Timestamp"] | null;
+            /** Delivered */
+            delivered?: boolean | null;
+            receiptAt?: components["schemas"]["Timestamp"] | null;
+            vetoedAt?: components["schemas"]["Timestamp"] | null;
+            alertedAt?: components["schemas"]["Timestamp"] | null;
+        } & Record<string, unknown>;
+        /** VetoView */
+        VetoView: {
+            /** Publishat */
+            publishAt?: string | null;
+            /**
+             * Auto
+             * @default false
+             */
+            auto: boolean;
+            notice?: components["schemas"]["VetoNotice"] | null;
+        };
+        /**
+         * VoiceDigest
+         * @description The weekly (first quarter) then monthly digest of AI draft vs final text.
+         */
+        VoiceDigest: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            periodStart: components["schemas"]["Timestamp"];
+            periodEnd: components["schemas"]["Timestamp"];
+            /** Guideversion */
+            guideVersion?: number | null;
+            /** Comparisons */
+            comparisons?: components["schemas"]["DraftComparison"][];
+            /** Suggestions */
+            suggestions?: components["schemas"]["GuideSuggestion"][];
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+        } & Record<string, unknown>;
+        /** VoiceSample */
+        VoiceSample: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default active */
+            status: components["schemas"]["SampleStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            sourceType: components["schemas"]["VoiceSourceType"];
+            /**
+             * Ownerunassisted
+             * @default false
+             */
+            ownerUnassisted: boolean;
+            /** Title */
+            title?: string | null;
+            /** Text */
+            text: string;
+            url?: components["schemas"]["HttpsUrl"] | null;
+            postedAt?: components["schemas"]["Timestamp"] | null;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /**
+             * Wordcount
+             * @default 0
+             */
+            wordCount: number;
+            /**
+             * Weight
+             * @default 1
+             */
+            weight: number;
+            /**
+             * Aitellscore
+             * @default 0
+             */
+            aiTellScore: number;
+            /** Flags */
+            flags?: components["schemas"]["Finding"][];
+            /**
+             * Exemplareligible
+             * @default false
+             */
+            exemplarEligible: boolean;
+            contentSha256?: components["schemas"]["Sha256Hex"] | null;
+            sourceRef?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * VoiceSeed
+         * @description One v1 voice profile (``voice-profiles`` container), proposed as a voice sample.
+         */
+        VoiceSeed: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** @default proposed */
+            status: components["schemas"]["ReviewStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            /**
+             * Source
+             * @default v1_voice_profile
+             * @constant
+             */
+            source: "v1_voice_profile";
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Tone
+             * @default
+             */
+            tone: string;
+            /**
+             * Stylenotes
+             * @default
+             */
+            styleNotes: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Isdefault
+             * @default false
+             */
+            isDefault: boolean;
+            sampleId?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /**
+         * VoiceSeedApproveIn
+         * @description ``POST /api/voice/seeds/{id}/approve`` (the body may be left out): how the v1 profile's
+         *     sample text joins the corpus. ``title`` defaults to the profile's name (``null``: no title);
+         *     ``sourceType`` to ``portfolio_post`` (v1 wrote blog posts).
+         */
+        VoiceSeedApproveIn: {
+            /** @default portfolio_post */
+            sourceType: components["schemas"]["OwnerSourceType"];
+            title?: components["schemas"]["Title"] | null;
+            pillar?: components["schemas"]["blogwriter__voice__models__Pillar"] | null;
+            /**
+             * Ownerunassisted
+             * @default false
+             */
+            ownerUnassisted: boolean;
+        };
+        /** @enum {string} */
+        VoiceSourceType: "portfolio_post" | "portfolio_about" | "linkedin_post" | "linkedin_comment" | "interview_answer" | "final_post";
+        /**
+         * WatchEntry
+         * @description A niche voice outside the owner's first-degree network (daily 15-minute session).
+         */
+        WatchEntry: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            /** Name */
+            name: string;
+            profileUrl?: components["schemas"]["HttpsUrl"] | null;
+            pillar?: components["schemas"]["blogwriter__domain__base__Slug__1"] | null;
+            /** Note */
+            note?: string | null;
+            lastEngagedAt?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        } & Record<string, unknown>;
+        /**
+         * WatchIn
+         * @description A niche voice for the daily session (``PUT`` replaces every field).
+         */
+        WatchIn: {
+            /** Name */
+            name: string;
+            profileUrl?: components["schemas"]["HttpsUrl"] | null;
+            pillar?: components["schemas"]["PillarId-Input"] | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** @enum {string} */
+        WeekMode: "normal" | "light" | "away";
+        /**
+         * WeekPlan
+         * @description The plan of one week (id ``plan-<Monday>``).
+         */
+        WeekPlan: {
+            id: components["schemas"]["DocId"];
+            /**
+             * Schemaversion
+             * @default 1
+             */
+            schemaVersion: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+            weekStart: components["schemas"]["LocalDate"];
+            timezone: components["schemas"]["ZoneName"];
+            /** @default normal */
+            mode: components["schemas"]["WeekMode"];
+            /** @default generating */
+            status: components["schemas"]["PlanStatus"];
+            statusChangedAt: components["schemas"]["Timestamp"];
+            flagship?: components["schemas"]["FlagshipPlan"] | null;
+            /** Slots */
+            slots?: components["schemas"]["PlannedSlot"][];
+            /** Pillarbalance */
+            pillarBalance?: Record<string, number>;
+            /** Warnings */
+            warnings?: components["schemas"]["Finding"][];
+            /** Rationale */
+            rationale?: string | null;
+            approvedAt?: components["schemas"]["Timestamp"] | null;
+            scorecard?: components["schemas"]["Scorecard"] | null;
+            jobId?: components["schemas"]["DocId"] | null;
+        } & Record<string, unknown>;
+        /** WeekScorecard */
+        WeekScorecard: {
+            /** Weekstart */
+            weekStart: string;
+            scorecard: components["schemas"]["Scorecard"];
+        };
+        /** @enum {string} */
+        Weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+        /** WeeklyTime */
+        WeeklyTime: {
+            day: components["schemas"]["Weekday"];
+            time: components["schemas"]["LocalTime"];
+        } & Record<string, unknown>;
+        ZoneName: string;
+        _ShortSlug: string;
+        blogwriter__domain__base__Slug__1: string;
+        blogwriter__domain__base__Slug__2: string;
+        blogwriter__domain__base__Slug__3: string;
+        /**
+         * Pillar
+         * @description One content pillar (plan: "Pillars, format packs, post lanes").
+         */
+        blogwriter__domain__settings__Pillar: {
+            id: components["schemas"]["blogwriter__domain__base__Slug__1"];
+            /** Name */
+            name: string;
+            /**
+             * Topics
+             * @default
+             */
+            topics: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Audience
+             * @default
+             */
+            audience: string;
+            /** Vocabulary */
+            vocabulary?: string[];
+            /** Renames */
+            renames?: Record<string, string>;
+            /** Hashtags */
+            hashtags?: string[];
+            /** Researchdomains */
+            researchDomains?: components["schemas"]["HostName"][];
+            /**
+             * Targetshare
+             * @default 0.33
+             */
+            targetShare: number;
+        } & Record<string, unknown>;
+        /**
+         * LintIn
+         * @description A draft to lint. Not trimmed: finding spans index the text exactly as sent.
+         */
+        blogwriter__engagement__models__LintIn: {
+            /** Drafttext */
+            draftText: string;
+        };
+        /** LintOut */
+        blogwriter__engagement__models__LintOut: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+        };
+        /** LintIn */
+        blogwriter__gates__routes__LintIn: {
+            meta?: components["schemas"]["ArticleMeta"];
+            /** Markdown */
+            markdown: string;
+            /** Briefid */
+            briefId?: string | null;
+        };
+        /** LintOut */
+        blogwriter__gates__routes__LintOut: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+        };
+        /** ApproveIn */
+        blogwriter__linkedin__posts__models__ApproveIn: {
+            slot?: components["schemas"]["blogwriter__linkedin__posts__models__SlotIn"] | null;
+        };
+        /** LintIn */
+        blogwriter__linkedin__posts__models__LintIn: {
+            /** Displaytext */
+            displayText: string;
+        };
+        /**
+         * LintOut
+         * @description The live composer's lint: deterministic, nothing stored.
+         */
+        blogwriter__linkedin__posts__models__LintOut: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+            /** Payloadunits */
+            payloadUnits: number;
+            /** Foldindex */
+            foldIndex: number;
+        };
+        /**
+         * SlotIn
+         * @description A slot as the owner picks it: local date and time (UTC is computed, DST-safe).
+         */
+        blogwriter__linkedin__posts__models__SlotIn: {
+            localDate: components["schemas"]["LocalDate"];
+            localTime: components["schemas"]["LocalTime"];
+            timezone?: components["schemas"]["ZoneName"] | null;
+            /**
+             * Kind
+             * @default custom
+             * @enum {string}
+             */
+            kind: "primary" | "optional" | "custom";
+        };
+        /** ModeIn */
+        blogwriter__linkedin__transport__routes__ModeIn: {
+            mode: components["schemas"]["GoLiveMode"];
+        };
+        /** ModeIn */
+        blogwriter__planner__models__ModeIn: {
+            mode: components["schemas"]["WeekMode"];
+        };
+        /**
+         * SlotIn
+         * @description A local date and time in the cadence's zone.
+         */
+        blogwriter__planner__models__SlotIn: {
+            localDate: components["schemas"]["LocalDate"];
+            localTime: components["schemas"]["LocalTime"];
+        };
+        /**
+         * ApproveIn
+         * @description ``POST /api/articles/{id}/approve``.
+         *
+         *     ``publishAt`` defaults to the cadence's next article publish time (Monday 09:00 local).
+         *     ``correctionNote`` is required for a live article (a correction) and becomes a dated note
+         *     on the published page. ``slug`` confirms the slug: it must equal the article's; renaming a
+         *     published slug (which leaves a redirect stub at the old one) requires it.
+         */
+        blogwriter__publish__models__ApproveIn: {
+            /** Publishat */
+            publishAt?: string | null;
+            /** Correctionnote */
+            correctionNote?: string | null;
+            slug?: components["schemas"]["blogwriter__domain__base__Slug__2"] | null;
+        };
+        blogwriter__voice__models__Pillar: string;
     };
     responses: never;
     parameters: never;
@@ -142,6 +8718,401 @@ export interface operations {
             };
         };
     };
+    read_status_api_system_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    exit_safe_mode_api_system_safe_mode_exit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    send_test_alert_api_system_test_alert_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["AlertCheckView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    machines_api_meta_machines_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": Record<string, components["schemas"]["MachineView"]>;
+                };
+            };
+        };
+    };
+    list_jobs_api_jobs_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["JobStatus"] | null;
+                type?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_JobView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_job_api_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_api_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_job_api_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_schedules_api_schedules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"][];
+                };
+            };
+        };
+    };
+    confirm_schedule_api_schedules__schedule_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleConfirmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_schedule_api_schedules__schedule_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_schedule_api_schedules__schedule_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_key_api_push_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["PushKeyView"];
+                };
+            };
+        };
+    };
+    subscribe_api_push_subscriptions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_api_push_subscriptions__subscription_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    render_mermaid_api_render_mermaid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description At most 20480 bytes (413 too_large). */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Source */
+                    source: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["MermaidOut"];
+                };
+            };
+        };
+    };
     stream_events_api_events_get: {
         parameters: {
             query?: {
@@ -161,6 +9132,5590 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_media_api_media_post: {
+        parameters: {
+            query?: {
+                role?: "upload" | "headshot" | "name_mark" | "image";
+                filename?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The image itself as the raw body (no multipart), with its own Content-Type. At most BW_STORAGE_MAX_UPLOAD_BYTES (413 too_large); it is re-encoded, so no metadata survives. */
+        requestBody: {
+            content: {
+                "image/jpeg": unknown;
+                "image/png": unknown;
+                "image/webp": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["MediaRef"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_media_api_media__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The media name with its folders, slashes kept (uploads/2026-11/<sha256>.png, posts/<postId>/<sha256>.pdf, articles/..., brand/...): GET /api/media/uploads/2026-11/x.png. Each segment is URL-encoded on its own; encoded slashes (%2F) resolve too. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The stored bytes, sandboxed (CSP sandbox, nosniff) with a private immutable cache. Any other stored type is served as an application/octet-stream attachment. */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/octet-stream": unknown;
+                    "application/pdf": unknown;
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/svg+xml": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pillars_api_kb_pillars_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PillarSettings_"];
+                };
+            };
+        };
+    };
+    put_pillars_api_kb_pillars_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PillarsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PillarSettings_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_formats_api_kb_formats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_FormatPacks_"];
+                };
+            };
+        };
+    };
+    put_formats_api_kb_formats_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormatPacksIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_FormatPacks_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lanes_api_kb_lanes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_LaneSettings_"];
+                };
+            };
+        };
+    };
+    put_lanes_api_kb_lanes_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LanesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_LaneSettings_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_brand_api_kb_brand_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_BrandKit_"];
+                };
+            };
+        };
+    };
+    put_brand_api_kb_brand_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_BrandKit_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_blocklist_api_kb_blocklist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Blocklist_"];
+                };
+            };
+        };
+    };
+    put_blocklist_api_kb_blocklist_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlocklistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Blocklist_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_policy_api_kb_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EmployerPolicy_"];
+                };
+            };
+        };
+    };
+    put_policy_api_kb_policy_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EmployerPolicy_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cadence_api_kb_cadence_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_CadenceSettings_"];
+                };
+            };
+        };
+    };
+    put_cadence_api_kb_cadence_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CadenceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_CadenceSettings_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_models_api_kb_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ModelsView"];
+                };
+            };
+        };
+    };
+    put_models_api_kb_models_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelPreferencesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ModelPreferences_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_autonomy_api_kb_autonomy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["AutonomyView"];
+                };
+            };
+        };
+    };
+    put_autonomy_api_kb_autonomy_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutonomyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["AutonomyView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_autonomy_api_kb_autonomy_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["AutonomyView"];
+                };
+            };
+        };
+    };
+    resume_autonomy_api_kb_autonomy_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["AutonomyView"];
+                };
+            };
+        };
+    };
+    get_inputs_api_kb_inputs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["OwnerInputs"];
+                };
+            };
+        };
+    };
+    list_seeds_api_kb_seeds_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReviewStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_KbSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_seed_api_kb_seeds__seed_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_KbSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_seed_api_kb_seeds__seed_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["KbSeedApproveIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_KbSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_seed_api_kb_seeds__seed_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_KbSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_seed_api_kb_seeds__seed_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_KbSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_intake_api_stories_intake_redact_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedactIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["RedactionProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_intake_api_stories_intake_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["CheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_stories_api_stories_seed_post: {
+        parameters: {
+            query?: {
+                source?: components["schemas"]["SeedSource"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Text */
+                    text: string;
+                    /**
+                     * Source
+                     * @enum {string}
+                     */
+                    source: "cv" | "portfolio";
+                };
+                "text/plain": string;
+                "text/markdown": string;
+                "application/x-tex": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    classify_stories_api_stories_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    list_stories_api_stories_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReviewStatus"] | null;
+                pillar?: string | null;
+                usable?: boolean | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_StoryEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_story_api_stories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StoryEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_story_api_stories__story_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                story_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StoryEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_story_api_stories__story_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                story_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StoryEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_story_api_stories__story_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                story_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_story_api_stories__story_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                story_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StoryEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_povs_api_povs_get: {
+        parameters: {
+            query?: {
+                pillar?: string | null;
+                status?: components["schemas"]["ReviewStatus"] | null;
+                ideaId?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_PovEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_pov_api_povs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PovIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PovEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pov_api_povs__pov_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pov_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PovEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_pov_api_povs__pov_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                pov_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PovIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PovEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_pov_api_povs__pov_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                pov_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_pov_api_povs__pov_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                pov_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_PovEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_samples_api_voice_samples_get: {
+        parameters: {
+            query?: {
+                sourceType?: components["schemas"]["VoiceSourceType"] | null;
+                status?: components["schemas"]["SampleStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_VoiceSample_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_sample_api_voice_samples_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSample_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sample_api_voice_samples__sample_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSample_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_sample_api_voice_samples__sample_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSample_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_sample_api_voice_samples__sample_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_sample_status_api_voice_samples__sample_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleStatusIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSample_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_guide_view_api_voice_guide_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["GuideView"];
+                };
+            };
+        };
+    };
+    build_guide_api_voice_guide_build_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BuildGuideIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_guide_api_voice_guide__guide_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guide_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StyleGuide_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_guide_version_api_voice_guide__guide_id__versions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guide_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuideEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StyleGuide_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_guide_api_voice_guide__guide_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                guide_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StyleGuide_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_guide_api_voice_guide__guide_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                guide_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StyleGuide_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_digests_api_voice_digests_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_VoiceDigest_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_digest_api_voice_digests_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    get_digest_api_voice_digests__digest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceDigest_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_suggestion_api_voice_digests__digest_id__suggestions__suggestion_id__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                digest_id: string;
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceDigest_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_seeds_api_voice_seeds_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReviewStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_VoiceSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_seed_api_voice_seeds__seed_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_seed_api_voice_seeds__seed_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VoiceSeedApproveIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_seed_api_voice_seeds__seed_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_seed_api_voice_seeds__seed_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                seed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_VoiceSeed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_research_runs_get: {
+        parameters: {
+            query?: {
+                articleId?: string | null;
+                status?: components["schemas"]["ResearchStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_ResearchRun_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_run_api_research_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["RunAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_research_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ResearchRun_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_api_research_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ResearchRun_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_brief_api_research_briefs__brief_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brief_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Brief_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_brief_api_research_briefs__brief_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                brief_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BriefEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Brief_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_quick_api_research_quick_get: {
+        parameters: {
+            query?: {
+                articleId?: string | null;
+                postId?: string | null;
+                ideaId?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_QuickSearch_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_quick_api_research_quick_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_QuickSearch_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quick_api_research_quick__quick_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quick_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_QuickSearch_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sources_api_sources_get: {
+        parameters: {
+            query?: {
+                type?: components["schemas"]["SourceType"] | null;
+                status?: components["schemas"]["SourceStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_source_api_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_sources_api_sources_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoverIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["DiscoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crawl_now_api_sources_crawl_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    get_source_api_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_source_api_sources__source_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_source_api_sources__source_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_source_api_sources__source_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_source_api_sources__source_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Source_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ideas_api_ideas_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["IdeaStatus"][] | null;
+                pillar?: string | null;
+                lane?: components["schemas"]["IdeaLane"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_idea_api_ideas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdeaIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repurpose_post_api_ideas_repurpose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepurposeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_idea_api_ideas__idea_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                idea_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_idea_api_ideas__idea_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                idea_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdeaEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_idea_api_ideas__idea_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                idea_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdeaTransitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Idea_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_articles_api_articles_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ArticleStatus"][] | null;
+                pillar?: string | null;
+                purpose?: "flagship" | "eval" | "all";
+                ideaId?: string | null;
+                weekPlanId?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_ArticleSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_articles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_article_api_articles__article_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_article_api_articles__article_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ArticleSaved"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_transition_api_articles__article_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_versions_api_articles__article_id__versions_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_VersionSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_version_api_articles__article_id__versions__version__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ArticleVersion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_api_articles__article_id__versions__version__restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_articles__article_id__preview_get: {
+        parameters: {
+            query?: {
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_markdown_api_articles__article_id__export_md_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The canonical document: frontmatter and body, as a file */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clearance_api_articles__article_id__clearance_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ClearanceIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_gates_route_api_articles__article_id__gates_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gates_api_articles__article_id__gates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["GatesView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_gate_api_articles__article_id__gates__gate__override_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lint_route_api_gates_lint_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__gates__routes__LintIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["blogwriter__gates__routes__LintOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_standards_api_gates_standards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_StandardsCatalog_"];
+                };
+            };
+        };
+    };
+    refresh_standards_api_gates_standards_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    get_connection_api_linkedin_connection_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ConnectionView"];
+                };
+            };
+        };
+    };
+    post_oauth_start_api_linkedin_oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["OAuthStartOut"];
+                };
+            };
+        };
+    };
+    get_oauth_callback_api_linkedin_oauth_callback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Always redirects to /settings/integrations */
+            303: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+        };
+    };
+    post_disconnect_api_linkedin_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ConnectionView"];
+                };
+            };
+        };
+    };
+    post_introspect_api_linkedin_introspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ConnectionView"];
+                };
+            };
+        };
+    };
+    get_go_live_api_posts__post_id__go_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["GoLiveView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_publish_api_posts__post_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_mode_api_posts__post_id__mode_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__linkedin__transport__routes__ModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_kit_api_posts__post_id__kit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["KitView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_kit_api_posts__post_id__kit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_resolve_api_posts__post_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_live_post_api_posts__post_id__linkedin_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_delete_live_post_api_posts__post_id__linkedin_delete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveDeleteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_backups_api_backups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["BackupsView"];
+                };
+            };
+        };
+    };
+    run_backup_api_backups_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    record_restore_drill_api_backups_restore_drill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_BackupStatus_"];
+                };
+            };
+        };
+    };
+    download_dump_api_backups__date___container__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+                container: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_pipeline_api_articles__article_id__pipeline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PipelineStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ArticleJobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_cancel_api_articles__article_id__pipeline_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_revise_api_articles__article_id__revise_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ArticleJobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_selection_api_articles__article_id__selection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["SelectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_interviews_api_interviews_get: {
+        parameters: {
+            query?: {
+                articleId?: string | null;
+                postId?: string | null;
+                status?: components["schemas"]["InterviewStatus"][] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_Interview_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_interview_api_interviews__interview_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Interview_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_answers_api_interviews__interview_id__answers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswersIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Interview_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_skip_api_interviews__interview_id__skip_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Interview_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_article_api_articles__article_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__publish__models__ApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_now_api_articles__article_id__publish_now_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishNowIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unpublish_api_articles__article_id__unpublish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    staging_preview_api_articles__article_id__staging_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_publish_status_api_articles__article_id__publish_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["PublishStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_posts_api_posts_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PostStatus"][] | null;
+                lane?: ("derivative" | "native" | "quick_take" | "repurpose")[] | null;
+                pillar?: string | null;
+                articleId?: string | null;
+                weekPlanId?: string | null;
+                from?: string | null;
+                to?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_PostSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_post_api_posts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["PostCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_post_api_posts__post_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_post_api_posts__post_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    derive_posts_api_articles__article_id__posts_derive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lint_text_api_posts__post_id__lint_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__linkedin__posts__models__LintIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["blogwriter__linkedin__posts__models__LintOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_post_route_api_posts__post_id__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_carousel_api_posts__post_id__carousel_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CarouselIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    carousel_preview_api_posts__post_id__carousel_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The slides as the PDF is printed from them (HTML). */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    render_post_api_posts__post_id__render_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_api_posts__post_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_posts__post_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__linkedin__posts__models__ApproveIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unapprove_api_posts__post_id__unapprove_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_api_posts__post_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_today_api_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Today"];
+                };
+            };
+        };
+    };
+    list_weeks_api_plan_weeks_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_WeekPlan_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_week_api_plan_weeks__week_start__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WeekPlan_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_week_api_plan_weeks__week_start__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WeekPlan_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_week_api_plan_weeks__week_start__generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_mode_api_plan_weeks__week_start__mode_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path: {
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__planner__models__ModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WeekPlan_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_week_api_plan_weeks__week_start__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ApproveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scorecards_api_plan_scorecard_get: {
+        parameters: {
+            query?: {
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["WeekScorecard"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reslot_api_posts__post_id__reslot_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReslotIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reminders_api_reminders_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReminderStatus"];
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_Reminder_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_api_reminders__reminder_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Reminder_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_veto_api_articles__article_id__veto_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["VetoView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_veto_api_articles__article_id__veto_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_items_api_engagement_items_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["EngagementStatus"];
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_EngagementItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_item_api_engagement_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EngagementItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_angles_api_engagement_items__item_id__angles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EngagementItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_lint_api_engagement_items__item_id__lint_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["blogwriter__engagement__models__LintIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["blogwriter__engagement__models__LintOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_finalize_api_engagement_items__item_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EngagementRecord_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_dismiss_api_engagement_items__item_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_extract_api_engagement_extract_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The screenshot itself as the raw body (no multipart), with its own Content-Type, at most 5242880 bytes (413 too_large). It is read once and never stored. */
+        requestBody: {
+            content: {
+                "image/jpeg": unknown;
+                "image/png": unknown;
+                "image/webp": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ExtractOut"];
+                };
+            };
+        };
+    };
+    list_records_api_engagement_records_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_EngagementRecord_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_watchlist_api_engagement_watchlist_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_WatchEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_watch_entry_api_engagement_watchlist_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WatchEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_watch_entry_api_engagement_watchlist__entry_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WatchEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_watch_entry_api_engagement_watchlist__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_engaged_api_engagement_watchlist__entry_id__engaged_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_WatchEntry_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checklist_api_engagement_profile_checklist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ProfileChecklist_"];
+                };
+            };
+        };
+    };
+    put_checklist_api_engagement_profile_checklist_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "If-None-Match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_ProfileChecklist_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_snapshot_api_posts__post_id__snapshots_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetricsSnapshotIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Post_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_imports_api_analytics_imports_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_AnalyticsImport_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_import_api_analytics_imports_post: {
+        parameters: {
+            query?: {
+                filename?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The export file itself as the raw body (no multipart): .xlsx or .csv, with its own Content-Type (application/octet-stream when the browser has none), at most BW_ANALYTICS_IMPORT_MAX_BYTES (413 too_large). */
+        requestBody: {
+            content: {
+                "application/csv": unknown;
+                "application/octet-stream": unknown;
+                "application/vnd.ms-excel": unknown;
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                "text/comma-separated-values": unknown;
+                "text/csv": unknown;
+                "text/plain": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_AnalyticsImport_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_overview_api_analytics_overview_get: {
+        parameters: {
+            query?: {
+                weeks?: number;
+                dimension?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["InsightsOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_spend_api_analytics_spend_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["SpendView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_experiments_api_analytics_experiments_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ExperimentStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_experiment_api_analytics_experiments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_experiment_api_analytics_experiments__experiment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_experiment_api_analytics_experiments__experiment_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_experiment_api_analytics_experiments__experiment_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentTransitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_suggestions_api_analytics_suggestions_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["SuggestionStatus"] | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_InsightSuggestion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_suggestions_api_analytics_suggestions_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    decide_suggestion_api_analytics_suggestions__suggestion_id__decide_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InsightDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_InsightSuggestion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_topics_api_evals_topics_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_EvalTopic_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_topic_api_evals_topics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalTopicIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EvalTopic_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_topic_api_evals_topics__topic_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                topic_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalTopicUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EvalTopic_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_topic_api_evals_topics__topic_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                topic_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: Record<string, unknown>;
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_eval_run_api_evals_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    list_results_api_evals_results_get: {
+        parameters: {
+            query?: {
+                runId?: string | null;
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Page_EvalResult_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    label_result_api_evals_results__result_id__label_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalLabelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_EvalResult_"];
                 };
             };
             /** @description Validation Error */

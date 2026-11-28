@@ -1,11 +1,11 @@
-# Key Vault in RBAC mode with purge protection. Terraform never creates secret
-# values; see local.key_vault_secrets for the expected names and README for the
-# owner commands.
+# Key Vault in RBAC mode with purge protection. New and managed here.
+# Terraform never creates secret values; see local.key_vault_secrets for the
+# expected names and the README for the owner commands.
 
 resource "azurerm_key_vault" "this" {
   name                = local.names.key_vault
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.this.name
   tenant_id           = local.tenant_id
   sku_name            = "standard"
 

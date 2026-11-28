@@ -142,10 +142,11 @@ class MemoryStore:
         order_by: OrderBy | None = None,
         limit: int | None = None,
         partition_key: str | None = None,
+        fields: Sequence[str] | None = None,
     ) -> list[Doc]:
         await asyncio.sleep(0)
         bucket = self._bucket(container)
-        spec = find_spec(container, filters, order_by, limit, partition_key)
+        spec = find_spec(container, filters, order_by, limit, partition_key, fields)
         docs = (self._doc(item_id, pk, entry) for (pk, item_id), entry in bucket.items())
         return apply(spec, docs)
 

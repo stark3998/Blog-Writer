@@ -1,9 +1,16 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
+import { allFirstInstallHandlers } from '@/test/first-install';
+import { server } from '@/test/msw';
 import { findPageHeading, renderApp } from '@/test/render-app';
 
 import { SIDEBAR_STORAGE_KEY } from './sidebar-state';
+
+// Every area answers like a first install, so pages load their data while the tests move around.
+beforeEach(() => {
+  server.use(...allFirstInstallHandlers());
+});
 
 describe('desktop navigation', () => {
   it('moves between areas from the sidebar and focuses the new page heading', async () => {
@@ -95,7 +102,8 @@ describe('section tabs', () => {
     });
     expect(router.state.historyAction).toBe('REPLACE');
     expect(screen.getByRole('tab', { name: 'Slots' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { level: 2, name: 'Post slots.' })).toBeInTheDocument();
+    // The cadence form shows once `GET /api/kb/cadence` answers.
+    expect(await screen.findByRole('heading', { level: 2, name: 'Post slots' })).toBeInTheDocument();
 
     // Back leaves the page rather than stepping back through its tabs. (The memory router never
     // touches window.history, so its length cannot show this.)

@@ -10,7 +10,10 @@ drafts never hit the SDK's non-streaming limits) with:
 * ``thinking={"type": "adaptive", "display": "summarized"}`` (Opus 5.5 always thinks; the
   summaries stream as :class:`~blogwriter.ai.types.ThinkingSummary`);
 * ``output_config={"effort": ..., "format": {"type": "json_schema", "schema": ...}}`` with the
-  schema compiled by :mod:`blogwriter.ai.schema`;
+  schema compiled by :mod:`blogwriter.ai.schema`. When Anthropic refuses a schema because its
+  compiled grammar is too large (HTTP 400 before the stream starts), the call is re-sent once
+  with the schema in the system prompt instead ("prompted JSON"); the router still validates the
+  reply with Pydantic and allows one repair turn. Such schemas are remembered per process;
 * a 1 hour prompt-cache breakpoint on the system prompt (the stable prefix; tools come before it
   in the cache order, so they are covered too) and on any message part marked
   ``cache_breakpoint``;
@@ -20,12 +23,16 @@ drafts never hit the SDK's non-streaming limits) with:
 ``stop_reason == "refusal"`` becomes a :class:`~blogwriter.ai.types.Refusal` carrying the stop
 details' category and explanation. Claude never receives ``private`` data, never runs in the
 background here, and is not offered ``web_search``.
+
+Image parts (:class:`~blogwriter.ai.types.ImagePart`) go out as ``image`` blocks with a base64
+source, in their place among the turn's text blocks.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from dataclasses import replace
 from typing import Final, Literal, cast
 
 import httpx2
@@ -39,8 +46,10 @@ from anthropic import (
 )
 from anthropic.types import (
     AssistantMessageParam,
+    Base64ImageSourceParam,
     CacheControlEphemeralParam,
     ContentBlockParam,
+    ImageBlockParam,
     MessageParam,
     OutputConfigParam,
     TextBlockParam,
@@ -72,6 +81,7 @@ from blogwriter.ai.types import (
     Done,
     FinishReason,
     FunctionTool,
+    ImagePart,
     Message,
     ModelSpec,
     NativeItems,
@@ -184,6 +194,14 @@ def _blocks(message: Message) -> list[ContentBlockParam]:
             if part.cache_breakpoint:
                 text["cache_control"] = _cache_1h()
             blocks.append(text)
+        elif isinstance(part, ImagePart):
+            source: Base64ImageSourceParam = {
+                "type": "base64",
+                "media_type": part.media_type,
+                "data": part.base64,
+            }
+            image: ImageBlockParam = {"type": "image", "source": source}
+            blocks.append(image)
         elif isinstance(part, ToolCallPart):
             use: ToolUseBlockParam = {
                 "type": "tool_use",
@@ -295,6 +313,43 @@ def _completion(message: AnthropicMessage, deployment: str) -> Completion:
     )
 
 
+class _GrammarTooLargeError(Exception):
+    """Anthropic refused an output schema as too large for constrained decoding."""
+
+    def __init__(self, mapped: ProviderError) -> None:
+        super().__init__(str(mapped))
+        self.mapped = mapped
+
+
+def _grammar_too_large(exc: AnthropicError | httpx2.TransportError) -> bool:
+    """A 400 whose message says the compiled (schema) grammar is too large."""
+    if not isinstance(exc, APIStatusError) or exc.status_code != 400:
+        return False
+    return "grammar is too large" in str(exc).lower()
+
+
+def _schema_key(request: Request) -> str | None:
+    schema = request.output_schema
+    return None if schema is None else f"{schema.__module__}.{schema.__qualname__}"
+
+
+def _prompted_schema_instruction(schema: Mapping[str, object]) -> str:
+    return (
+        "Reply with exactly one JSON object and nothing else: no prose before or after it and "
+        "no Markdown code fences. The object must validate against this JSON Schema:\n"
+        + json.dumps(schema, ensure_ascii=False, separators=(",", ":"))
+    )
+
+
+def _json_object_text(text: str) -> str:
+    """The JSON object in a prompted-JSON reply: code fences and surrounding prose dropped."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        return text
+    return text[start : end + 1]
+
+
 def _map_error(
     exc: AnthropicError | httpx2.TransportError | ValueError, *, started: bool
 ) -> ProviderError:
@@ -338,6 +393,8 @@ class AnthropicFoundryProvider:
 
     def __init__(self, client: AsyncAnthropicFoundry) -> None:
         self._client = client
+        self._prompted_schemas: set[str] = set()
+        """Output schemas Anthropic refused as too large for constrained decoding."""
 
     @property
     def name(self) -> ProviderName:
@@ -362,6 +419,22 @@ class AnthropicFoundryProvider:
     async def stream(self, spec: ModelSpec, request: Request) -> AsyncIterator[StreamEvent]:
         """One streaming call. Ends with :class:`Done` or raises."""
         self._check(spec, request)
+        key = _schema_key(request)
+        prompted = key is not None and key in self._prompted_schemas
+        while True:
+            try:
+                async for event in self._stream_once(spec, request, prompted=prompted):
+                    yield event
+                return
+            except _GrammarTooLargeError as exc:
+                if prompted or key is None:
+                    raise exc.mapped from None
+                self._prompted_schemas.add(key)
+                prompted = True
+
+    async def _stream_once(
+        self, spec: ModelSpec, request: Request, *, prompted: bool
+    ) -> AsyncIterator[StreamEvent]:
         system: list[TextBlockParam] = []
         if request.system.strip():
             system.append({"type": "text", "text": request.system, "cache_control": _cache_1h()})
@@ -373,7 +446,10 @@ class AnthropicFoundryProvider:
             output_config["effort"] = _EFFORTS[spec.effort]
         if request.output_schema is not None:
             schema = compile_schema(_PROVIDER, request.output_schema).json_schema()
-            output_config["format"] = {"type": "json_schema", "schema": schema}
+            if prompted:
+                system.append({"type": "text", "text": _prompted_schema_instruction(schema)})
+            else:
+                output_config["format"] = {"type": "json_schema", "schema": schema}
         thinking: ThinkingConfigAdaptiveParam = {
             "type": "adaptive",
             "display": "summarized" if spec.thinking_summary else "omitted",
@@ -406,7 +482,15 @@ class AnthropicFoundryProvider:
                     elif event.type == "message_stop":
                         final = event.message
         except (AnthropicError, httpx2.TransportError) as exc:
-            raise _map_error(exc, started=started) from exc
+            mapped = _map_error(exc, started=started)
+            if (
+                not started
+                and not prompted
+                and request.output_schema is not None
+                and _grammar_too_large(exc)
+            ):
+                raise _GrammarTooLargeError(mapped) from exc
+            raise mapped from exc
         except ValueError as exc:
             # The SDK's partial-JSON errors quote model output: do not chain them.
             raise _map_error(exc, started=started) from None
@@ -415,6 +499,8 @@ class AnthropicFoundryProvider:
                 "anthropic stream ended before message_stop", provider=_PROVIDER, retryable=True
             )
         completion = _completion(final, spec.deployment)
+        if prompted and completion.text:
+            completion = replace(completion, text=_json_object_text(completion.text))
         if completion.refusal is not None:
             yield completion.refusal
         yield UsageEvent(completion.usage)

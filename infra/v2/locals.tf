@@ -1,11 +1,11 @@
-data "azurerm_client_config" "current" {}
-
 locals {
   tenant_id       = data.azurerm_client_config.current.tenant_id
   subscription_id = data.azurerm_client_config.current.subscription_id
 
   # ---------------------------------------------------------------------------
   # Tags: lab-required tags (exact names, including the space) plus app tags.
+  # The resource group is shared and not managed here; every taggable resource
+  # this root creates gets these.
   # ---------------------------------------------------------------------------
   required_tags = {
     "Purpose"     = var.tag_purpose
@@ -17,29 +17,28 @@ locals {
     app        = "blog-writer"
     generation = "v2"
     managed_by = "terraform"
+    tf_root    = "infra/v2"
   }, local.required_tags)
 
   # ---------------------------------------------------------------------------
-  # Names. The suffix is a stable hash (like Bicep's uniqueString), so nothing
-  # subscription-specific is committed and re-plans are deterministic.
+  # Names of the resources created here. The suffix is a stable hash (like
+  # Bicep's uniqueString), so nothing subscription-specific is committed and
+  # re-plans are deterministic.
   # ---------------------------------------------------------------------------
-  suffix         = coalesce(var.name_suffix, substr(sha256("${local.subscription_id}/${var.resource_group_name}"), 0, 6))
+  suffix         = coalesce(var.name_suffix, substr(sha256("${local.subscription_id}/${var.resource_group_name}/v2-platform"), 0, 6))
   compact_prefix = replace(var.name_prefix, "-", "")
 
   names = {
-    log_analytics   = "log-${var.name_prefix}"
-    environment     = "cae-${var.name_prefix}"
-    container_app   = "ca-${var.name_prefix}"
     key_vault       = "kv-${var.name_prefix}-${local.suffix}"    # <= 24 chars
     storage_account = "st${local.compact_prefix}${local.suffix}" # <= 24 chars, no hyphens
-    cosmos_account  = "cosmos-${var.name_prefix}-${local.suffix}"
-    registry        = "cr${local.compact_prefix}${local.suffix}"
-    foundry         = "ais-${var.name_prefix}-${local.suffix}" # also the custom subdomain
+    foundry         = "ais-${var.name_prefix}-${local.suffix}"   # also the custom subdomain
     foundry_images  = "ais-${var.name_prefix}-img-${local.suffix}"
     foundry_project = var.name_prefix
     webiq           = "webiq-${var.name_prefix}-${local.suffix}"
     action_group    = "ag-${var.name_prefix}"
     budget          = "budget-${var.name_prefix}"
+    alert_prefix    = "alert-${var.name_prefix}"
+    acr_purge_task  = "purge-${var.name_prefix}"
   }
 
   # User-assigned identities. easyauth is only used as a federated credential on
@@ -51,6 +50,26 @@ locals {
     ci_deploy       = "id-${var.name_prefix}-ci-deploy"
     ci_infra        = "id-${var.name_prefix}-ci-infra"
   }
+
+  # ---------------------------------------------------------------------------
+  # Existing resources (data sources in main.tf).
+  # ---------------------------------------------------------------------------
+  registry_id            = data.azapi_resource.registry.id
+  acr_login_server       = data.azapi_resource.registry.output.login_server
+  log_analytics_id       = data.azapi_resource.log_analytics.id
+  log_analytics_location = data.azapi_resource.log_analytics.location
+  cosmos_account_id      = data.azapi_resource.cosmos_account.id
+  cosmos_endpoint        = data.azapi_resource.cosmos_account.output.endpoint
+
+  # The only Cosmos container the portfolio build may read (published-blogs v2
+  # contract: id == slug, partition key /id).
+  portfolio_cosmos_container = "published-blogs"
+
+  # Cosmos DB data-plane RBAC scopes use the dbs/colls form, not the ARM
+  # sqlDatabases/containers IDs. Built from the data sources' names so the plan
+  # fails early when the database or container is missing.
+  cosmos_database_scope  = "${local.cosmos_account_id}/dbs/${data.azapi_resource.cosmos_database.name}"
+  cosmos_portfolio_scope = "${local.cosmos_database_scope}/colls/${data.azapi_resource.cosmos_portfolio_container.name}"
 
   # ---------------------------------------------------------------------------
   # Built-in Azure RBAC role definition IDs (global constants, verified with
@@ -85,14 +104,15 @@ locals {
   # each value once (az keyvault secret set); the container app reads them
   # through versionless Key Vault references, so values never enter Terraform,
   # CI or state. env = null means "not exposed as an environment variable".
+  # Keep the names in sync with the validation of var.key_vault_secrets_set.
   # ---------------------------------------------------------------------------
   key_vault_secrets = {
-    "app-encryption-key"       = { env = "APP_ENCRYPTION_KEY", purpose = "AES-GCM key for stored tokens (v1.<kid>.<nonce>.<ct>) and the __Host-bw cookie HMAC derivation" }
-    "easyauth-client-secret"   = { env = null, purpose = "Entra client secret, only when easyauth_credential = client_secret" }
-    "linkedin-client-secret"   = { env = "LINKEDIN_CLIENT_SECRET", purpose = "LinkedIn developer app client secret" }
-    "portfolio-dispatch-token" = { env = "PORTFOLIO_DISPATCH_TOKEN", purpose = "Fine-grained GitHub PAT, actions:write on the portfolio repo only" }
-    "vapid-private-key"        = { env = "VAPID_PRIVATE_KEY", purpose = "Web Push VAPID private key" }
-    "vapid-public-key"         = { env = "VAPID_PUBLIC_KEY", purpose = "Web Push VAPID public key (kept next to its private key)" }
+    "cookie-key"               = { env = "BW_COOKIE_KEY", purpose = "HMAC key of the __Host-bw cookie (at least 32 bytes). Required: the app refuses to start in prod without it." }
+    "vault-keys"               = { env = "BW_VAULT_KEYS", purpose = "Token vault key ring kid:base64key[,kid:base64key] (AES-256-GCM, 32-byte keys)" }
+    "vapid-private-key"        = { env = "BW_NOTIFY_VAPID_PRIVATE_KEY", purpose = "Web Push VAPID private key (P-256). BW_NOTIFY_VAPID_SUBJECT is set only when this is wired." }
+    "linkedin-client-secret"   = { env = "BW_LINKEDIN_CLIENT_SECRET", purpose = "LinkedIn developer app client secret" }
+    "portfolio-dispatch-token" = { env = "BW_PUBLISH_PORTFOLIO_TOKEN", purpose = "Fine-grained GitHub PAT: Actions read/write on the portfolio repository only" }
+    "easyauth-client-secret"   = { env = null, purpose = "Entra client secret, only when easyauth_credential = client_secret (read by Easy Auth, not by the app)" }
   }
 
   # Secrets wired into the app (versionless references, read by the app identity).
@@ -106,15 +126,17 @@ locals {
 
   # ---------------------------------------------------------------------------
   # Foundry model deployments. Versions verified with
-  # `az cognitiveservices model list --location eastus` on 2026-11-25.
-  # Deployment name == model name; the app reads names from MODEL_DEPLOYMENT_*.
+  # `az cognitiveservices model list --location eastus` (2026-11-25, re-checked
+  # 2026-11-26). Deployment name == model name; the app reads the names from
+  # BW_AI_DEPLOYMENT_*. gpt-5.6-sol has no BW_AI_DEPLOYMENT_* setting: route it
+  # with BW_AI_MODEL_OVERRIDES / BW_AI_ROUTE_OVERRIDES if it is ever needed.
   # ---------------------------------------------------------------------------
   foundry_model_catalog = {
-    "gpt-6.2-sol"            = { version = "2026-11-17", capacity = 500, env = "MODEL_DEPLOYMENT_SOL", enabled = true }
-    "gpt-6.2-astra"          = { version = "2026-11-17", capacity = 300, env = "MODEL_DEPLOYMENT_ASTRA", enabled = true }
-    "gpt-6-luna"             = { version = "2026-09-22", capacity = 200, env = "MODEL_DEPLOYMENT_LUNA", enabled = true }
-    "text-embedding-3-large" = { version = "1", capacity = 150, env = "MODEL_DEPLOYMENT_EMBEDDING", enabled = true }
-    "gpt-5.6-sol"            = { version = "2026-07-09", capacity = 100, env = "MODEL_DEPLOYMENT_SOL_FALLBACK", enabled = var.enable_gpt_5_6_sol }
+    "gpt-6.2-sol"            = { version = "2026-11-17", capacity = 500, env = "BW_AI_DEPLOYMENT_SOL", enabled = true }
+    "gpt-6.2-astra"          = { version = "2026-11-17", capacity = 300, env = "BW_AI_DEPLOYMENT_ASTRA", enabled = true }
+    "gpt-6-luna"             = { version = "2026-09-22", capacity = 200, env = "BW_AI_DEPLOYMENT_LUNA", enabled = true }
+    "text-embedding-3-large" = { version = "1", capacity = 150, env = "BW_AI_DEPLOYMENT_EMBEDDING", enabled = true }
+    "gpt-5.6-sol"            = { version = "2026-07-09", capacity = 100, env = null, enabled = var.enable_gpt_5_6_sol }
   }
 
   foundry_deployments = {
@@ -129,22 +151,52 @@ locals {
 
   # Data-plane endpoints of the Foundry account (custom subdomain == name).
   foundry_subdomain          = azurerm_cognitive_account.foundry.custom_subdomain_name
-  foundry_openai_endpoint    = "https://${local.foundry_subdomain}.openai.azure.com/"
   foundry_openai_v1_base_url = "https://${local.foundry_subdomain}.openai.azure.com/openai/v1/"
   foundry_anthropic_base_url = "https://${local.foundry_subdomain}.services.ai.azure.com/anthropic/"
 
   image_openai_v1_base_url = var.enable_image_generation ? "https://${one(azurerm_cognitive_account.images[*].custom_subdomain_name)}.openai.azure.com/openai/v1/" : null
 
   # ---------------------------------------------------------------------------
-  # Easy Auth
+  # Web IQ endpoint. The 2026-06-01-preview response shape is not documented:
+  # var.webiq_endpoint wins, otherwise the first https URL found under a likely
+  # property name, otherwise null (BW_RESEARCH_WEBIQ_ENDPOINT is then not set).
   # ---------------------------------------------------------------------------
+  webiq_output = one(azapi_resource.webiq[*].output)
+  webiq_exported_endpoint = try(
+    tostring(local.webiq_output.properties.endpoint),
+    tostring(local.webiq_output.properties.endpointUri),
+    tostring(local.webiq_output.properties.endpointUrl),
+    tostring(local.webiq_output.properties.endpoints.grounding),
+    null,
+  )
+  webiq_endpoint_candidate = var.enable_webiq ? try(coalesce(var.webiq_endpoint, local.webiq_exported_endpoint), null) : null
+  webiq_endpoint           = can(regex("^https://", local.webiq_endpoint_candidate)) ? local.webiq_endpoint_candidate : null
+
+  # ---------------------------------------------------------------------------
+  # App URL and Easy Auth. The default FQDN is <app>.<environment default
+  # domain>; it is computed from the environment (not read from the app) so the
+  # app's own settings and the Entra redirect URIs need no self-reference.
+  # ---------------------------------------------------------------------------
+  app_default_fqdn = "${var.container_app_name}.${data.azurerm_container_app_environment.this.default_domain}"
+  public_origin    = coalesce(var.public_origin, "https://${local.app_default_fqdn}")
+
   entra_v2_issuer          = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
   easyauth_client_id       = var.create_entra_app ? one(azuread_application.easyauth[*].client_id) : var.easyauth_client_id
   easyauth_excluded_paths  = ["/api/health"]
   easyauth_fic_secret_name = "override-use-mi-fic-assertion-client-id" # sentinel the auth sidecar recognises (lowercase for ACA secrets)
   easyauth_secret_setting  = var.easyauth_credential == "federated" ? local.easyauth_fic_secret_name : "easyauth-client-secret"
 
-  app_hostnames          = compact([azurerm_container_app.app.ingress[0].fqdn, var.custom_domain_hostname])
+  # Programmatic owner access (easyauth_cli_access_enabled): the Azure CLI gets
+  # a v2 access token for api://<client id> (aud = client ID); Easy Auth accepts
+  # both forms. Assignment required + allowedPrincipals still admit only the owner.
+  easyauth_identifier_uri    = local.easyauth_client_id == null ? null : "api://${local.easyauth_client_id}"
+  easyauth_allowed_audiences = compact(var.easyauth_cli_access_enabled ? [local.easyauth_identifier_uri, local.easyauth_client_id] : [local.easyauth_client_id])
+  easyauth_create_cli_access = var.create_entra_app && var.easyauth_cli_access_enabled
+  # Deterministic scope ID: stable across plans, nothing tenant-specific committed.
+  easyauth_scope_id   = uuidv5("url", "urn:blog-writer:v2:easyauth:user_impersonation")
+  azure_cli_client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" # Microsoft's public Azure CLI client
+
+  app_hostnames          = compact([local.app_default_fqdn, var.custom_domain_hostname])
   easyauth_redirect_uris = [for host in local.app_hostnames : "https://${host}/.auth/login/aad/callback"]
 
   # ---------------------------------------------------------------------------
@@ -152,9 +204,18 @@ locals {
   # ---------------------------------------------------------------------------
   storage_containers = ["media", "published", "backups"]
 
-  # Daily JSONL dumps go to backups/<backup_dump_prefix>...; only that prefix
-  # expires after 35 days, so backups/v1-export/ (migration input) is kept.
-  backup_dump_prefix = "daily/"
+  # The app writes daily dumps to backups/<YYYY-MM-DD>/<container>.jsonl.gz
+  # (blogwriter.backups.dump). Every dated folder starts with "20", so this
+  # prefix expires the dumps after 35 days while backups/v1-export/ (migration
+  # input) is kept.
+  backup_dump_prefix = "20"
+
+  # ---------------------------------------------------------------------------
+  # Container registry purge filter: anchored (\A...\z, no '$' for ACR task
+  # aliases), dots escaped, so it can only ever match the v2 repository of the
+  # shared registry.
+  # ---------------------------------------------------------------------------
+  acr_purge_filter = "\\A${replace(var.container_image_repository, ".", "\\.")}\\z:.*"
 
   # ---------------------------------------------------------------------------
   # Misc

@@ -1,0 +1,13 @@
+# One sample per line: every standards id here is valid, so no finding is expected.
+Prompt injection is LLM01 in the OWASP list, and LLM01:2025 keeps the id.
+Excessive agency (LLM06) and unbounded consumption (LLM10) both apply to agents.
+OWASP ASI01 covers agent goal hijack; ASI10 covers rogue agents.
+MITRE ATLAS lists AML.T0051 with the sub-technique AML.T0051.000 under tactic AML.TA0005.
+ATLAS mitigation AML.M0015 and technique AML.T0086 are in the seed list.
+NIST AI RMF GOVERN 1.1, MAP 3.5, MEASURE 2.13 and MANAGE 4.3 all exist.
+The category MAP 1 and the function GOVERN are fine, and so is the profile action GV-1.1-001.
+SP 800-63B-4 sets AAL2 and AAL3; SP 800-63A-4 covers IAL2 and FAL1 lives in SP 800-63C-4.
+NIST SP 800-63-4 is the current revision of the guidelines.
+CVE-2024-3094 was the xz backdoor and CVE-2021-44228 was Log4Shell.
+Lowercase cve-2025-12345 is still a well-formed id.
+Prose such as map 1 to 1 or a 1-800-635-0000 number never matches.

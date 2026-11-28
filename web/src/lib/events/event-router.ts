@@ -2,20 +2,26 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query/keys';
 
-import type { StreamEvent } from './events';
+import { entityChangeOf, entityInvalidations } from './entities';
+import { JOB_EVENT, type StreamEvent } from './events';
 import type { JobStore } from './job-store';
 
 /**
- * The queries an event makes stale. A snapshot or a status change can change any job list or
- * job; any other durable event changes its job; deltas only change the live text (kept in the
- * job store) and `close` changes nothing.
+ * The queries an event makes stale (contract section 9). A snapshot or a status change can change
+ * any job list or job; any other durable event changes its job; an `entity.changed` event also
+ * changes the document it names (its detail, every list of its kind, and Today). Deltas only
+ * change the live text (kept in the job store) and `close` changes nothing.
  */
 export function invalidationsFor(event: StreamEvent): readonly QueryKey[] {
   switch (event.type) {
     case 'snapshot':
       return [queryKeys.jobs.all];
-    case 'job':
-      return event.event.type === 'status' ? [queryKeys.jobs.all] : [queryKeys.jobs.detail(event.jobId)];
+    case 'job': {
+      if (event.event.type === JOB_EVENT.status) return [queryKeys.jobs.all];
+      const job = queryKeys.jobs.detail(event.jobId);
+      const change = entityChangeOf(event);
+      return change ? [job, ...entityInvalidations(change)] : [job];
+    }
     case 'delta':
     case 'close':
       return [];

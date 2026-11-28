@@ -11,6 +11,9 @@ Data classes are ordered ``PUBLIC < ANONYMIZED < PRIVATE`` (see
   (never Claude), only tool-free, and to models whose reasoning summaries are off (they would
   echo the private text into the stream). Strict mode (``allow_private=False``) sends it
   nowhere.
+* Image input (:class:`~blogwriter.ai.types.ImagePart`) only for the tasks in
+  :data:`IMAGE_TASKS` (the engagement helpers' screenshot extraction). Images cannot be checked
+  against the blocklist, so no other task takes them.
 * The fallback chain can never relax a rule: :meth:`SensitivityPolicy.check` applies every rule
   to every model of the chain before the first call, and the rules depend only on the task and
   the request, never on which model ends up serving.
@@ -47,6 +50,7 @@ from blogwriter.ai.types import (
 )
 
 __all__ = [
+    "IMAGE_TASKS",
     "PRIVATE_TASKS",
     "TASK_CEILINGS",
     "PolicyRule",
@@ -66,6 +70,7 @@ type PolicyRule = Literal[
     "tools_require_public",
     "model_without_tools",
     "web_search_requires_openai",
+    "images_not_allowed",
 ]
 """Machine-readable names of the rules :class:`SensitivityPolicy` enforces."""
 
@@ -97,6 +102,11 @@ _CEILINGS: Final[Mapping[Task, tuple[Sensitivity, bool]]] = MappingProxyType(
 
 PRIVATE_TASKS: Final = frozenset(task for task, (cls, _) in _CEILINGS.items() if cls is _PRIVATE)
 """The tasks that may receive ``PRIVATE`` data: the anonymizer only."""
+
+IMAGE_TASKS: Final = frozenset({Task.ENGAGEMENT})
+"""The tasks that may receive image parts: the engagement helpers (the owner's own screenshots
+of a comment thread, read as untrusted ``anonymized`` data). A hard rule like the ceilings: change
+only with a code review."""
 
 
 class PolicyViolation(SensitivityError):
@@ -208,6 +218,8 @@ class SensitivityPolicy:
             )
         if data is _PRIVATE and not self._allow_private:
             raise PolicyViolation(task, "private_disabled", "strict mode refuses private data")
+        if request.image_count and task not in IMAGE_TASKS:
+            raise PolicyViolation(task, "images_not_allowed", "this task takes no image input")
         if request.background and data is not _PUBLIC:
             raise PolicyViolation(
                 task, "background_requires_public", f"{data.value} data cannot run in background"

@@ -48,4 +48,4 @@ infra/terraform/outputs.txt
 .env.*
 !.env.example
 !frontend/.env.example
-backups/
+/backups/

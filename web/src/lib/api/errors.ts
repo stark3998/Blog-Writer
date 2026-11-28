@@ -15,6 +15,12 @@ export interface ProblemDetails {
   /** Machine-readable reason, for example `not_owner` or `csrf_failed`. */
   readonly code?: string;
   readonly requestId?: string;
+  /**
+   * The problem's other members (contract section 1.6), unparsed: `current` on a 412, `errors`
+   * on `validation_failed`, `findings` on `confidential_text`, `missing`, `allowed`, … Read them
+   * through `./problems` (`conflictOf`, `fieldErrors`, …), never show them as they are.
+   */
+  readonly extensions?: Readonly<Record<string, unknown>>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,9 +31,13 @@ function stringOrUndefined(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
+/** The members every problem has (RFC 9457 plus the server's `code` and `request_id`). */
+const STANDARD_MEMBERS: ReadonlySet<string> = new Set(['type', 'title', 'status', 'detail', 'code', 'request_id']);
+
 /** Reads a problem document from a parsed body. Anything that is not one gives `undefined`. */
 export function parseProblem(body: unknown): ProblemDetails | undefined {
   if (!isRecord(body)) return undefined;
+  const extensions = Object.entries(body).filter(([name]) => !STANDARD_MEMBERS.has(name));
   return {
     type: stringOrUndefined(body.type),
     title: stringOrUndefined(body.title),
@@ -35,6 +45,7 @@ export function parseProblem(body: unknown): ProblemDetails | undefined {
     detail: stringOrUndefined(body.detail),
     code: stringOrUndefined(body.code),
     requestId: stringOrUndefined(body.request_id),
+    ...(extensions.length > 0 ? { extensions: Object.fromEntries(extensions) } : {}),
   };
 }
 

@@ -64,6 +64,7 @@ __all__ = [
     "StoreUnavailable",
     "doc_from_stored",
     "parse_field_path",
+    "partition_key_field",
     "partition_key_path",
     "prepare_write",
     "resolve_partition_key",
@@ -102,16 +103,20 @@ CONTAINERS: Final[Mapping[str, str]] = MappingProxyType(
 
 _UNINDEXED_EVERYWHERE: Final = frozenset({"embedding", "markdown", "htmlContent", "mdxContent"})
 _UNINDEXED_EXTRA: Final[Mapping[str, frozenset[str]]] = {
-    "posts": frozenset({"payload"}),
+    "stories": frozenset({"body", "text"}),  # style guides, voice samples
+    "articles": frozenset({"gates", "servedBy"}),
+    "posts": frozenset({"payload", "displayText", "finalText", "aiDraftText"}),
     "jobs": frozenset({"events"}),
+    "engagement": frozenset({"pastedText"}),
 }
 UNINDEXED_FIELDS: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
     {name: _UNINDEXED_EVERYWHERE | _UNINDEXED_EXTRA.get(name, frozenset()) for name in CONTAINERS}
 )
-"""Top-level fields each container excludes from indexing (Terraform ``excluded_paths``).
+"""Top-level fields each container excludes from indexing (Terraform ``excluded_paths`` plus
+the container's ``extra_excluded_paths``): large text, vectors and reports.
 
 Cosmos refuses to filter or sort on them without a full scan, so both stores reject such
-queries up front.
+queries up front. Projections (``Store.find(..., fields=...)``) may still read them.
 """
 
 SYSTEM_PROPERTIES: Final[frozenset[str]] = frozenset(
@@ -276,6 +281,11 @@ def resolve_partition_key(container: str, item_id: str, partition_key: str | Non
 
 def _path_segments(path: str) -> tuple[str, ...]:
     return tuple(path.strip("/").split("/"))
+
+
+def partition_key_field(container: object) -> str:
+    """The top-level field holding the container's partition key (``id``, ``articleId``...)."""
+    return _path_segments(partition_key_path(container))[0]
 
 
 def _value_at(body: Mapping[str, Any], segments: Sequence[str]) -> object:
@@ -585,11 +595,18 @@ class Store(Protocol):
         order_by: OrderBy | None = None,
         limit: int | None = None,
         partition_key: str | None = None,
+        fields: Sequence[str] | None = None,
     ) -> list[Doc]:
         """Return the documents matching every filter (see :mod:`blogwriter.db.query`).
 
         Without ``order_by`` the result order is unspecified. ``limit`` caps the result count;
         ``partition_key`` scopes the query to one partition.
+
+        ``fields`` is a projection: top-level field names (``[A-Za-z_][A-Za-z0-9_]*``, not
+        system properties). Each body then holds only ``id``, the partition key field and those
+        of the listed fields the document has (a missing one stays missing); the etag is the
+        whole document's. A projected body is never a whole document: never write it back.
+        Filters and ordering still see the whole document.
         """
         ...
 

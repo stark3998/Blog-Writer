@@ -181,7 +181,10 @@ describe('component rules', () => {
 
   it('keeps raw colour values in the theme: components use tokens', () => {
     // The theme owns the few literal colours (browser chrome, the app mark); test helpers do maths.
-    const allowed = (path: string) => /^src[\\/](?:theme|test)[\\/]/.test(path);
+    // The generated API types carry the brand kit's default colours as `@default` notes: data the
+    // owner edits, never a style.
+    const allowed = (path: string) =>
+      /^src[\\/](?:theme|test)[\\/]/.test(path) || /^src[\\/]lib[\\/]api[\\/]schema\.ts$/.test(path);
     const offenders = files
       .filter(({ path, source }) => !allowed(path) && RAW_COLOUR.test(source))
       .map(({ path }) => path);

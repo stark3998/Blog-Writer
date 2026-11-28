@@ -40,6 +40,7 @@ class Upstream:
             "content-type": "text/html; charset=utf-8",
             "set-cookie": "session=leak",
             "x-powered-by": "Next.js",
+            "date": "Sat, 28 Nov 2026 09:00:00 GMT",
             "cache-control": "s-maxage=60",
         }
 
@@ -397,3 +398,21 @@ def test_login_location_only_returns_to_site_paths(path: str, query: bytes, targ
     from blogwriter.core.auth import login_location
 
     assert login_location(path, query) == f"/.auth/login/aad?post_login_redirect_uri={target}"
+
+
+async def test_no_compression_unless_the_client_asks(app: FastAPI, upstream: Upstream) -> None:
+    """httpx adds "gzip, deflate" by default; the site must not compress for a client that did
+    not ask, because the gateway passes the body through untouched."""
+    async with asgi_client(app, base_url=SITE) as client:
+        del client.headers["accept-encoding"]  # no header at all
+        await client.get("/")
+        await client.get("/", headers={"Accept-Encoding": ""})
+        await client.get("/", headers={"Accept-Encoding": "br, gzip"})
+    sent = [request.headers.get_list("accept-encoding") for request in upstream.requests]
+    assert sent == [["identity"], ["identity"], ["br, gzip"]]
+
+
+async def test_the_site_date_header_is_not_duplicated(app: FastAPI) -> None:
+    async with asgi_client(app, base_url=SITE) as client:
+        response = await client.get("/")
+    assert "Sat, 28 Nov 2026 09:00:00 GMT" not in response.headers.get_list("date")

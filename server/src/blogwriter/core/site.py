@@ -21,9 +21,11 @@ The proxy is a read-only, cookie-free pass-through:
   ``X-Forwarded-Proto`` are set by the gateway.
 * ``/_bw`` and everything below it (the portfolio's internal health and revalidate routes) is
   ``404``: only the app itself calls those, directly on the upstream.
-* The response streams back as is (still compressed) except that hop-by-hop headers,
-  ``Set-Cookie``, ``Server`` and ``X-Powered-By`` are removed and missing security headers are
-  added (:data:`SITE_SECURITY_HEADERS`, HSTS in prod). The site sets its own CSP.
+* The response streams back as is (still compressed, but only when the client asked for it:
+  without an ``Accept-Encoding`` the gateway asks the site for ``identity``) except that
+  hop-by-hop headers, ``Set-Cookie``, ``Server``, ``X-Powered-By`` and ``Date`` (uvicorn sets its
+  own) are removed and missing security headers are added (:data:`SITE_SECURITY_HEADERS`, HSTS in
+  prod). The site sets its own CSP.
 * An unreachable upstream answers ``502`` and a slow one ``504``, both with a small page and
   ``Retry-After``; the failure is logged without the path's query string.
 
@@ -114,6 +116,8 @@ _DROP_RESPONSE_HEADERS: Final = frozenset(
         "set-cookie",
         "server",
         "x-powered-by",
+        # uvicorn writes its own Date header; a second one from the site would be invalid.
+        "date",
     }
 )
 
@@ -377,6 +381,11 @@ class SiteGatewayMiddleware:
             name = raw_name.decode("latin-1").lower()
             if name in _FORWARD_HEADERS or name.startswith(_FORWARD_PREFIXES):
                 forwarded.append((name.encode("latin-1"), raw_value))
+        if not any(name == b"accept-encoding" and value.strip() for name, value in forwarded):
+            forwarded = [(name, value) for name, value in forwarded if name != b"accept-encoding"]
+            # httpx would otherwise add its default "gzip, deflate", and the raw (still
+            # compressed) body would reach a client that never asked for compression.
+            forwarded.append((b"accept-encoding", b"identity"))
         forwarded.append((b"x-forwarded-host", self.gateway.canonical_host.encode("ascii")))
         forwarded.append((b"x-forwarded-proto", b"https"))
         return forwarded

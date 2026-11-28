@@ -49,3 +49,6 @@ infra/terraform/outputs.txt
 !.env.example
 !frontend/.env.example
 /backups/
+
+# Cloudflare CLI local cache (account details)
+.cloudflare/

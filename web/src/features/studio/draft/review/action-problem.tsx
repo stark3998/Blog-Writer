@@ -29,6 +29,7 @@ const SETTINGS_FIXES: Readonly<Record<string, { to: string; label: string }>> = 
   voice_guide_missing: { to: '/library/voice', label: 'Open the voice guide' },
   portfolio_not_configured: { to: '/settings/integrations', label: 'Open Integrations' },
   publish_in_progress: { to: '/settings/system', label: 'See the running jobs in System' },
+  images_disabled: { to: '/settings/models', label: 'Open Settings > Models' },
 };
 
 export function ActionProblem({ error, title }: { error: unknown; title: string }) {

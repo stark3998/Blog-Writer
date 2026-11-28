@@ -12,6 +12,8 @@ from blogwriter.domain.articles import (
     GATE_ORDER,
     MAX_ARTICLE_MARKDOWN_BYTES,
     MAX_EMBEDDING_DIMENSIONS,
+    MAX_ILLUSTRATION_ALT,
+    MAX_ILLUSTRATIONS,
     PUBLISHED_MARKER_NAME,
     Article,
     ArticleMeta,
@@ -24,6 +26,7 @@ from blogwriter.domain.articles import (
     GateReport,
     GateResult,
     GateVerdict,
+    Illustration,
     OwnerSignalRef,
     PublishState,
     autosave_snapshot_due,
@@ -647,6 +650,18 @@ def test_an_article_at_every_maximum_still_fits_in_cosmos() -> None:
         filename="f" * 120,
         linkedin_urn="u" * 200,
     )
+    illustration = Illustration(
+        id="ill-" + "a" * 16,
+        role="inline",
+        media=media_item.model_copy(update={"role": "image"}),
+        alt_text="a" * MAX_ILLUSTRATION_ALT,
+        prompt_summary="p" * 300,
+        section="s" * 200,
+        served_by=[served] * 8,
+        cost_usd=1.5,
+        job_id="illustrations-" + "j" * 200,
+        created_at=NOW,
+    )
     article = sample_document(
         Article,
         # Newlines are the worst case JSON can do to normalized Markdown: two bytes each.
@@ -658,6 +673,8 @@ def test_an_article_at_every_maximum_still_fits_in_cosmos() -> None:
         corrections=[Correction(date="2026-11-26", note="n" * 1000, created_at=NOW)] * 100,
         owner_signals=[OwnerSignalRef(kind="interview", id="intv-1", quote="q" * 1000)] * 50,
         review_only_reasons=["fallback_model"] * 20,
+        illustrations=[illustration] * MAX_ILLUSTRATIONS,
+        illustration_job_id="illustrations-" + "j" * 200,
     )
     size = len(prepare_write("articles", article.to_document()).text.encode("utf-8"))
     assert size < MAX_DOCUMENT_BYTES, size
@@ -849,3 +866,50 @@ def test_engagement_drafts_have_the_final_reply_budget() -> None:
     assert sample_document(EngagementItem, draft_text="d" * 1250).draft_text == "d" * 1250
     with pytest.raises(ValidationError):
         sample_document(EngagementItem, draft_text="d" * 1251)
+
+
+# ---------------------------------------------------------------------------------------------
+# Illustrations (opt-in AI images): candidates are not content
+# ---------------------------------------------------------------------------------------------
+
+
+def test_illustration_candidates_are_keyed_by_their_image_and_never_content() -> None:
+    sha = "ab" * 32
+    assert Illustration.id_for(sha) == "ill-" + "ab" * 8
+    with pytest.raises(ValueError, match="64 lowercase hex"):
+        Illustration.id_for("ABC")
+    media = MediaRef(
+        role="image",
+        name=f"articles/art-1/{sha}.png",
+        sha256=sha,
+        content_type="image/png",
+        size_bytes=10,
+    )
+    candidate = Illustration(
+        id=Illustration.id_for(sha),
+        role="hero",
+        media=media,
+        alt_text="Glass keys in a row",
+        prompt_summary="Each tool call gets its own key",
+        job_id="illustrations-art-1-abc",
+        created_at=NOW,
+    )
+    with pytest.raises(ValidationError):
+        Illustration.model_validate({**candidate.model_dump(), "id": "ill-nothex"})
+    with pytest.raises(ValidationError):
+        Illustration.model_validate({**candidate.model_dump(), "altText": ""})
+    plain = sample_document(Article, markdown="Body.")
+    illustrated = plain.model_copy(update={"illustrations": [candidate]})
+    assert illustrated.compute_sha256() == plain.compute_sha256()  # not part of the content
+    assert illustrated.illustration(candidate.id) == candidate
+    assert illustrated.illustration("ill-0000000000000000") is None
+    assert not illustrated.references_media(media.name)
+    inserted = illustrated.model_copy(update={"markdown": f"![Keys](/api/media/{media.name})"})
+    assert inserted.references_media(media.name)
+    hero = illustrated.model_copy(
+        update={"media": [media.model_copy(update={"role": "hero_image"})]}
+    )
+    assert hero.references_media(media.name)
+    assert hero.hero_media() is not None
+    with pytest.raises(ValidationError):
+        sample_document(Article, illustrations=[candidate] * (MAX_ILLUSTRATIONS + 1))

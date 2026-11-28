@@ -1122,8 +1122,13 @@ async def _gates(run: _Run) -> JsonValue:
 # --------------------------------------------------------------------------------------------
 
 
-def _made_by_pipeline(media: MediaRef, article_id: str) -> bool:
-    return media.container == "media" and media.name.startswith(f"articles/{article_id}/")
+def _made_by_pipeline(media: MediaRef, article: Article) -> bool:
+    """A draft asset this step renders again (diagrams, the Open Graph card and its hero copy).
+    An AI illustration also lives under ``articles/<id>/`` but is the owner's choice: a hero
+    picked from the article's illustrations survives a pipeline re-run."""
+    if media.container != "media" or not media.name.startswith(f"articles/{article.id}/"):
+        return False
+    return media.name not in {item.media.name for item in article.illustrations}
 
 
 async def _assets(run: _Run) -> JsonValue:
@@ -1137,7 +1142,7 @@ async def _assets(run: _Run) -> JsonValue:
     brand, _ = await read_singleton(run.store, BrandKit, now=stamp)
     subject = await resolve_subject(run.store, article, now=stamp)
     title = article.meta.title or "Untitled draft"
-    kept = [item for item in article.media if not _made_by_pipeline(item, article.id)]
+    kept = [item for item in article.media if not _made_by_pipeline(item, article)]
     owner_hero = next((item for item in kept if item.role == "hero_image"), None)
     made: list[MediaRef] = []
     failures: list[str] = []

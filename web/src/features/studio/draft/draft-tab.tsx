@@ -11,8 +11,9 @@ import { DraftWorkspace } from './draft-workspace';
  * Studio > Draft (`/studio/:id/draft`, articles only): the article editor on the dialect
  * library (`@/features/editor`), read-only with the live pipeline text while the pipeline
  * writes, autosave with If-Match plus `baseVersion` and the conflict dialog, versions, the
- * seven gates with live checks, selection AI, the portfolio preview, and the review actions
- * the state machine allows (contract sections 2, 9 and 10; W-A7, W-A8, W-B1, W-B2, W-B4).
+ * seven gates with live checks, selection AI, the portfolio preview, the opt-in AI illustrations
+ * (the margin's Images tab: a hero and images for the text, contract revision 5), and the review
+ * actions the state machine allows (contract sections 2, 9 and 10; W-A7, W-A8, W-B1, W-B2, W-B4).
  */
 export function DraftTab({ pieceId }: PieceTabProps) {
   const article = useArticle(pieceId);

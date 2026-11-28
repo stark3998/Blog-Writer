@@ -14,6 +14,10 @@ Public API:
   ``pillar_in_use`` guard.
 - :func:`validate_brand`: what stops a brand kit from rendering (through ``RenderBrand``).
 - :data:`PLAN_PILLARS`, :func:`kb_default`, :func:`read_settings`: the plan's defaults.
+- :func:`art_brief_for`, :func:`default_art_brief`: the art brief of a pillar for the opt-in AI
+  illustrations (the owner's ``artBriefs`` entry, or the editorial default in the brand palette
+  when it is empty). ``imagesEnabled`` (``PUT /api/kb/models``) switches illustrations on; it
+  answers 409 ``images_unavailable`` while no image route is configured.
 - ``/api/kb/seeds`` (:mod:`blogwriter.kb.seeds`): the owner's review of the v1 migration's
   keyword seeds (``domain.seeds.KbSeed``); approving one adds its keywords to a pillar's
   vocabulary.
@@ -23,7 +27,14 @@ settings documents.
 """
 
 from blogwriter.kb.checks import validate_brand
-from blogwriter.kb.defaults import PLAN_PILLARS, kb_default, read_settings
+from blogwriter.kb.defaults import (
+    PLAN_PILLARS,
+    art_brief_for,
+    default_art_brief,
+    default_art_briefs,
+    kb_default,
+    read_settings,
+)
 from blogwriter.kb.inputs import OwnerInput, OwnerInputs, owner_inputs
 from blogwriter.kb.routes import get_router
 from blogwriter.kb.usage import pillar_ids_in_use, pillar_references
@@ -32,6 +43,9 @@ __all__ = [
     "PLAN_PILLARS",
     "OwnerInput",
     "OwnerInputs",
+    "art_brief_for",
+    "default_art_brief",
+    "default_art_briefs",
     "get_router",
     "kb_default",
     "owner_inputs",

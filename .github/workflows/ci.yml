@@ -65,6 +65,11 @@ jobs:
       - name: Install (locked)
         run: uv sync --locked
 
+      # The render package verifies the pinned Mermaid bundle at startup (fail closed), so the
+      # app-level tests need it. Node is preinstalled on ubuntu runners; no install scripts run.
+      - name: Install the Mermaid bundle (server/vendor)
+        run: npm ci --ignore-scripts --no-audit --no-fund --prefix vendor
+
       - name: Lint
         run: uv run --locked ruff check .
 

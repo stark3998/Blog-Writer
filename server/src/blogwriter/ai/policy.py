@@ -12,8 +12,10 @@ Data classes are ordered ``PUBLIC < ANONYMIZED < PRIVATE`` (see
   echo the private text into the stream). Strict mode (``allow_private=False``) sends it
   nowhere.
 * Image input (:class:`~blogwriter.ai.types.ImagePart`) only for the tasks in
-  :data:`IMAGE_TASKS` (the engagement helpers' screenshot extraction). Images cannot be checked
-  against the blocklist, so no other task takes them.
+  :data:`IMAGE_TASKS`, and only up to the data class listed there: the engagement helpers'
+  screenshot extraction (``anonymized``) and the illustrations' "media matches text" check
+  (``fact_check``, ``public`` only: the generated image and its public brief). Images cannot be
+  checked against the blocklist, so no other task takes them.
 * The fallback chain can never relax a rule: :meth:`SensitivityPolicy.check` applies every rule
   to every model of the chain before the first call, and the rules depend only on the task and
   the request, never on which model ends up serving.
@@ -103,10 +105,14 @@ _CEILINGS: Final[Mapping[Task, tuple[Sensitivity, bool]]] = MappingProxyType(
 PRIVATE_TASKS: Final = frozenset(task for task, (cls, _) in _CEILINGS.items() if cls is _PRIVATE)
 """The tasks that may receive ``PRIVATE`` data: the anonymizer only."""
 
-IMAGE_TASKS: Final = frozenset({Task.ENGAGEMENT})
-"""The tasks that may receive image parts: the engagement helpers (the owner's own screenshots
-of a comment thread, read as untrusted ``anonymized`` data). A hard rule like the ceilings: change
-only with a code review."""
+IMAGE_TASKS: Final[Mapping[Task, Sensitivity]] = MappingProxyType(
+    {Task.ENGAGEMENT: _ANONYMIZED, Task.FACT_CHECK: _PUBLIC}
+)
+"""The tasks that may receive image parts, with the highest data class such a request may have:
+the engagement helpers (the owner's own screenshots of a comment thread, read as untrusted
+``anonymized`` data) and the illustrations' vision check (``fact_check`` on a generated image
+and its public brief: ``public`` only, so a fact check of anonymized text never carries an
+image). A hard rule like the ceilings: change only with a code review."""
 
 
 class PolicyViolation(SensitivityError):
@@ -218,8 +224,17 @@ class SensitivityPolicy:
             )
         if data is _PRIVATE and not self._allow_private:
             raise PolicyViolation(task, "private_disabled", "strict mode refuses private data")
-        if request.image_count and task not in IMAGE_TASKS:
-            raise PolicyViolation(task, "images_not_allowed", "this task takes no image input")
+        if request.image_count:
+            image_limit = IMAGE_TASKS.get(task)
+            if image_limit is None:
+                raise PolicyViolation(task, "images_not_allowed", "this task takes no image input")
+            if data > image_limit:
+                raise PolicyViolation(
+                    task,
+                    "images_not_allowed",
+                    f"image input with {data.value} data is not allowed (at most "
+                    f"{image_limit.value})",
+                )
         if request.background and data is not _PUBLIC:
             raise PolicyViolation(
                 task, "background_requires_public", f"{data.value} data cannot run in background"

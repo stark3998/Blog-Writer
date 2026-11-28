@@ -65,10 +65,14 @@ describe('Calendar > Plan: approval', () => {
     await user.click(await screen.findByRole('button', { name: 'Approve plan' }));
 
     // On the page, and in the toast that reads it out.
-    const outcome = await screen.findAllByText(
-      'Plan approved. Research for the flagship starts Mon 30 Nov, 08:00. Writing 2 posts now. 1 quick take waits for your take.',
-    );
-    expect(outcome).toHaveLength(2);
+    // findAllByText resolves on the first match; the toast can arrive a tick after the page copy.
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(
+          'Plan approved. Research for the flagship starts Mon 30 Nov, 08:00. Writing 2 posts now. 1 quick take waits for your take.',
+        ),
+      ).toHaveLength(2);
+    });
     const [approve] = fake.requests(`POST /api/plan/weeks/${NEXT_WEEK}/approve`);
     expect(approve?.ifMatch).toBe('"plan-etag-1"');
     expect(await screen.findByText('Approved')).toBeInTheDocument();

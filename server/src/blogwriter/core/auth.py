@@ -30,6 +30,14 @@ with ``sig = base64url(HMAC-SHA256(k, "v1|<oid>|<expiry>"))`` and ``k`` derived 
 ``BW_COOKIE_KEY``. It is bound to the owner's object ID and expires after
 ``BW_COOKIE_TTL_HOURS`` (12 by default).
 
+5. **Sign-in redirect.** When the app also serves a public site (``BW_SITE_HOSTS``), Easy Auth
+   lets anonymous requests through and this middleware is the only gate on Blog Writer's
+   hosts. In prod (``login_redirect``) an unauthenticated browser navigation (``GET``/``HEAD``
+   outside ``/api``, ``Sec-Fetch-Mode: navigate``, or ``Accept: text/html`` without fetch
+   metadata) gets **302** to ``/.auth/login/aad?post_login_redirect_uri=<path>`` (a
+   site-relative path only); everything else stays **401**, which the SPA turns into a
+   sign-in.
+
 There is no switch that turns any of this off.
 """
 
@@ -47,7 +55,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Final, Literal, cast
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from fastapi import Depends
 from starlette.datastructures import Headers, MutableHeaders
@@ -55,12 +63,14 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from blogwriter.core.errors import ProblemError, problem_response
+from blogwriter.core.security_headers import is_api_path
 from blogwriter.core.settings import CoreSettings, normalize_oid, normalize_origin
 
 __all__ = [
     "CLEAR_COOKIE_HEADER",
     "COOKIE_NAME",
     "EXEMPT_PATH",
+    "LOGIN_PATH",
     "AuthDecision",
     "AuthMiddleware",
     "Authenticator",
@@ -70,7 +80,9 @@ __all__ = [
     "Principal",
     "PrincipalError",
     "current_principal",
+    "is_navigation",
     "is_same_origin",
+    "login_location",
     "parse_easy_auth_principal",
     "read_cookie_values",
 ]
@@ -82,6 +94,8 @@ CLEAR_COOKIE_HEADER: Final = f"{COOKIE_NAME}=; Max-Age=0; {_COOKIE_ATTRIBUTES}"
 
 #: The only route that needs no authentication. It returns status and build SHA only.
 EXEMPT_PATH: Final = "/api/health"
+#: Easy Auth's sign-in endpoint for Microsoft Entra ID.
+LOGIN_PATH: Final = "/.auth/login/aad"
 #: Methods exempt from the CSRF check, matched case-sensitively (RFC 9110 methods are). Every
 #: other method, ``OPTIONS`` and a lowercase ``get`` included, needs the cookie and same origin.
 SAFE_METHODS: Final = frozenset({"GET", "HEAD"})
@@ -441,12 +455,46 @@ class Authenticator:
         return self._signer.issue(principal.oid).set_cookie_header()
 
 
-class AuthMiddleware:
-    """Applies :class:`Authenticator` to every HTTP request; WebSockets are refused."""
+def is_navigation(method: str, path: str, headers: Headers) -> bool:
+    """A browser loading a page (not a script's request): ``GET``/``HEAD`` outside ``/api``
+    with ``Sec-Fetch-Mode: navigate``, or ``Accept: text/html`` when the browser sends no fetch
+    metadata."""
+    if method not in SAFE_METHODS or is_api_path(path):
+        return False
+    mode = headers.get("sec-fetch-mode")
+    if mode is not None:
+        return mode == "navigate"
+    return "text/html" in headers.get("accept", "").lower()
 
-    def __init__(self, app: ASGIApp, *, authenticator: Authenticator) -> None:
+
+def login_location(path: str, query: bytes = b"") -> str:
+    """Easy Auth's sign-in URL that comes back to ``path`` (site-relative paths only: anything
+    else, ``//host`` included, comes back to ``/``)."""
+    safe = (
+        path.startswith("/")
+        and not path.startswith("//")
+        and "\\" not in path
+        and all(ord(char) >= 0x20 for char in path)
+    )
+    target = path if safe else "/"
+    if safe and query:
+        target = f"{target}?{query.decode('latin-1')}"
+    return f"{LOGIN_PATH}?post_login_redirect_uri={quote(target, safe='/')}"
+
+
+class AuthMiddleware:
+    """Applies :class:`Authenticator` to every HTTP request; WebSockets are refused.
+
+    With ``login_redirect`` (prod) unauthenticated browser navigations go to the sign-in page
+    instead of a 401 (see the module docstring, rule 5).
+    """
+
+    def __init__(
+        self, app: ASGIApp, *, authenticator: Authenticator, login_redirect: bool = False
+    ) -> None:
         self.app = app
         self.authenticator = authenticator
+        self.login_redirect = login_redirect
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -460,7 +508,28 @@ class AuthMiddleware:
 
         # Not upper-cased: routing matches methods case-sensitively, so "get" is not GET here.
         method = str(scope["method"])
-        decision = self.authenticator.decide(method, str(scope["path"]), Headers(scope=scope))
+        path = str(scope["path"])
+        headers = Headers(scope=scope)
+        decision = self.authenticator.decide(method, path, headers)
+        if (
+            not decision.allowed
+            and self.login_redirect
+            and decision.code == "unauthenticated"
+            and is_navigation(method, path, headers)
+        ):
+            query = scope.get("query_string") or b""
+            location = login_location(path, query if isinstance(query, bytes) else b"")
+            redirect_headers = [
+                (b"location", location.encode("latin-1")),
+                (b"cache-control", b"no-store"),
+                (b"content-length", b"0"),
+            ]
+            if decision.set_cookie:
+                redirect_headers.append((b"set-cookie", decision.set_cookie.encode("latin-1")))
+            _logger.info("auth_login_redirect", extra={"status": 302})
+            await send({"type": "http.response.start", "status": 302, "headers": redirect_headers})
+            await send({"type": "http.response.body", "body": b""})
+            return
         if not decision.allowed:
             extra: dict[str, object] = {
                 "status": decision.status,

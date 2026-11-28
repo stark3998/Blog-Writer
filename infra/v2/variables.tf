@@ -211,9 +211,9 @@ variable "monthly_budget_amount" {
 }
 
 variable "scheduler_tick_alert_enabled" {
-  description = "Enable the 'no scheduler tick for 15 minutes' log alert. Off by default: the scheduler currently logs schedule_tick only for ticks that fired, parked or failed something, so an idle app would look silent. Turn on once every tick logs schedule_tick."
+  description = "Enable the 'no scheduler tick for 15 minutes' log alert. The scheduler logs schedule_tick at INFO on every tick (verified on 2026-11-27), so a silent app means a stopped scheduler."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_locks" {
@@ -282,25 +282,14 @@ variable "ci_infra_rbac_admin_enabled" {
 # Easy Auth (Microsoft Entra ID in front of the container app)
 # ---------------------------------------------------------------------------
 
-variable "create_entra_app" {
-  description = "Create the Entra app registration, its service principal (assignment required), the owner's assignment and the managed-identity federated credential with the azuread provider. Needs Graph rights (the owner applies it locally); the CI identities have none."
-  type        = bool
-  default     = true
-}
 
-variable "entra_app_display_name" {
-  description = "Display name of the Entra app registration when create_entra_app = true."
-  type        = string
-  default     = "Blog Writer v2"
-}
 
 variable "easyauth_client_id" {
-  description = "Application (client) ID of an owner-created Entra app registration. Only used (and then required) when create_entra_app = false."
+  description = "Client ID of the Entra app registration that Easy Auth uses (managed by the owner in infra/v2/entra: terraform output easyauth_client_id)."
   type        = string
-  default     = null
 
   validation {
-    condition     = var.easyauth_client_id == null || (can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.easyauth_client_id)) && var.easyauth_client_id != "00000000-0000-0000-0000-000000000000")
+    condition     = can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.easyauth_client_id)) && var.easyauth_client_id != "00000000-0000-0000-0000-000000000000"
     error_message = "easyauth_client_id must be the app registration's client ID (a GUID, not the all-zero placeholder)."
   }
 }
@@ -334,7 +323,7 @@ variable "easyauth_cookie_expiration_days" {
 }
 
 variable "custom_domain_hostname" {
-  description = "Optional later step (cutover): custom domain of the v2 app, e.g. writer.example.com. Only adds an Entra redirect URI (create_entra_app = true) and shows up in outputs; binding the domain and certificate is a separate step. Set public_origin to match."
+  description = "Optional later step (cutover): custom domain of the v2 app, e.g. writer.example.com. Allowed as an Easy Auth origin here; its Entra redirect URI is added in infra/v2/entra (same variable); binding the domain and certificate is a separate step. Set public_origin to match."
   type        = string
   default     = null
 
@@ -449,8 +438,69 @@ variable "portfolio_workflow" {
   }
 }
 
+variable "site_hosts" {
+  description = <<-EOT
+    Public host names of the portfolio site this app serves, canonical host first (e.g.
+    ["example.com", "www.example.com"]). The portfolio runs as a second container in the same
+    replica and the app proxies these hosts to it (BW_SITE_HOSTS); every other host stays the
+    owner-only Blog Writer. Non-empty also switches Easy Auth to AllowAnonymous: the app then
+    enforces owner-only access itself (it always did; Easy Auth was the outer layer) and sends
+    unauthenticated browser navigations to sign-in. Empty: no public site, Easy Auth redirects
+    every unauthenticated request. Binding the domains is a separate step (README, "Portfolio").
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for host in var.site_hosts : can(regex("^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$", host))
+    ]) && length(distinct(var.site_hosts)) == length(var.site_hosts)
+    error_message = "site_hosts must be distinct lowercase host names such as example.com."
+  }
+}
+
+variable "portfolio_container_image" {
+  description = "Image of the portfolio container for the first revision that has it (needed when site_hosts is set). The portfolio repository's deploy owns the image afterwards (Terraform ignores image changes)."
+  type        = string
+  default     = null
+}
+
+variable "portfolio_image_repository" {
+  description = "Repository of the shared registry the portfolio deploy pushes to; the ACR purge task also prunes it when site_hosts is set."
+  type        = string
+  default     = "portfolio"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]+(?:[._/-][a-z0-9]+)*$", var.portfolio_image_repository))
+    error_message = "portfolio_image_repository must be a valid lowercase repository name."
+  }
+}
+
+variable "portfolio_port" {
+  description = "Port the portfolio server listens on, on 127.0.0.1 only (BW_SITE_UPSTREAM)."
+  type        = number
+  default     = 3000
+
+  validation {
+    condition     = var.portfolio_port >= 1024 && var.portfolio_port <= 65535 && var.portfolio_port != var.target_port
+    error_message = "portfolio_port must be an unprivileged port other than target_port."
+  }
+}
+
+variable "portfolio_cpu" {
+  description = "vCPU of the portfolio container. With the app's 1 vCPU / 2 GiB the replica total must be a valid Consumption pair (0.25 vCPU steps, 2 GiB per vCPU)."
+  type        = number
+  default     = 0.25
+}
+
+variable "portfolio_memory" {
+  description = "Memory of the portfolio container (see portfolio_cpu)."
+  type        = string
+  default     = "0.5Gi"
+}
+
 variable "publish_site_origin" {
-  description = "Public origin of the portfolio site the publish step verifies (BW_PUBLISH_SITE_ORIGIN)."
+  description = "Public origin of the portfolio site the publish step verifies (BW_PUBLISH_SITE_ORIGIN). With site_hosts set, https://<first site host> is used instead."
   type        = string
   default     = "https://jatinmadan.com"
 
@@ -656,4 +706,15 @@ variable "render_chromium_sandbox" {
   description = "BW_RENDER_CHROMIUM_SANDBOX. Azure Container Apps does not grant the user namespaces Chromium's sandbox needs (verified 2026-11-27: launch fails), so it is off; the app then applies the compensating controls (non-dumpable process, minimal child environment, no network, --jitless; see docs/v2/build/render.md) and refuses to start rendering if they cannot be applied."
   type        = bool
   default     = false
+}
+
+variable "ai_brake_daily_cap_usd" {
+  description = "BW_AI_BRAKE_DAILY_CAP_USD: background AI work defers (never owner clicks) once the day's spend passes the larger of this amount and 3x the trailing 7-day median. Quality first: set well above a heavy research-and-drafting day (about $20-40)."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.ai_brake_daily_cap_usd > 0
+    error_message = "ai_brake_daily_cap_usd must be positive."
+  }
 }

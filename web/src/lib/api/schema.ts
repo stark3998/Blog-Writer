@@ -3310,6 +3310,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/articles/{article_id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Images */
+        post: operations["post_images_api_articles__article_id__images_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/images/{illustration_id}/hero": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Hero */
+        post: operations["post_hero_api_articles__article_id__images__illustration_id__hero_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/hero": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Hero */
+        delete: operations["delete_hero_api_articles__article_id__hero_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/images/{illustration_id}/insert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Insert */
+        post: operations["post_insert_api_articles__article_id__images__illustration_id__insert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/images/{illustration_id}/alt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Alt */
+        put: operations["put_alt_api_articles__article_id__images__illustration_id__alt_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{article_id}/images/{illustration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Image */
+        delete: operations["delete_image_api_articles__article_id__images__illustration_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3331,6 +3433,14 @@ export interface components {
              */
             alert: "sent";
             push?: components["schemas"]["PushResultView"] | null;
+        };
+        /**
+         * AltIn
+         * @description ``PUT .../images/{illustrationId}/alt``.
+         */
+        AltIn: {
+            /** Alttext */
+            altText: string;
         };
         /**
          * AnalyticsImport
@@ -3512,6 +3622,9 @@ export interface components {
             veto?: components["schemas"]["VetoNotice"] | null;
             /** Lasterror */
             lastError?: string | null;
+            /** Illustrations */
+            illustrations?: components["schemas"]["Illustration"][];
+            illustrationJobId?: components["schemas"]["DocId"] | null;
         } & Record<string, unknown>;
         /**
          * ArticleIn
@@ -5290,6 +5403,72 @@ export interface components {
             to: "accepted" | "snoozed" | "dismissed" | "new";
             snoozedUntil?: components["schemas"]["Timestamp"] | null;
         };
+        /**
+         * Illustration
+         * @description An AI illustration candidate (``gpt-image-2``) that passed its vision check.
+         *
+         *     Added by the illustrations job (``illustrations.generate``) without touching the body or
+         *     the hero: a candidate is not content. The owner edits ``alt_text``, discards it, makes it
+         *     the hero (a ``hero_image`` media the publish job uses for ``heroImage``) or inserts it into
+         *     the body as a normal Markdown image (versioned, so the approval covers it). ``media`` is the
+         *     re-encoded WebP (pixels only, metadata stripped) in Blob ``media`` under its content hash.
+         *     ``served_by`` lists the plan, generation and vision check calls; ``cost_usd`` is what
+         *     generating and checking this image cost (discarded attempts included).
+         */
+        Illustration: {
+            /** Id */
+            id: string;
+            role: components["schemas"]["IllustrationRole"];
+            media: components["schemas"]["MediaRef"];
+            /** Alttext */
+            altText: string;
+            /** Promptsummary */
+            promptSummary: string;
+            /** Section */
+            section?: string | null;
+            /** Servedby */
+            servedBy?: components["schemas"]["ServedByRecord"][];
+            /**
+             * Costusd
+             * @default 0
+             */
+            costUsd: number;
+            jobId: components["schemas"]["DocId"];
+            createdAt: components["schemas"]["Timestamp"];
+        } & Record<string, unknown>;
+        /** @enum {string} */
+        IllustrationRole: "hero" | "inline";
+        /**
+         * IllustrationsAccepted
+         * @description 202 answer: the article (it names the run in ``illustrationJobId``) and the job.
+         */
+        IllustrationsAccepted: {
+            article: components["schemas"]["Versioned_Article_"];
+            /** Jobid */
+            jobId: string;
+        };
+        /**
+         * IllustrationsIn
+         * @description ``POST /api/articles/{id}/images``: one hero plus ``count - 1`` inline illustrations.
+         */
+        IllustrationsIn: {
+            /**
+             * Count
+             * @default 1
+             */
+            count: number;
+            /** Direction */
+            direction?: string | null;
+        };
+        /**
+         * InsertIn
+         * @description ``POST .../images/{illustrationId}/insert``: the section heading to insert after (its
+         *     text as the reader sees it; case and inline markup are ignored).
+         */
+        InsertIn: {
+            /** Heading */
+            heading: string;
+        };
         /** InsightDecisionIn */
         InsightDecisionIn: {
             /**
@@ -6677,7 +6856,8 @@ export interface components {
         PovOrigin: "interview" | "quick_capture" | "idea_take" | "seed" | "owner";
         /**
          * PriceView
-         * @description USD per 1M tokens (``BW_AI_PRICE_OVERRIDES`` over the defaults).
+         * @description USD per 1M tokens (``BW_AI_PRICE_OVERRIDES`` over the defaults); image models also
+         *     list their price per image by size (``imageUsd``, ``BW_AI_IMAGE_USD_*``).
          */
         PriceView: {
             /** Model */
@@ -6690,6 +6870,8 @@ export interface components {
             cachedInput: number | null;
             /** Cachewrite */
             cacheWrite: number | null;
+            /** Imageusd */
+            imageUsd?: Record<string, number> | null;
         };
         /** @enum {string} */
         Priority: "urgent" | "high" | "normal" | "low";
@@ -14716,6 +14898,196 @@ export interface operations {
                 headers: Record<string, unknown>;
                 content: {
                     "application/json": components["schemas"]["Versioned_EvalResult_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_images_api_articles__article_id__images_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IllustrationsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["IllustrationsAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_hero_api_articles__article_id__images__illustration_id__hero_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                illustration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hero_api_articles__article_id__hero_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_insert_api_articles__article_id__images__illustration_id__insert_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                illustration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InsertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ArticleSaved"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_alt_api_articles__article_id__images__illustration_id__alt_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                illustration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AltIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["ArticleSaved"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_image_api_articles__article_id__images__illustration_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                article_id: string;
+                illustration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: Record<string, unknown>;
+                content: {
+                    "application/json": components["schemas"]["Versioned_Article_"];
                 };
             };
             /** @description Validation Error */

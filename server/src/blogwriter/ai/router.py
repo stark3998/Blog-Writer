@@ -39,6 +39,15 @@ Embeddings
     embeddings of different models live in different vector spaces, so a fallback would make
     stored vectors silently incomparable.
 
+Images
+    :meth:`AIRouter.generate_image` serves ``Task.IMAGE`` (``gpt-image-2`` on its own Foundry
+    resource, :class:`~blogwriter.ai.providers.OpenAIImagesProvider`) through the same checks:
+    the route (only when ``BW_AI_IMAGE_BASE_URL`` is set), the policy (``public`` data only,
+    tool-free), the brake for background work, the model's limiter (one generation at a time),
+    429/5xx retries and the ledger, which prices every image per size
+    (``PriceTable.image_cost``). No fallback. A content filter refusal is a refused
+    :class:`ImageResult`, recorded with no image, never an exception.
+
 The router never sends a forced ``tool_choice`` or a ``temperature`` (the request types have
 neither, and the providers never add them). Provider-side background runs are not served here.
 Logs carry ids, counts, durations and costs only.
@@ -55,6 +64,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Final, Literal
 
+import httpx2
 from pydantic import BaseModel
 
 from blogwriter.ai.config import AISettings, NoRouteError, Route, RoutingTable
@@ -80,6 +90,8 @@ from blogwriter.ai.policy import SensitivityPolicy
 from blogwriter.ai.providers import (
     AnthropicFoundryProvider,
     EmbeddingProvider,
+    ImageProvider,
+    OpenAIImagesProvider,
     OpenAIResponsesProvider,
     Provider,
     ProviderError,
@@ -103,6 +115,9 @@ from blogwriter.ai.types import (
     Effort,
     Embeddings,
     FunctionTool,
+    GeneratedImage,
+    ImageGeneration,
+    ImageRequest,
     Message,
     ModelSpec,
     ProviderName,
@@ -128,12 +143,14 @@ __all__ = [
     "Fallback",
     "FallbackReason",
     "Finished",
+    "ImageResult",
     "NoRouteError",
     "Repair",
     "Retry",
     "RouterEvent",
     "RouterResult",
     "ServedBy",
+    "create_image_provider",
     "create_providers",
 ]
 
@@ -176,6 +193,8 @@ register_log_fields(
     "fallback_reason",
     "from_deployment",
     "to_deployment",
+    "images",
+    "image_size",
 )
 
 
@@ -306,6 +325,33 @@ class EmbeddingResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ImageResult:
+    """The outcome of one routed image generation (:meth:`AIRouter.generate_image`).
+
+    ``generation`` holds the image, or the refusal when a content filter declined (then
+    ``image`` is ``None`` and ``refused`` is true). ``usage`` and ``cost_usd`` cover every call
+    made for it (retried attempts that reported usage included; a refusal costs nothing).
+    """
+
+    generation: ImageGeneration
+    served_by: ServedBy
+    usage: Usage
+    cost_usd: Decimal
+
+    @property
+    def image(self) -> GeneratedImage | None:
+        return self.generation.image
+
+    @property
+    def refused(self) -> bool:
+        return self.generation.refused
+
+    @property
+    def refusal(self) -> Refusal | None:
+        return self.generation.refusal
+
+
+@dataclass(frozen=True, slots=True)
 class Finished:
     """The last event of every routed stream."""
 
@@ -373,8 +419,10 @@ class AIRouter:
     """Routes tasks to models with policy, limits, retries, fallback, ledger and brake.
 
     ``providers`` must cover every provider the routing table uses, and ``prices`` every model.
-    ``brake=None`` disables the brake (tests and local runs only; :meth:`from_settings` always
-    sets one). ``jitter`` returns a number in ``[0, 1]`` for the retry backoff.
+    ``images`` serves the ``image`` route (``None``: no image resource, :attr:`serves_images`
+    is false). ``brake=None`` disables the brake (tests and local runs only;
+    :meth:`from_settings` always sets one). ``jitter`` returns a number in ``[0, 1]`` for the
+    retry backoff.
     """
 
     def __init__(
@@ -390,6 +438,7 @@ class AIRouter:
         clock: Clock | None = None,
         jitter: Callable[[], float] = random.random,
         now: Callable[[], datetime] = _utc_now,
+        images: ImageProvider | None = None,
     ) -> None:
         for name, provider in providers.items():
             if provider.name != name:
@@ -401,8 +450,11 @@ class AIRouter:
         unpriced = sorted(family for family in routing.limits if family not in prices)
         if unpriced:
             raise ValueError(f"no price configured for model(s) {', '.join(unpriced)}")
+        if images is not None and images.name != "openai":
+            raise ValueError(f"image provider {images.name!r} is not an Azure OpenAI provider")
         self._routing = routing
         self._providers: Mapping[ProviderName, Provider] = dict(providers)
+        self._images = images
         self._prices = prices
         self._ledger = ledger
         self._brake = brake
@@ -426,8 +478,12 @@ class AIRouter:
         clock: Clock | None = None,
         jitter: Callable[[], float] = random.random,
         now: Callable[[], datetime] = _utc_now,
+        images: ImageProvider | None = None,
     ) -> AIRouter:
-        """A router with the settings' routes, prices, limits, retries, policy and brake."""
+        """A router with the settings' routes, prices, limits, retries, policy and brake.
+
+        ``images``: the image resource's provider (:func:`create_image_provider`), when
+        ``BW_AI_IMAGE_BASE_URL`` is set."""
         brake = BudgetBrake(
             ledger,
             daily_cap_usd=settings.brake_daily_cap_usd,
@@ -447,11 +503,17 @@ class AIRouter:
             clock=clock,
             jitter=jitter,
             now=now,
+            images=images,
         )
 
     @property
     def routing(self) -> RoutingTable:
         return self._routing
+
+    @property
+    def serves_images(self) -> bool:
+        """Whether :meth:`generate_image` can serve: an ``image`` route and an image provider."""
+        return self._images is not None and Task.IMAGE in self._routing
 
     @property
     def prices(self) -> PriceTable:
@@ -471,6 +533,8 @@ class AIRouter:
         """Close every provider client."""
         for provider in self._providers.values():
             await provider.aclose()
+        if self._images is not None:
+            await self._images.aclose()
 
     # ----------------------------------------------------------------------------------------
     # Entry points
@@ -599,6 +663,37 @@ class AIRouter:
             effort=spec.effort,
         )
         return EmbeddingResult(embeddings, served_by, run.usage, run.cost)
+
+    async def generate_image(
+        self, request: ImageRequest, *, origin: Origin, job_id: str | None = None
+    ) -> ImageResult:
+        """Generate one image (``Task.IMAGE``) and return it, or its refusal.
+
+        Raises before any call on a missing route (:class:`NoRouteError`: the image resource is
+        not configured), a policy violation (only ``public`` prompts), no image provider
+        (``UnsupportedRequestError``) or an engaged brake for background work. Retries 429/5xx
+        like every model call; no fallback. A content filter refusal is returned, never raised.
+        """
+        task = Task.IMAGE
+        route = self._routing.route(task)
+        view = request.policy_view()
+        self._policy.check(route.policy, view, route.chain)
+        provider = self._images
+        if provider is None:
+            raise UnsupportedRequestError("no image resource is configured")
+        if self._brake is not None:
+            await self._brake.check(origin)
+        run = _Run(task, view, origin, job_id)
+        spec = route.primary
+        generation = await self._image_call(run, spec, provider, request)
+        served_by = ServedBy(
+            task=task,
+            model=spec.family,
+            deployment=spec.deployment,
+            provider=spec.provider,
+            effort=None,
+        )
+        return ImageResult(generation, served_by, run.usage, run.cost)
 
     # ----------------------------------------------------------------------------------------
     # Steps
@@ -854,6 +949,83 @@ class AIRouter:
             )
             await self._clock.sleep(delay)
 
+    async def _image_call(
+        self, run: _Run, spec: ModelSpec, provider: ImageProvider, request: ImageRequest
+    ) -> ImageGeneration:
+        """One image call through the limiter, retried on 429/5xx like :meth:`_embed_call`."""
+        limiter = self._limiters[spec.family]
+        estimate = estimate_input_tokens(run.request)
+        attempt = 1
+        while True:
+            started = self._clock.monotonic()
+            result: ImageGeneration | None = None
+            failure: ProviderError | None = None
+            try:
+                async with limiter.admit(
+                    estimate, max_cooldown=self._retry.max_retry_after
+                ) as lease:
+                    try:
+                        result = await provider.generate(spec, request)
+                    except ProviderError as error:
+                        failure = error
+                    if result is not None:
+                        lease.settle(result.usage)
+                    elif failure is not None:
+                        lease.settle(failure.usage)
+            except ModelCoolingDown as cooling:
+                _logger.info(
+                    "ai_model_cooling_down",
+                    extra={
+                        "task": run.task,
+                        "deployment": spec.deployment,
+                        "delay_ms": round(cooling.remaining * 1000),
+                        "job_id": run.job_id,
+                    },
+                )
+                raise RateLimitedError(
+                    f"{spec.provider} {spec.deployment} is cooling down after a Retry-After",
+                    provider=spec.provider,
+                    retryable=True,
+                    retry_after=cooling.remaining,
+                ) from None
+            duration_ms = (self._clock.monotonic() - started) * 1000
+            if result is not None:
+                outcome: CallOutcome = "refused" if result.refused else "completed"
+                await self._record(
+                    run, spec, result.usage, outcome, None, duration_ms, image_size=request.size
+                )
+                return result
+            if failure is None:  # pragma: no cover - set above
+                raise RuntimeError("an image call ended without a result")
+            if failure.usage is not None:
+                await self._record(
+                    run, spec, failure.usage, "failed", None, duration_ms, image_size=request.size
+                )
+            reason = retry_reason(failure)
+            if reason is None:
+                raise failure
+            if failure.retry_after:
+                limiter.cool_down(failure.retry_after)
+            delay = self._retry.delay(
+                attempt, jitter=self._jitter(), retry_after=failure.retry_after
+            )
+            if delay is None:
+                raise failure
+            attempt += 1
+            _logger.info(
+                "ai_retry",
+                extra={
+                    "task": run.task,
+                    "deployment": spec.deployment,
+                    "attempt": attempt,
+                    "delay_ms": round(delay * 1000),
+                    "retry_reason": reason,
+                    "status": failure.status_code,
+                    "job_id": run.job_id,
+                },
+            )
+            await self._clock.sleep(delay)
+
     async def _record(
         self,
         run: _Run,
@@ -862,9 +1034,17 @@ class AIRouter:
         outcome: CallOutcome,
         response_id: str | None,
         duration_ms: float,
+        *,
+        image_size: str | None = None,
     ) -> None:
-        """Price one call, add it to the request's totals and write it to the ledger."""
-        cost = self._prices.cost(spec.family, usage)
+        """Price one call, add it to the request's totals and write it to the ledger.
+
+        Image calls (``image_size`` set) cost their per-image price only (their tokens are
+        recorded, never billed on top)."""
+        if image_size is None:
+            cost = self._prices.cost(spec.family, usage)
+        else:
+            cost = self._prices.image_cost(spec.family, image_size, usage.images)
         run.usage = run.usage + usage
         run.cost += cost
         record = UsageRecord(
@@ -895,6 +1075,8 @@ class AIRouter:
                 "cached_input_tokens": usage.cached_input,
                 "output_tokens": usage.output,
                 "web_searches": usage.web_search_requests,
+                "images": usage.images,
+                "image_size": image_size,
                 "cost_usd": float(cost),
                 "duration_ms": round(duration_ms, 1),
             },
@@ -953,3 +1135,27 @@ def create_providers(
         )
         providers["anthropic"] = AnthropicFoundryProvider(claude)
     return providers
+
+
+def create_image_provider(
+    settings: AISettings,
+    token_provider: TokenProvider,
+    *,
+    timeout: float | None = None,
+    http_client: httpx2.AsyncClient | None = None,
+) -> OpenAIImagesProvider | None:
+    """The image resource's provider (``BW_AI_IMAGE_BASE_URL``), or ``None`` when it is unset.
+
+    Same Entra token provider as the chat providers, SDK retries off (the router retries).
+    ``http_client`` is injectable for tests (``httpx2.MockTransport``).
+    """
+    if settings.image_base_url is None:
+        return None
+    client = create_openai_client(
+        base_url=settings.image_base_url,
+        token_provider=token_provider,
+        http_client=http_client,
+        max_retries=0,
+        timeout=timeout,
+    )
+    return OpenAIImagesProvider(client)

@@ -211,14 +211,21 @@ class RouteView(ApiModel):
     chain: list[RouteModelView]
 
 
+def _is_none(value: object) -> bool:
+    return value is None
+
+
 class PriceView(ApiModel):
-    """USD per 1M tokens (``BW_AI_PRICE_OVERRIDES`` over the defaults)."""
+    """USD per 1M tokens (``BW_AI_PRICE_OVERRIDES`` over the defaults); image models also
+    list their price per image by size (``imageUsd``, ``BW_AI_IMAGE_USD_*``)."""
 
     model: str
     input: float
     output: float
     cached_input: float | None
     cache_write: float | None
+    image_usd: dict[str, float] | None = Field(default=None, exclude_if=_is_none)
+    """USD per generated image by size (``1536x1024``); left out for text models."""
 
 
 class ModelsView(ApiModel):

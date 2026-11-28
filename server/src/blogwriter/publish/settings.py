@@ -17,6 +17,11 @@
     ``https://example.com``: articles are verified at ``<origin>/blog/<slug>``.
 ``BW_PUBLISH_PREVIEW_WORKFLOW`` (unset)
     The staging preview workflow (builds from ``published-blogs-staging`` only).
+``BW_PUBLISH_SITE_UPSTREAM`` (unset)
+    The portfolio server in this replica (``http://127.0.0.1:3000``, loopback only), when the
+    portfolio runs in the same Container App. A publish then revalidates the site there and
+    reads the page back from it: no GitHub repository, workflow or token is needed, and the
+    ``BW_PUBLISH_PORTFOLIO_*`` settings are ignored for publishing.
 ``BW_PUBLISH_BUILD_TIMEOUT_SECONDS`` (1800), ``BW_PUBLISH_VERIFY_TIMEOUT_SECONDS`` (900),
 ``BW_PUBLISH_POLL_SECONDS`` (20)
     How long the publish job waits for the build and for the live page, and how often it asks.
@@ -37,6 +42,7 @@ from urllib.parse import urlsplit
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from blogwriter.core.site import normalize_site_upstream
 from blogwriter.domain.base import check_https_url
 
 __all__ = [
@@ -71,6 +77,7 @@ class PublishSettings(BaseSettings):
     portfolio_workflow: str | None = None
     portfolio_token: SecretStr | None = None
     site_origin: str | None = None
+    site_upstream: str | None = None
     preview_workflow: str | None = None
     build_timeout_seconds: float = Field(default=1800.0, gt=0, le=6 * 3600)
     verify_timeout_seconds: float = Field(default=900.0, gt=0, le=6 * 3600)
@@ -114,6 +121,11 @@ class PublishSettings(BaseSettings):
             raise ValueError("the portfolio token must be 20-255 printable characters")
         return SecretStr(value.get_secret_value().strip())
 
+    @field_validator("site_upstream")
+    @classmethod
+    def _upstream(cls, value: str | None) -> str | None:
+        return normalize_site_upstream(value)
+
     @field_validator("site_origin")
     @classmethod
     def _origin(cls, value: str | None) -> str | None:
@@ -128,8 +140,14 @@ class PublishSettings(BaseSettings):
         return f"https://{host}" if port in (None, 443) else f"https://{host}:{port}"
 
     @property
+    def local_site(self) -> bool:
+        """The portfolio runs in this replica (``BW_PUBLISH_SITE_UPSTREAM``): no GitHub build."""
+        return self.site_upstream is not None
+
+    @property
     def portfolio_configured(self) -> bool:
-        """Everything a publish or unpublish needs: repository, workflow, token, site origin."""
+        """Everything a publish or unpublish needs: the site origin plus the local site, or the
+        repository, workflow and token of the GitHub build."""
         return not self.missing_for_publish()
 
     @property
@@ -145,6 +163,8 @@ class PublishSettings(BaseSettings):
 
     def missing_for_publish(self) -> list[str]:
         """Names (never values) of the variables a publish still needs."""
+        if self.local_site:
+            return [] if self.site_origin is not None else ["BW_PUBLISH_SITE_ORIGIN"]
         wanted = {
             "BW_PUBLISH_PORTFOLIO_REPOSITORY": self.portfolio_repository,
             "BW_PUBLISH_PORTFOLIO_WORKFLOW": self.portfolio_workflow,

@@ -39,9 +39,11 @@ Stream events: `TextDelta`, `ThinkingSummary`, `ToolCall`, `Refusal` (live, curr
 
 ## Order of operations (nothing is sent until steps 1-4 pass)
 
-1. Route lookup: no route raises `NoRouteError` (`image` has no default route).
+1. Route lookup: no route raises `NoRouteError` (`image` has a route only when
+   `BW_AI_IMAGE_BASE_URL` is set).
 2. `SensitivityPolicy.check` against every model of the chain: `PolicyViolation`.
-3. `embed`/`image` and background requests: `UnsupportedRequestError` (not chat calls).
+3. `embed`/`image` and background requests: `UnsupportedRequestError` (not chat calls; images
+   go through `generate_image`, embeddings through `embed`).
 4. Output schema compiled for each provider of the chain; budget brake for background work.
 5. Primary call through its limiter, retrying 429/5xx (default 4 attempts, waits 0.5-1 s,
    1-2 s, 2-4 s, capped at 30 s; `Retry-After` is a floor).
@@ -53,6 +55,28 @@ Stream events: `TextDelta`, `ThinkingSummary`, `ToolCall`, `Refusal` (live, curr
    result (text empty) and invalid output raises `StructuredOutputError`.
 8. `ServedBy(task, model, deployment, provider, effort, fallback_reason, review_only, repaired)`;
    `review_only` is true when a fallback served `draft`, `revise` or `critique`.
+
+## Images (`Task.IMAGE`, opt-in)
+
+`router.generate_image(ImageRequest(prompt=..., sensitivity=Sensitivity.PUBLIC, size=...),
+origin=..., job_id=...)` returns an `ImageResult`: the PNG (`result.image`), or a refusal
+(`result.refused`, category `content_filter`) when Azure's filter or OpenAI's moderation
+declined, which is a result and never raised. It runs the same checks as `run`: the route
+(`NoRouteError` until `BW_AI_IMAGE_BASE_URL` is set), the policy (the `image` ceiling is
+`public`, tool-free), the brake for background work, the limiter (`gpt-image-2` concurrency 1)
+and 429/5xx retries; no fallback. The provider (`OpenAIImagesProvider`) calls
+`POST /images/generations` on the separate East US 2 resource with `model` (the deployment),
+`prompt`, `size` (`1536x1024` hero, `1024x1024` inline), `quality: high`, `output_format: png`
+and `n: 1`, authenticated with the same Entra token provider as the Responses provider
+(`create_image_provider`, SDK retries off). The ledger prices each image by size
+(`PriceTable.image_cost`, `ModelPrice.image_sizes`): `BW_AI_IMAGE_USD_1536X1024` (0.25) and
+`BW_AI_IMAGE_USD_1024X1024` (0.17), the assumed GPT Image high-quality prices; its tokens are
+recorded but never billed on top. `AIRouter.serves_images` says whether a route and a provider
+are both there (the `ImageGenerator` port in `domain.ports`).
+
+Image input (`ImagePart`) is accepted only for the tasks in `policy.IMAGE_TASKS`, up to the
+class listed: `engagement` (anonymized screenshots) and `fact_check` (public only: the
+illustrations' "media matches text" check of a generated image).
 
 ## Rules and where they are enforced
 
@@ -97,7 +121,9 @@ is logged once per day, for the out-of-band alert rule.
 
 Overrides: `BW_AI_MODEL_OVERRIDES`, `BW_AI_ROUTE_OVERRIDES`, `BW_AI_PRICE_OVERRIDES` (JSON; each
 entry replaces the default entry with the same key), `BW_AI_DEPLOYMENT_{SOL,ASTRA,LUNA,OPUS,EMBEDDING}`,
-`BW_AI_WEB_SEARCH_USD_PER_1K`, `BW_AI_ALLOW_PRIVATE`, `BW_AI_RETRY_*`, `BW_AI_BRAKE_*`.
+`BW_AI_WEB_SEARCH_USD_PER_1K`, `BW_AI_ALLOW_PRIVATE`, `BW_AI_RETRY_*`, `BW_AI_BRAKE_*`, and for
+images `BW_AI_IMAGE_BASE_URL`, `BW_AI_DEPLOYMENT_IMAGE`, `BW_AI_IMAGE_USD_1536X1024`,
+`BW_AI_IMAGE_USD_1024X1024`.
 
 ## Decisions to review
 
@@ -120,8 +146,7 @@ entry replaces the default entry with the same key), `BW_AI_DEPLOYMENT_{SOL,ASTR
 
 ## Requests for other owners
 
-- Providers: an embeddings call (and image generation) so `embed`/`image` can be routed; today the
-  router refuses them with `UnsupportedRequestError`, and their routes exist for policy and pricing.
+- Providers: an embeddings call and image generation: both done (`embed`, `generate_image`).
 - infra/v2: set `BW_AI_OPENAI_BASE_URL`, `BW_AI_ANTHROPIC_RESOURCE` and `BW_AI_DEPLOYMENT_*`
   (it sets `AZURE_OPENAI_BASE_URL`, `ANTHROPIC_FOUNDRY_RESOURCE`, `MODEL_DEPLOYMENT_*` today).
 - Wiring (core): build the router only when `AISettings().configured`, with a Cosmos-backed sink,

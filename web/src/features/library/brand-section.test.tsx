@@ -102,6 +102,19 @@ describe('Library > Brand kit', () => {
     expect(put?.body).toMatchObject({ authorName: 'Jordan Writer', font: 'inter', headshot: mediaRef(), nameMark: null });
   });
 
+  it('saves an art brief per pillar for the illustrations, and leaves an empty one to the default', async () => {
+    const { brand, user } = await openBrand();
+    const briefs = screen.getByRole('region', { name: 'Art briefs' });
+    expect(within(briefs).getByText(/Leave one empty for the default look/)).toBeInTheDocument();
+    expect(within(briefs).getByRole('link', { name: 'Settings, Models' })).toHaveAttribute('href', '/settings/models');
+    await user.type(within(briefs).getByRole('textbox', { name: /AI agents & security/ }), 'Isometric line art, teal on paper');
+    await user.type(within(briefs).getByRole('textbox', { name: /Identity modernization/ }), '   ');
+    await user.click(screen.getByRole('button', { name: 'Save brand kit' }));
+    expect(await screen.findByText('Brand kit saved.')).toBeInTheDocument();
+    const put = brand.requests.find((request) => request.method === 'PUT');
+    expect((put?.body as { artBriefs?: unknown }).artBriefs).toEqual({ agents: 'Isometric line art, teal on paper' });
+  });
+
   it('refuses a file that is not an image before uploading it', async () => {
     const { uploads } = await openBrand();
     const gif = new File(['GIF89a'], 'mark.gif', { type: 'image/gif' });

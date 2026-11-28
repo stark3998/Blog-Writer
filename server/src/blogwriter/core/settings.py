@@ -13,6 +13,10 @@ configured every authenticated route is denied.
 Inside Azure Container Apps (``CONTAINER_APP_NAME`` is set by the platform) ``env`` must be
 ``prod``. That keeps a stray ``BW_ENV=local`` from enabling the development principal in a
 deployed app.
+
+``site_hosts`` and ``site_upstream`` (``BW_SITE_HOSTS``, ``BW_SITE_UPSTREAM``) are set together:
+the public portfolio site served from the same app (:mod:`blogwriter.core.site`). Blog Writer's
+own host (``public_origin``) can never be one of the site hosts.
 """
 
 from __future__ import annotations
@@ -26,6 +30,8 @@ from urllib.parse import urlsplit
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from starlette.requests import Request
+
+from blogwriter.core.site import normalize_site_hosts, normalize_site_upstream
 
 __all__ = [
     "MIN_COOKIE_KEY_BYTES",
@@ -131,6 +137,14 @@ class CoreSettings(BaseSettings):
     watchdog_threshold_ms: int = Field(default=500, ge=10, le=60_000)
     """Event-loop stalls longer than this are logged."""
 
+    site_hosts: str | None = None
+    """Host names of the public portfolio site this app also serves, comma separated, canonical
+    first (``example.com,www.example.com``). Requests for them go to ``site_upstream`` and never
+    reach Blog Writer's routes (:mod:`blogwriter.core.site`). Unset: no public site."""
+
+    site_upstream: str | None = None
+    """The portfolio server in this replica, loopback only (``http://127.0.0.1:3000``)."""
+
     @field_validator("owner_oid", "dev_principal_oid")
     @classmethod
     def _check_oid(cls, value: str | None) -> str | None:
@@ -165,6 +179,18 @@ class CoreSettings(BaseSettings):
             raise ValueError("must be an http(s) origin such as https://writer.example.com")
         return normalized
 
+    @field_validator("site_hosts")
+    @classmethod
+    def _check_site_hosts(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return ",".join(normalize_site_hosts(value)) or None
+
+    @field_validator("site_upstream")
+    @classmethod
+    def _check_site_upstream(cls, value: str | None) -> str | None:
+        return normalize_site_upstream(value)
+
     @model_validator(mode="after")
     def _check_environment(self) -> Self:
         if self.env != "prod" and os.environ.get(ACA_MARKER_ENV):
@@ -181,11 +207,24 @@ class CoreSettings(BaseSettings):
                 raise ValueError(f"env='prod' requires {', '.join(missing)}")
             if self.public_origin is not None and not self.public_origin.startswith("https://"):
                 raise ValueError("env='prod' requires an https BW_PUBLIC_ORIGIN")
+        if (self.site_hosts is None) != (self.site_upstream is None):
+            raise ValueError("set BW_SITE_HOSTS and BW_SITE_UPSTREAM together")
+        if self.site_hosts is not None and self.public_origin is not None:
+            own_host = (urlsplit(self.public_origin).hostname or "").lower()
+            if own_host in self.site_host_list:
+                raise ValueError(
+                    "the public origin (Blog Writer's own host) cannot be one of BW_SITE_HOSTS"
+                )
         return self
 
     @property
     def is_prod(self) -> bool:
         return self.env == "prod"
+
+    @property
+    def site_host_list(self) -> tuple[str, ...]:
+        """``site_hosts`` as a tuple (canonical first); empty without a public site."""
+        return normalize_site_hosts(self.site_hosts)
 
     @property
     def cookie_ttl_seconds(self) -> int:

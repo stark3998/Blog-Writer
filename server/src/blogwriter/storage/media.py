@@ -44,6 +44,7 @@ __all__ = [
     "media_name",
     "sniff_image_type",
     "store_media",
+    "to_srgb",
 ]
 
 type MediaArea = Literal["uploads", "posts", "articles", "brand"]
@@ -169,8 +170,12 @@ def _check_polyglot(data: bytes, content_type: str) -> None:
             raise MediaRejected("unsupported_media_type", "The file has data after the image.")
 
 
-def _to_srgb(image: Image.Image) -> Image.Image:
-    """Convert pixels in an embedded colour profile to sRGB; on any problem keep them as is."""
+def to_srgb(image: Image.Image) -> Image.Image:
+    """Convert pixels in an embedded colour profile to sRGB; on any problem keep them as is.
+
+    RGB and RGBA only (other modes, and images without a profile, come back unchanged). Sync and
+    CPU-bound: call it from a thread. Used by :func:`ingest_image` and by the AI illustrations'
+    re-encoding, so a profile is applied to the pixels before every metadata chunk is dropped."""
     icc: object = image.info.get("icc_profile")
     if not isinstance(icc, bytes) or not icc or image.mode not in ("RGB", "RGBA"):
         return image
@@ -204,7 +209,7 @@ def _ingest_sync(data: bytes, max_pixels: int, max_bytes: int) -> IngestedImage:
             image.load()
             oriented = ImageOps.exif_transpose(image)
             mode = "RGBA" if content_type != "image/jpeg" and _has_alpha(oriented) else "RGB"
-            pixels = _to_srgb(oriented.convert(mode) if oriented.mode != mode else oriented)
+            pixels = to_srgb(oriented.convert(mode) if oriented.mode != mode else oriented)
             if pixels.mode != mode:
                 pixels = pixels.convert(mode)
             # A fresh image from raw pixels: no metadata of the upload can travel along.

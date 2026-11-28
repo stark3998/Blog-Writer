@@ -3,7 +3,8 @@
 Owner: articles (the document, autosave, versions, owner transitions). Other writers touch only
 their fields, always with an If-Match CAS: pipeline (Markdown and ``served_by`` in pipeline
 states, through the articles Python API), gates (``gates``), publish (``publish``, ``veto``
-status and ``corrections``) and planner (``veto``).
+status and ``corrections``), planner (``veto``) and the illustrations job (``illustrations``,
+``illustrationJobId``, through the articles Python API).
 
 ``markdown`` is the article-dialect **body** (``docs/v2/article-dialect.md``); the frontmatter
 lives in :class:`ArticleMeta` and :func:`blogwriter.domain.compose.compose_document` builds the
@@ -46,8 +47,11 @@ from blogwriter.domain.states import (
 __all__ = [
     "AUTOSAVE_SNAPSHOT_EVERY",
     "GATE_ORDER",
+    "ILLUSTRATION_ID_PATTERN",
     "MAX_ARTICLE_MARKDOWN_BYTES",
     "MAX_EMBEDDING_DIMENSIONS",
+    "MAX_ILLUSTRATIONS",
+    "MAX_ILLUSTRATION_ALT",
     "PUBLISHED_MARKER_NAME",
     "Article",
     "ArticleMeta",
@@ -60,6 +64,8 @@ __all__ = [
     "GateReport",
     "GateResult",
     "GateVerdict",
+    "Illustration",
+    "IllustrationRole",
     "OwnerSignalRef",
     "PublishState",
     "PublishedAsset",
@@ -311,6 +317,49 @@ class PublishState(DomainModel):
     last_error: str | None = Field(default=None, max_length=64)
 
 
+type IllustrationRole = Literal["hero", "inline"]
+"""What an illustration was planned as: the landscape hero, or an image inside the body."""
+
+MAX_ILLUSTRATIONS: Final = 12
+"""Candidates kept on an article (the oldest unused ones are dropped first)."""
+MAX_ILLUSTRATION_ALT: Final = 300
+"""Longest alt text (the published ``heroImage.alt`` takes 300 characters)."""
+ILLUSTRATION_ID_PATTERN: Final = r"^ill-[0-9a-f]{16}$"
+
+
+class Illustration(DomainModel):
+    """An AI illustration candidate (``gpt-image-2``) that passed its vision check.
+
+    Added by the illustrations job (``illustrations.generate``) without touching the body or
+    the hero: a candidate is not content. The owner edits ``alt_text``, discards it, makes it
+    the hero (a ``hero_image`` media the publish job uses for ``heroImage``) or inserts it into
+    the body as a normal Markdown image (versioned, so the approval covers it). ``media`` is the
+    re-encoded WebP (pixels only, metadata stripped) in Blob ``media`` under its content hash.
+    ``served_by`` lists the plan, generation and vision check calls; ``cost_usd`` is what
+    generating and checking this image cost (discarded attempts included).
+    """
+
+    id: str = Field(pattern=ILLUSTRATION_ID_PATTERN)
+    role: IllustrationRole
+    media: MediaRef
+    alt_text: str = Field(min_length=1, max_length=MAX_ILLUSTRATION_ALT)
+    prompt_summary: str = Field(min_length=1, max_length=300)
+    """What the image was asked to show (the planned concept), never the full prompt."""
+    section: str | None = Field(default=None, max_length=200)
+    """For an inline image: the heading the plan placed it after (a suggestion)."""
+    served_by: list[ServedByRecord] = Field(default_factory=list[ServedByRecord], max_length=8)
+    cost_usd: float = Field(default=0.0, ge=0)
+    job_id: DocId
+    created_at: Timestamp
+
+    @staticmethod
+    def id_for(sha256: str) -> str:
+        """``ill-<first 16 hex of the image's SHA-256>``: the same image is one candidate."""
+        if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+            raise ValueError("sha256 must be 64 lowercase hex characters")
+        return f"ill-{sha256[:16]}"
+
+
 class VetoNotice(DomainModel):
     """The veto notice for an auto-published article (owner: planner).
 
@@ -400,11 +449,33 @@ class Article(Document):
     veto: VetoNotice | None = None
     last_error: str | None = Field(default=None, max_length=64)
     """Code of the failure that put the article in ``needs_attention`` or ``publish_failed``."""
+    illustrations: list[Illustration] = Field(
+        default_factory=list[Illustration], max_length=MAX_ILLUSTRATIONS
+    )
+    """AI illustration candidates (owner: the illustrations job, through the articles API).
+    Not content: the body and the hero change only through the owner's actions."""
+    illustration_job_id: DocId | None = None
+    """The last ``illustrations.generate`` run started for this article."""
 
     @field_validator("markdown")
     @classmethod
     def _markdown_size(cls, value: str) -> str:
         return _check_markdown_size(value)
+
+    def illustration(self, illustration_id: str) -> Illustration | None:
+        """The candidate with that id, or ``None``."""
+        return next((item for item in self.illustrations if item.id == illustration_id), None)
+
+    def hero_media(self) -> MediaRef | None:
+        """The ``hero_image`` media the publish job and the preview use, if any."""
+        return next((item for item in self.media if item.role == "hero_image"), None)
+
+    def references_media(self, name: str) -> bool:
+        """Whether the body shows ``/api/media/<name>`` or the hero is that blob."""
+        hero = self.hero_media()
+        if hero is not None and hero.container == "media" and hero.name == name:
+            return True
+        return f"{MediaRef.URL_PREFIX}{name}" in self.markdown
 
     def compute_sha256(self) -> str:
         """:func:`~blogwriter.domain.hashing.article_sha256` of the current meta and body."""

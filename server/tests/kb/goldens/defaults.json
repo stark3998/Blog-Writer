@@ -263,7 +263,11 @@
     "font": "inter",
     "headshot": null,
     "nameMark": null,
-    "artBriefs": {}
+    "artBriefs": {
+      "agents": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for AI agents & security. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people.",
+      "identity": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for Identity modernization. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people.",
+      "governance": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for AI governance. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people."
+    }
   },
   "blocklist": {
     "id": "blocklist",

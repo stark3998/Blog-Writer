@@ -17,6 +17,8 @@ Example (a job step)::
 :class:`ScriptedModelRunner` applies the real sensitivity policy
 (``blogwriter.ai.policy.SensitivityPolicy``) to every call, so a test that sends anonymized
 data to a public-only task, or tools with non-public data, fails the same way production would.
+It also generates images (``generate_image``, the ``ImageGenerator`` port) from scripted
+:class:`ScriptedImage` replies, under the same policy (``Task.IMAGE`` takes public prompts only).
 """
 
 from __future__ import annotations
@@ -26,6 +28,8 @@ import hashlib
 import io
 import math
 import re
+import struct
+import zlib
 from collections.abc import AsyncGenerator, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -33,16 +37,17 @@ from decimal import Decimal
 from typing import cast
 
 from fastapi import APIRouter, FastAPI
-from PIL import Image
 from pydantic import BaseModel, JsonValue
 from pypdf import PdfWriter
 
+from blogwriter.ai.config import NoRouteError
 from blogwriter.ai.ledger import Origin
 from blogwriter.ai.policy import TASK_CEILINGS, SensitivityPolicy
 from blogwriter.ai.router import (
     REVIEW_ONLY_TASKS,
     FallbackReason,
     Finished,
+    ImageResult,
     RouterEvent,
     RouterResult,
     ServedBy,
@@ -50,6 +55,9 @@ from blogwriter.ai.router import (
 from blogwriter.ai.types import (
     Citation,
     Completion,
+    GeneratedImage,
+    ImageGeneration,
+    ImageRequest,
     Message,
     Part,
     Refusal,
@@ -60,6 +68,7 @@ from blogwriter.ai.types import (
     ToolCall,
     ToolCallPart,
     Usage,
+    png_size,
 )
 from blogwriter.core.app import create_app
 from blogwriter.core.crypto import TokenVault
@@ -119,8 +128,10 @@ __all__ = [
     "HashEmbedder",
     "MemoryBlobStore",
     "RecordedCall",
+    "RecordedImageCall",
     "RecordingNotifier",
     "RecordingSeeder",
+    "ScriptedImage",
     "ScriptedModelRunner",
     "ScriptedReply",
     "StaticHttp",
@@ -170,13 +181,36 @@ class RecordedCall:
     job_id: str | None
 
 
-class ScriptedModelRunner:
-    """A :class:`~blogwriter.domain.ports.ModelRunner` answering from per-task scripts."""
+@dataclass(frozen=True, slots=True)
+class ScriptedImage:
+    """What one scripted image generation returns: ``data`` (a real PNG, for example
+    :func:`png_bytes`), a content filter refusal (``refused``) or ``error`` raised instead."""
 
-    def __init__(self, *, allow_private: bool = True) -> None:
+    data: bytes = b""
+    refused: bool = False
+    error: BaseException | None = None
+    cost_usd: Decimal = Decimal("0.25")
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedImageCall:
+    request: ImageRequest
+    origin: Origin
+    job_id: str | None
+
+
+class ScriptedModelRunner:
+    """A :class:`~blogwriter.domain.ports.ModelRunner` answering from per-task scripts, and an
+    :class:`~blogwriter.domain.ports.ImageGenerator` answering from :meth:`add_images`
+    (``serves_images=False`` simulates "no image route": :class:`NoRouteError`)."""
+
+    def __init__(self, *, allow_private: bool = True, serves_images: bool = True) -> None:
         self._scripts: dict[Task, list[ScriptedReply]] = {}
+        self._images: list[ScriptedImage] = []
         self._policy = SensitivityPolicy(allow_private=allow_private)
         self.calls: list[RecordedCall] = []
+        self.image_calls: list[RecordedImageCall] = []
+        self.serves_images = serves_images
 
     def add(self, task: Task, *replies: ScriptedReply | str | BaseModel) -> None:
         """Queue replies for ``task`` (a string is text, a model is structured output)."""
@@ -227,6 +261,53 @@ class ScriptedModelRunner:
                 await asyncio.sleep(0)
                 yield TextDelta(piece)
         yield Finished(result)
+
+    # -- images --------------------------------------------------------------------------------
+
+    def add_images(self, *replies: ScriptedImage | bytes) -> None:
+        """Queue image generations (bytes are a PNG to return)."""
+        for reply in replies:
+            self._images.append(reply if isinstance(reply, ScriptedImage) else ScriptedImage(reply))
+
+    @property
+    def pending_images(self) -> int:
+        return len(self._images)
+
+    async def generate_image(
+        self, request: ImageRequest, *, origin: Origin, job_id: str | None = None
+    ) -> ImageResult:
+        await asyncio.sleep(0)
+        self._policy.check(TASK_CEILINGS[Task.IMAGE], request.policy_view(), ())
+        if not self.serves_images:
+            raise NoRouteError("no route is configured for task 'image'")
+        self.image_calls.append(RecordedImageCall(request, origin, job_id))
+        if not self._images:
+            raise AssertionError("unexpected image call (no scripted image left)")
+        reply = self._images.pop(0)
+        if reply.error is not None:
+            raise reply.error
+        served_by = ServedBy(
+            task=Task.IMAGE,
+            model="fake-image-model",
+            deployment="fake-image-deployment",
+            provider="openai",
+            effort=None,
+        )
+        if reply.refused:
+            generation = ImageGeneration(
+                image=None,
+                usage=Usage(),
+                model="fake-image-model",
+                refusal=Refusal("content_filter", None),
+            )
+            return ImageResult(generation, served_by, Usage(), Decimal(0))
+        size = png_size(reply.data)
+        if size is None:
+            raise AssertionError("scripted images must be PNG bytes")
+        usage = Usage(input=50, output=4000, images=1)
+        image = GeneratedImage(data=reply.data, width=size[0], height=size[1])
+        generation = ImageGeneration(image=image, usage=usage, model="fake-image-model")
+        return ImageResult(generation, served_by, usage, reply.cost_usd)
 
 
 def _split(text: str, parts: int) -> list[str]:
@@ -509,10 +590,31 @@ class StaticHttp:
 
 
 def png_bytes(width: int = 8, height: int = 8, color: str = "#0E2A24") -> bytes:
-    """A real PNG of the given size (Pillow)."""
-    buffer = io.BytesIO()
-    Image.new("RGB", (width, height), color).save(buffer, format="PNG")
-    return buffer.getvalue()
+    """A real PNG of the given size with byte-identical output on every platform.
+
+    Built by hand with stored (uncompressed) deflate blocks: Pillow's encoder output depends on
+    the zlib build (macOS and Linux wheels differ), which changed content hashes in goldens.
+    """
+    rgb = bytes(int(color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    raw = b"".join(b"\x00" + rgb * width for _ in range(height))  # filter type 0 per row
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        crc = zlib.crc32(kind + data) & 0xFFFFFFFF
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", crc)
+
+    blocks = bytearray(b"\x78\x01")  # zlib header, no compression preset
+    for start in range(0, max(len(raw), 1), 65535):
+        part = raw[start : start + 65535]
+        final = 1 if start + 65535 >= len(raw) else 0
+        blocks += bytes([final]) + struct.pack("<HH", len(part), 0xFFFF ^ len(part)) + part
+    blocks += struct.pack(">I", zlib.adler32(raw) & 0xFFFFFFFF)
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit RGB
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", bytes(blocks))
+        + chunk(b"IEND", b"")
+    )
 
 
 def pdf_bytes(pages: int = 1, *, width: float = 1080, height: float = 1350) -> bytes:

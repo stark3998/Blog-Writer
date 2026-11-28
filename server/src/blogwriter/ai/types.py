@@ -12,6 +12,9 @@ Everything the router, the providers and their callers exchange is defined here:
   :class:`ToolCall`, :class:`Refusal`, :class:`UsageEvent`, then exactly one :class:`Done`.
 * :class:`Completion` is the result of one call, and :class:`Usage` its token and tool counts.
 * :class:`Embeddings` is the result of one embeddings call (``Task.EMBED``).
+* :class:`ImageRequest` is one image generation (``Task.IMAGE``: a text prompt, one PNG) and
+  :class:`ImageGeneration` its result: a :class:`GeneratedImage`, or a :class:`Refusal` when a
+  content filter declined (a typed result, never an exception).
 
 The types are frozen dataclasses that validate themselves on construction, so a value that
 exists is well formed. Fields that carry prompt or model text are left out of ``repr`` so an
@@ -35,9 +38,13 @@ __all__ = [
     "ANTHROPIC_EFFORTS",
     "DEFAULT_MAX_TOOL_CALLS",
     "IMAGE_MEDIA_TYPES",
+    "IMAGE_QUALITIES",
+    "IMAGE_SIZES",
     "MAX_CACHE_BREAKPOINTS",
+    "MAX_GENERATED_IMAGE_BYTES",
     "MAX_IMAGE_BYTES",
     "MAX_IMAGE_PARTS",
+    "MAX_IMAGE_PROMPT_CHARS",
     "OPENAI_EFFORTS",
     "Citation",
     "Completion",
@@ -46,8 +53,13 @@ __all__ = [
     "Embeddings",
     "FinishReason",
     "FunctionTool",
+    "GeneratedImage",
+    "ImageGeneration",
     "ImageMediaType",
     "ImagePart",
+    "ImageQuality",
+    "ImageRequest",
+    "ImageSize",
     "Message",
     "ModelSpec",
     "NativeItems",
@@ -70,6 +82,7 @@ __all__ = [
     "Usage",
     "UsageEvent",
     "WebSearchTool",
+    "png_size",
 ]
 
 type ProviderName = Literal["openai", "anthropic"]
@@ -118,6 +131,17 @@ MAX_IMAGE_BYTES: Final = 5 * 1024 * 1024
 """Largest image part (Claude's per-image limit is 5 MB; OpenAI accepts more)."""
 MAX_IMAGE_PARTS: Final = 4
 """Most image parts in one request (screenshot extraction needs one to three)."""
+
+type ImageSize = Literal["1536x1024", "1024x1024"]
+"""Generated image sizes: a landscape hero (1536x1024) and a square inline image (1024x1024)."""
+IMAGE_SIZES: Final[frozenset[str]] = frozenset({"1536x1024", "1024x1024"})
+type ImageQuality = Literal["low", "medium", "high"]
+"""GPT image quality (illustrations use ``high``)."""
+IMAGE_QUALITIES: Final[frozenset[str]] = frozenset({"low", "medium", "high"})
+MAX_IMAGE_PROMPT_CHARS: Final = 4_000
+"""Longest image prompt (the API takes 32,000 characters; illustration prompts are short)."""
+MAX_GENERATED_IMAGE_BYTES: Final = 24 * 1024 * 1024
+"""Largest generated image accepted from the provider (a 1536x1024 PNG is a few MB)."""
 
 _TOOL_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _DOMAIN_LABEL = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)")
@@ -295,14 +319,15 @@ def _sniff_image(data: bytes) -> str | None:
 @dataclass(frozen=True, slots=True)
 class ImagePart:
     """An image in a user turn: the owner's own screenshot (for example a LinkedIn comment
-    thread to extract text from).
+    thread to extract text from) or a generated illustration under its vision check.
 
     At most :data:`MAX_IMAGE_BYTES`; the bytes must really be the declared ``media_type`` (magic
     bytes are checked, so a mislabelled or truncated upload is refused before anything is
-    sent). The policy accepts images only for the tasks in ``blogwriter.ai.policy.IMAGE_TASKS``.
-    Images cannot be checked against the blocklist the way text is: callers send only the
-    owner's own screenshots and classify them like the text they show (``anonymized`` for
-    other members' comments). ``data`` is left out of ``repr``.
+    sent). The policy accepts images only for the tasks in ``blogwriter.ai.policy.IMAGE_TASKS``,
+    up to the data class listed there. Images cannot be checked against the blocklist the way
+    text is: callers send only the owner's own screenshots, classified like the text they show
+    (``anonymized`` for other members' comments), or images generated from public prompts
+    (``public``). ``data`` is left out of ``repr``.
     """
 
     data: bytes = field(repr=False)
@@ -682,6 +707,99 @@ type StreamEvent = TextDelta | ThinkingSummary | ToolCall | Refusal | UsageEvent
 # --------------------------------------------------------------------------------------------
 # Embeddings
 # --------------------------------------------------------------------------------------------
+
+
+def png_size(data: bytes) -> tuple[int, int] | None:
+    """``(width, height)`` from a PNG's IHDR chunk, or ``None`` when ``data`` is not a PNG."""
+    if len(data) < 24 or not data.startswith(b"\x89PNG\r\n\x1a\n") or data[12:16] != b"IHDR":
+        return None
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    if width < 1 or height < 1:
+        return None
+    return width, height
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ImageRequest:
+    """One image generation (``Task.IMAGE``): a text prompt, one PNG of ``size`` at ``quality``.
+
+    ``sensitivity`` has no default, like :class:`Request`: every caller classifies its prompt.
+    The image route's ceiling is ``public``, so only public data (article metadata, an art
+    brief) may ever reach an image model. The prompt is left out of ``repr``.
+    """
+
+    prompt: str = field(repr=False)
+    sensitivity: Sensitivity
+    size: ImageSize = "1536x1024"
+    quality: ImageQuality = "high"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.sensitivity, Sensitivity):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise TypeError("sensitivity must be a Sensitivity")
+        if not self.prompt.strip():
+            raise ValueError("an image request needs a prompt")
+        if len(self.prompt) > MAX_IMAGE_PROMPT_CHARS:
+            raise ValueError(f"image prompts may have at most {MAX_IMAGE_PROMPT_CHARS} characters")
+        if self.size not in IMAGE_SIZES:
+            raise ValueError(f"unsupported image size {self.size!r}")
+        if self.quality not in IMAGE_QUALITIES:
+            raise ValueError(f"unsupported image quality {self.quality!r}")
+
+    @property
+    def width(self) -> int:
+        return int(self.size.split("x")[0])
+
+    @property
+    def height(self) -> int:
+        return int(self.size.split("x")[1])
+
+    def policy_view(self) -> Request:
+        """The request as the sensitivity policy and the limiter see it (a text-only turn)."""
+        return Request(
+            system="", messages=(Message.user(self.prompt),), sensitivity=self.sensitivity
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedImage:
+    """A generated PNG exactly as the provider returned it (metadata included: re-encode it
+    before storing). ``data`` is left out of ``repr``."""
+
+    data: bytes = field(repr=False)
+    width: int
+    height: int
+    media_type: Literal["image/png"] = "image/png"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.data, bytes):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise TypeError("image data must be bytes")
+        if not self.data or len(self.data) > MAX_GENERATED_IMAGE_BYTES:
+            raise ValueError(f"generated images have 1 to {MAX_GENERATED_IMAGE_BYTES} bytes")
+        if png_size(self.data) != (self.width, self.height):
+            raise ValueError("the image bytes are not a PNG of the stated size")
+
+
+@dataclass(frozen=True, slots=True)
+class ImageGeneration:
+    """The result of one image call: exactly one of ``image`` and ``refusal``.
+
+    A refusal (``category`` ``content_filter`` for Azure's filters and OpenAI's moderation) is
+    a result, not an error: nothing was generated and nothing is retried.
+    """
+
+    image: GeneratedImage | None
+    usage: Usage
+    model: str
+    refusal: Refusal | None = None
+
+    def __post_init__(self) -> None:
+        if (self.image is None) == (self.refusal is None):
+            raise ValueError("an image result carries exactly one of an image and a refusal")
+
+    @property
+    def refused(self) -> bool:
+        return self.refusal is not None
 
 
 @dataclass(frozen=True, slots=True)

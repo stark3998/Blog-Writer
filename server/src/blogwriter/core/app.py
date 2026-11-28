@@ -2,15 +2,21 @@
 
 Middleware, outermost first::
 
-    request id -> access log -> security headers -> error boundary -> auth -> routes
+    request id -> access log -> [site gateway] -> security headers -> error boundary -> auth
+    -> routes
 
 * request id: a fresh id per request (log context + ``X-Request-Id``).
 * access log: one JSON line per request (method, route template, status, duration).
+* site gateway (only with ``BW_SITE_HOSTS``): requests for the public portfolio's host names
+  go to the portfolio server in this replica (:mod:`blogwriter.core.site`) and never reach
+  anything below; every other host continues down the stack.
 * security headers: CSP, nosniff, Referrer-Policy, Permissions-Policy, HSTS in prod.
 * error boundary: unexpected exceptions become a generic 500 problem+json (logged without
   their message), still wrapped by the security headers and the access log.
 * auth: Easy Auth principal / ``__Host-bw`` cookie, owner check, CSRF. Every route except
-  ``GET /api/health`` is behind it.
+  ``GET /api/health`` is behind it. In prod an unauthenticated browser navigation is sent to
+  Easy Auth's sign-in page (Easy Auth lets anonymous requests through when the app also
+  serves a public site); every other unauthenticated request stays 401.
 
 Routes: ``/api/health`` and ``/api/me`` (:mod:`blogwriter.api`), then each package router in
 order, then the SPA catch-all when ``BW_SPA_DIR`` is set. OpenAPI is served at
@@ -35,6 +41,7 @@ from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Final, Protocol
 
+import httpx
 from fastapi import APIRouter, FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware import Middleware
@@ -50,6 +57,7 @@ from blogwriter.core.logging import (
 )
 from blogwriter.core.security_headers import SecurityHeadersMiddleware
 from blogwriter.core.settings import ACA_MARKER_ENV, MIN_COOKIE_KEY_BYTES, CoreSettings
+from blogwriter.core.site import SiteGateway, SiteGatewayMiddleware
 from blogwriter.core.spa import SpaFiles
 from blogwriter.core.watchdog import LoopWatchdog
 
@@ -127,7 +135,10 @@ async def _shutdown(app: FastAPI, lifecycle: Lifecycle) -> None:
 
 
 def _lifespan(
-    settings: CoreSettings, watchdog: LoopWatchdog, lifecycles: Sequence[Lifecycle]
+    settings: CoreSettings,
+    watchdog: LoopWatchdog,
+    lifecycles: Sequence[Lifecycle],
+    gateway: SiteGateway | None,
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
@@ -152,6 +163,8 @@ def _lifespan(
         finally:
             for lifecycle in reversed(started):
                 await _shutdown(app, lifecycle)
+            if gateway is not None:
+                await gateway.aclose()
             await watchdog.stop()
             _logger.info("app_stopped", extra={"sha": settings.build_sha})
 
@@ -163,12 +176,13 @@ def create_app(
     *,
     routers: Sequence[APIRouter] = (),
     lifecycles: Sequence[Lifecycle] = (),
+    site_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Build the FastAPI app. ``settings`` default to ``CoreSettings()`` (the environment).
 
     ``routers`` are included in order after the core routes; each must carry its full paths
     (``APIRouter(prefix="/api/...")``). ``lifecycles`` are started in order and stopped in
-    reverse order.
+    reverse order. ``site_transport`` replaces the site gateway's HTTP transport (tests).
     """
     if settings is None:
         settings = CoreSettings()
@@ -180,6 +194,21 @@ def create_app(
     signer = CookieSigner(_cookie_key(settings), ttl_seconds=settings.cookie_ttl_seconds)
     watchdog = LoopWatchdog(threshold_ms=settings.watchdog_threshold_ms)
     spa = SpaFiles(settings.spa_dir) if settings.spa_dir is not None else None
+    gateway = (
+        SiteGateway(
+            settings.site_host_list,
+            settings.site_upstream,
+            studio_origin=settings.public_origin,
+            transport=site_transport,
+        )
+        if settings.site_hosts is not None and settings.site_upstream is not None
+        else None
+    )
+    site_middleware = (
+        [Middleware(SiteGatewayMiddleware, gateway=gateway, hsts=settings.is_prod)]
+        if gateway is not None
+        else []
+    )
     all_routers = [health.get_router(), me.get_router(), *routers]
     _check_unique_routes(all_routers)
 
@@ -190,13 +219,18 @@ def create_app(
         docs_url=None,
         redoc_url=None,
         redirect_slashes=False,
-        lifespan=_lifespan(settings, watchdog, tuple(lifecycles)),
+        lifespan=_lifespan(settings, watchdog, tuple(lifecycles), gateway),
         middleware=[
             Middleware(RequestIdMiddleware),
             Middleware(AccessLogMiddleware),
+            *site_middleware,
             Middleware(SecurityHeadersMiddleware, hsts=settings.is_prod),
             Middleware(ErrorBoundaryMiddleware),
-            Middleware(AuthMiddleware, authenticator=Authenticator(settings, signer)),
+            Middleware(
+                AuthMiddleware,
+                authenticator=Authenticator(settings, signer),
+                login_redirect=settings.is_prod,
+            ),
         ],
         exception_handlers=exception_handlers(),
         # Native OpenTelemetry would record exception messages and request details.
@@ -210,6 +244,7 @@ def create_app(
     )
     application.state.settings = settings
     application.state.watchdog = watchdog
+    application.state.site = gateway
     for router in all_routers:
         application.include_router(router)
     if spa is not None:

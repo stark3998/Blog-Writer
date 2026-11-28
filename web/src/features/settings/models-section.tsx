@@ -242,6 +242,13 @@ function PricesTable({ view }: { view: ModelsView }) {
     return <p className="text-ink-muted">Prices couldn’t be read from the server’s settings.</p>;
   }
   const optional = (value: number | null) => (value === null ? '–' : formatPrice(value));
+  // Image models are priced per image, by size (`imageUsd`).
+  const perImage = view.prices.flatMap((price) => {
+    const sizes = Object.entries(price.imageUsd ?? {});
+    if (sizes.length === 0) return [];
+    const list = sizes.map(([size, usd]) => `${formatPrice(usd)} at ${size.replace('x', '×')}`).join(', ');
+    return [` ${price.model} is priced per image: ${list}.`];
+  });
   return (
     <Table>
       <TableCaption>
@@ -249,6 +256,7 @@ function PricesTable({ view }: { view: ModelsView }) {
         {view.webSearchUsdPer1k === null
           ? null
           : ` Web search costs ${formatPrice(view.webSearchUsdPer1k)} per thousand searches.`}
+        {perImage.join('')}
       </TableCaption>
       <TableHeader>
         <TableRow>
@@ -375,7 +383,7 @@ function PreferencesForm({
         label="Illustrations"
         description={
           imageRoute
-            ? 'Let carousels and image cards use generated illustrations. Off by default.'
+            ? 'Lets the Draft tab make AI illustrations for an article: a hero image and up to two images for the text. Nothing is used until you pick it. Off by default.'
             : 'Needs an image model route, and none is set up on this server.'
         }
         error={imagesRefused ? 'No image model is set up, so illustrations stay off.' : undefined}
@@ -532,7 +540,7 @@ export function ModelsSection() {
 
           <SettingsBlock
             title="Preferences"
-            description="Limits the gates use to catch repeats, and whether posts may use generated illustrations."
+            description="Limits the gates use to catch repeats, and whether articles may get AI illustrations."
           >
             {models.data.preferences.etag === null ? (
               <p className="mb-6 flex max-w-measure items-start gap-2 text-sm text-ink-muted">

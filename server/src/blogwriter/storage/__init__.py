@@ -31,6 +31,7 @@ from blogwriter.storage.media import (
     media_name,
     sniff_image_type,
     store_media,
+    to_srgb,
 )
 from blogwriter.storage.routes import get_router, upload_limits
 from blogwriter.storage.settings import StorageSettings, storage_settings
@@ -53,6 +54,7 @@ __all__ = [
     "sniff_image_type",
     "storage_settings",
     "store_media",
+    "to_srgb",
     "upload_limits",
     "validate_blob_name",
 ]

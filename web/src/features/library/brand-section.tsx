@@ -293,7 +293,22 @@ export function BrandSection() {
             {pillars.length > 0 ? (
               <Subsection
                 title="Art briefs"
-                description="A short brief per pillar for illustrations, when you turn them on. Describe a look, never a client or a product logo."
+                description={
+                  <>
+                    <p>
+                      A short brief per pillar steers the AI illustrations: their style, mood and palette. Describe a
+                      look, never a client or a product logo. Leave one empty for the default look: editorial and
+                      abstract, in your brand colours, with no text.
+                    </p>
+                    <p>
+                      Illustrations are made from an article’s Draft tab once you switch them on in{' '}
+                      <Link to="/settings/models" className={linkClass}>
+                        Settings, Models
+                      </Link>
+                      .
+                    </p>
+                  </>
+                }
               >
                 <div className="grid gap-5">
                   {pillars.map((pillar) => (

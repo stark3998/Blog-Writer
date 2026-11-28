@@ -193,7 +193,12 @@ async def test_engagement_requests_carry_no_tools_and_at_most_anonymized_data(
     ceiling = TASK_CEILINGS[Task.ENGAGEMENT]
     assert ceiling.tools is False
     assert ceiling.max_sensitivity is Sensitivity.ANONYMIZED
-    assert frozenset({Task.ENGAGEMENT}) == IMAGE_TASKS
+    # Screenshots (anonymized) go to the engagement helpers only; the other image task is the
+    # illustrations' vision check, which takes public data only.
+    assert dict(IMAGE_TASKS) == {
+        Task.ENGAGEMENT: Sensitivity.ANONYMIZED,
+        Task.FACT_CHECK: Sensitivity.PUBLIC,
+    }
     await exercise_every_route(client, services)
     calls = runner_of(services).calls
     assert [call.task for call in calls] == [Task.ENGAGEMENT, Task.ENGAGEMENT]

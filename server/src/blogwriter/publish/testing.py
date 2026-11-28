@@ -67,6 +67,7 @@ from blogwriter.publish.jobs import PublishRuntime, register_jobs
 from blogwriter.publish.portfolio import PortfolioClient
 from blogwriter.publish.routes import get_router
 from blogwriter.publish.settings import PublishSettings
+from blogwriter.publish.site import LocalSiteClient
 
 __all__ = [
     "IMAGE_NAME",
@@ -587,9 +588,11 @@ def make_harness(
     settings: PublishSettings | None = None,
     polls_to_complete: int = 1,
     conclusion: str = "success",
+    site: Callable[[PublishSettings], LocalSiteClient] | None = None,
 ) -> PublishHarness:
     """Fake services with :class:`FakePortfolio` as ``egress`` and the publish jobs registered
-    on a fresh registry whose sleep advances the fake clock."""
+    on a fresh registry whose sleep advances the fake clock. ``site`` replaces the client of
+    the portfolio in this replica (``BW_PUBLISH_SITE_UPSTREAM``)."""
     fakes = services if services is not None else make_services()
     portfolio = FakePortfolio(
         fakes.store, polls_to_complete=polls_to_complete, conclusion=conclusion
@@ -605,7 +608,10 @@ def make_harness(
         await asyncio.sleep(0)
 
     runtime = PublishRuntime(
-        settings=lambda: box[0], portfolio=portfolio.client_factory(), sleep=sleep
+        settings=lambda: box[0],
+        portfolio=portfolio.client_factory(),
+        sleep=sleep,
+        **({"site": site} if site is not None else {}),
     )
     registry = JobRegistry()
     register_jobs(registry, runtime=runtime)

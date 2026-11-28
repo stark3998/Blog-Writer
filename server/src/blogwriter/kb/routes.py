@@ -624,6 +624,7 @@ def _price_views(runner: ModelRunner | None) -> tuple[list[PriceView], float | N
             output=float(price.output),
             cached_input=None if price.cached_input is None else float(price.cached_input),
             cache_write=None if price.cache_write is None else float(price.cache_write),
+            image_usd={size: float(usd) for size, usd in price.image_sizes.items()} or None,
         )
         for model, price in sorted(table.models.items())
     ]

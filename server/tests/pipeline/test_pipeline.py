@@ -890,6 +890,75 @@ async def test_assets_keep_the_owners_hero_and_survive_render_failures(
     assert [item.name for item in final.media] == [hero.name]
 
 
+async def test_assets_keep_a_hero_picked_from_the_illustrations(services: FakeServices) -> None:
+    """An AI illustration lives under ``articles/<id>/`` like the draft assets, but the owner
+    picked it: a pipeline re-run renders a new card and keeps it as the hero."""
+    from blogwriter.domain.articles import Illustration
+    from blogwriter.domain.common import MediaRef
+
+    await seed_world(services)
+    job_id = "pipeline-art-assets-2"
+    article = await drafting(services, job_id=job_id, status=S.GATING, markdown="Intro.\n")
+    picked = MediaRef(
+        role="image",
+        name=f"articles/{article.id}/{'b' * 64}.png",
+        sha256="b" * 64,
+        content_type="image/png",
+        size_bytes=10,
+        width=1536,
+        height=1024,
+        alt_text="Glass keys in a row",
+    )
+    old_card = MediaRef(
+        role="og_image",
+        name=f"articles/{article.id}/{'c' * 64}.png",
+        sha256="c" * 64,
+        content_type="image/png",
+        size_bytes=10,
+        width=1200,
+        height=630,
+    )
+    candidate = Illustration(
+        id=Illustration.id_for(picked.sha256),
+        role="hero",
+        media=picked,
+        alt_text="Glass keys in a row",
+        prompt_summary="Each tool call gets its own key",
+        job_id="illustrations-art-1-abc",
+        created_at="2026-11-26T12:00:00.000000Z",
+    )
+    hero = picked.model_copy(update={"role": "hero_image"})
+    await update_doc(
+        services.store,
+        Article,
+        article.id,
+        lambda doc: doc.model_copy(
+            update={"media": [old_card, hero], "illustrations": [candidate]}
+        ),
+    )
+    registry = pipeline_registry()
+    await start_at(
+        services,
+        PIPELINE_ARTICLE,
+        job_input(article.id, start_from="draft", interview="skip"),
+        job_id=job_id,
+        step="assets",
+        registry=registry,
+        outputs={},
+    )
+    async with running(services, registry):
+        done = await wait_job(services, job_id, {"succeeded", "failed"})
+    assert done.status == "succeeded", done.error
+    assets = done.step("assets")
+    assert assets is not None
+    assert assets.output == {"diagrams": 0, "og": True, "hero": "owner", "failures": []}
+    final = await article_doc(services, article.id)
+    heroes = [item for item in final.media if item.role == "hero_image"]
+    assert [item.name for item in heroes] == [picked.name]
+    assert old_card.name not in {item.name for item in final.media}  # the card was re-rendered
+    assert [item.role for item in final.media].count("og_image") == 1
+
+
 # --------------------------------------------------------------------------------------------
 # Crash-only: a resumed step sees that its write landed and does not call the model again
 # --------------------------------------------------------------------------------------------

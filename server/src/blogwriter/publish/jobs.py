@@ -146,7 +146,8 @@ from blogwriter.publish.published import (
 )
 from blogwriter.publish.renderer import RenderedArticle, render_article
 from blogwriter.publish.screen import article_texts, cleared_title, document_texts
-from blogwriter.publish.settings import PublishSettings, publish_settings
+from blogwriter.publish.settings import ARTICLE_PATH, PublishSettings, publish_settings
+from blogwriter.publish.site import LocalSiteClient
 from blogwriter.publish.state import dated_corrections, push_notice, studio_path
 
 __all__ = [
@@ -212,6 +213,9 @@ class PublishRuntime:
     settings: Callable[[], PublishSettings] = publish_settings
     portfolio: Callable[[PublishSettings], PortfolioClient] = field(
         default=PortfolioClient.from_settings
+    )
+    site: Callable[[PublishSettings], LocalSiteClient] = field(
+        default=LocalSiteClient.from_settings
     )
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
 
@@ -1001,6 +1005,29 @@ class _PublishJobs:
         except PortfolioError as exc:
             raise _portfolio_failure(exc) from None
 
+    def _site(self, settings: PublishSettings) -> LocalSiteClient:
+        try:
+            return self.runtime.site(settings)
+        except PortfolioError as exc:
+            raise _portfolio_failure(exc) from None
+
+    async def _revalidate(self, ctx: StepContext, env: _Env) -> JsonValue:
+        """The portfolio runs in this replica: drop its cached copies of the changed pages (the
+        article, its old slugs and the lists that show it). Idempotent, so a resumed step just
+        asks again."""
+        upserted = _output(ctx, "upsert")
+        slugs = [_text(upserted.get("slug"), "slug")]
+        previous = upserted.get("previousSlugs")
+        if isinstance(previous, list):
+            slugs.extend(item for item in previous if isinstance(item, str) and item not in slugs)
+        async with self._site(env.settings) as site:
+            try:
+                await site.revalidate(slugs)
+            except PortfolioError as exc:
+                raise _portfolio_failure(exc) from None
+        _logger.info("portfolio_revalidated", extra={"job_id": ctx.job_id})
+        return {"revalidated": cast(JsonValue, slugs)}
+
     async def _find_run(
         self,
         env: _Env,
@@ -1083,6 +1110,8 @@ class _PublishJobs:
         env = self._env()
         article = (await self._owned(ctx, env, operation)).doc
         settings = env.settings
+        if settings.local_site:
+            return await self._revalidate(ctx, env)
         workflow = settings.portfolio_workflow
         if not settings.portfolio_configured or workflow is None:
             raise JobFailed("portfolio_not_configured", _HOLD_DETAIL["portfolio_not_configured"])
@@ -1103,6 +1132,8 @@ class _PublishJobs:
         env = self._env()
         article = (await self._owned(ctx, env, operation)).doc
         settings = env.settings
+        if settings.local_site:
+            return {"local": True}  # nothing to build: the site renders from the document
         workflow = settings.portfolio_workflow
         if not settings.portfolio_configured or workflow is None:
             raise JobFailed("portfolio_not_configured", _HOLD_DETAIL["portfolio_not_configured"])
@@ -1165,32 +1196,47 @@ class _PublishJobs:
         ctx: StepContext,
         env: _Env,
         url: str,
+        slug: str,
         done: Callable[[int, bytes], bool],
     ) -> None:
-        """GET ``url`` (cache-busted) until ``done(status, body)`` or the verify timeout."""
+        """GET the article page (cache-busted) until ``done(status, body)`` or the verify
+        timeout: from the portfolio in this replica when it runs here, else ``url`` (the public
+        site) through the egress helper."""
         state: dict[str, JsonValue] = _checkpoint(ctx)
         if state.get("failed") or "startedAt" not in state:
             state = {"startedAt": to_iso(self._now(env))}
             await ctx.checkpoint(state)
         started = _text(state.get("startedAt"), "startedAt")
         deadline = parse_iso(started) + timedelta(seconds=env.settings.verify_timeout_seconds)
+        site = self._site(env.settings) if env.settings.local_site else None
         polls = 0
-        while True:
-            polls += 1
-            probe = f"{url}?bw-verify={_compact(to_iso(self._now(env)))}"
-            try:
-                response = await env.services.egress.get(probe)
-            except EgressBlockedError:
-                raise JobFailed("verify_blocked", "The site address is not allowed.") from None
-            except EgressError:
-                response = None
-            if response is not None and done(response.status, response.content):
-                _logger.info("publish_verified", extra={"job_id": ctx.job_id, "polls": polls})
-                return
-            if self._now(env) >= deadline:
-                await ctx.checkpoint({**state, "failed": "verify_timeout"})
-                raise JobFailed("verify_timeout", "The site did not show the change in time.")
-            await self.runtime.sleep(env.settings.poll_seconds)
+        try:
+            while True:
+                polls += 1
+                stamp = _compact(to_iso(self._now(env)))
+                answer: tuple[int, bytes] | None
+                if site is not None:
+                    answer = await site.page(f"{ARTICLE_PATH}{slug}?bw-verify={stamp}")
+                else:
+                    try:
+                        response = await env.services.egress.get(f"{url}?bw-verify={stamp}")
+                    except EgressBlockedError:
+                        raise JobFailed(
+                            "verify_blocked", "The site address is not allowed."
+                        ) from None
+                    except EgressError:
+                        response = None
+                    answer = None if response is None else (response.status, response.content)
+                if answer is not None and done(*answer):
+                    _logger.info("publish_verified", extra={"job_id": ctx.job_id, "polls": polls})
+                    return
+                if self._now(env) >= deadline:
+                    await ctx.checkpoint({**state, "failed": "verify_timeout"})
+                    raise JobFailed("verify_timeout", "The site did not show the change in time.")
+                await self.runtime.sleep(env.settings.poll_seconds)
+        finally:
+            if site is not None:
+                await site.aclose()
 
     async def verify(self, ctx: StepContext) -> JsonValue:
         env = self._env()
@@ -1203,7 +1249,7 @@ class _PublishJobs:
         def live(status: int, body: bytes) -> bool:
             return status == 200 and has_published_marker(body, updated_at)
 
-        await self._poll_page(ctx, env, url, live)
+        await self._poll_page(ctx, env, url, slug, live)
         return {"url": url, "verifiedAt": to_iso(self._now(env))}
 
     async def finalize(self, ctx: StepContext) -> JsonValue:
@@ -1278,7 +1324,7 @@ class _PublishJobs:
         def gone(status: int, body: bytes) -> bool:
             return status in _GONE
 
-        await self._poll_page(ctx, env, url, gone)
+        await self._poll_page(ctx, env, url, slug, gone)
         return {"url": url, "verifiedAt": to_iso(self._now(env))}
 
     async def unpublish_finalize(self, ctx: StepContext) -> JsonValue:

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 
+import { ApprovalMedia } from '../images/approval-media';
 import { fromLocalInput, toLocalInput } from '../model/format';
 import type { Article, GatesView } from '../model/types';
 
@@ -112,6 +113,7 @@ export function ApproveDialog({ open, onOpenChange, article, gates, onApprove, r
         </DialogHeader>
         <form className="grid gap-5" onSubmit={(event) => void submit(event)} noValidate>
           <Preflight items={items} />
+          <ApprovalMedia article={article} />
           <Fieldset legend="When it publishes">
             {(group) => (
               <RadioGroup

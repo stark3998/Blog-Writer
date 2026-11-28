@@ -16,6 +16,12 @@ locals {
       identity = "portfolio_build"
       subject  = "repo:${local.portfolio_owner}/${var.portfolio_repo}:ref:refs/heads/${var.portfolio_branch}"
     }
+    # The portfolio repository's deploy job runs in its "deploy" environment
+    # (main-branch policy), like Blog Writer's own deploy.
+    portfolio_deploy = {
+      identity = "portfolio_deploy"
+      subject  = "repo:${local.portfolio_owner}/${var.portfolio_repo}:environment:${var.github_deploy_environment}"
+    }
   }
 }
 

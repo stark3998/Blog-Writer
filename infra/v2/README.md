@@ -30,10 +30,10 @@ environment secrets.
 
 | File | Contents |
 |---|---|
-| `versions.tf` | Providers (azurerm `~> 4.81`, azapi `~> 2.14`, azuread `~> 3.10`, time `~> 0.14`) and the partial `azurerm` backend |
+| `versions.tf` | Providers (azurerm `~> 4.81`, azapi `~> 2.14`, time `~> 0.14`) and the partial `azurerm` backend. No azuread: CI plans and applies this root without Graph rights |
 | `main.tf` | Data sources for the existing resources; the five identities |
 | `containerapp.tf` | The v2 container app: `BW_*` settings, Key Vault references, probes |
-| `easyauth.tf` | `authConfigs/current` (azapi) and the Entra app registration with owner CLI access (azuread) |
+| `easyauth.tf` | `authConfigs/current` (azapi): owner-only, allowed origins for Easy Auth's CSRF check. The Entra app registration lives in `entra/` |
 | `keyvault.tf`, `storage.tf` | Key Vault; storage account, containers and lifecycle rules |
 | `foundry.tf`, `webiq.tf` | Foundry account, project and deployments (Claude included); Web IQ |
 | `acr.tf` | Purge task for the v2 repository of the shared registry |
@@ -54,7 +54,8 @@ account); turning shared keys off on that account would also cut off v1's state.
 |---|---|---|
 | Identities: `app`, `easyauth`, `portfolio_build`, `ci_deploy`, `ci_infra` | ✓ | |
 | Container app `ca-blog-writer-v2` (Consumption, 1 vCPU / 2 GiB, min = max = 1) | ✓ | |
-| Easy Auth config; Entra app, service principal (assignment required), owner assignment, federated credential, CLI access | ✓ (`create_entra_app`) | |
+| Easy Auth config (`infra/v2`, CI-managed) | ✓ | |
+| Entra app, service principal (assignment required), owner assignment, federated credential, CLI access (`infra/v2/entra`) | ✓ (owner-applied root) | applies `entra/` |
 | Key Vault (RBAC, purge protection) | ✓ | |
 | Key Vault **secret values** | | ✓ (runbook step 3) |
 | Storage account, containers and lifecycle rules | ✓ | |
@@ -93,10 +94,30 @@ Cosmos account keys in the state.
 - Terraform >= 1.9 and the Azure CLI, signed in to the lab subscription:
   `az login`, then `export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)`.
 - Applies run **locally as the owner**: Owner (or Contributor + User Access Administrator) on
-  `rg-blog-writer-dev` for role assignments and locks, and Entra rights to create the app
-  registration (tenant admin), because `create_entra_app = true`.
+  `rg-blog-writer-dev` for role assignments and locks. The Entra app registration is a separate
+  root, `infra/v2/entra`, that the owner (tenant admin) applies; its `easyauth_client_id`
+  output goes into this root's `terraform.tfvars`.
 - The data root is applied (it is), and the shared resources above exist under their default
   names (override the `*_name` variables otherwise).
+
+## The Entra root (`infra/v2/entra`, owner only)
+
+The app registration, its service principal (assignment required), the owner's assignment,
+the easyauth managed identity as federated credential and the owner's CLI access. It needs
+Microsoft Graph rights, so only the owner applies it, from a workstation:
+
+```bash
+cd infra/v2/entra
+cp backend.hcl.example backend.hcl            # key blog-writer-v2-entra.tfstate
+cp terraform.tfvars.example terraform.tfvars   # owner_object_id (+ custom_domain_hostname at cutover)
+terraform init -backend-config=backend.hcl && terraform apply
+terraform output -raw easyauth_client_id       # -> easyauth_client_id in ../terraform.tfvars
+```
+
+It reads the environment's default domain and the easyauth identity (created by this root)
+through data sources, so apply `infra/v2` first on a fresh setup, then `entra/`, then
+`infra/v2` again with `easyauth_client_id`. Re-apply it when the redirect URLs change (the
+custom domain moves at cutover).
 
 ## Apply runbook
 
@@ -225,6 +246,55 @@ curl -s -o /dev/null -w '%{http_code}\n' "$URL/"               # 302 to /.auth/l
 
 Then sign in with a browser (only your account is admitted) and use the owner CLI access below.
 
+## Portfolio site in the same app (`site_hosts`)
+
+The portfolio (jatinmadan.com, the `portfolio` repository) runs as a **second container in the
+same replica** instead of on GitHub Pages:
+
+```
+internet -> ACA ingress -> Easy Auth sidecar -> app container (8080, Blog Writer)
+                                                 |- Host = a site host -> gateway -> 127.0.0.1:3000 (portfolio, Next.js)
+                                                 '- any other host    -> Blog Writer (owner only)
+```
+
+- **One app, one replica, two images.** Blog Writer's deploy (`scripts/deploy-v2.sh`) owns the
+  `app` container's image, and the portfolio repository's deploy (`scripts/deploy-aca.sh` there)
+  owns the `portfolio` container's image. Terraform owns everything else and ignores both images.
+  Either deploy makes a new revision, which restarts both containers. Blog Writer is crash-only,
+  and the portfolio is stateless (it renders from Cosmos DB).
+- **The gateway** (`server/src/blogwriter/core/site.py`) is the outermost app middleware after
+  logging:
+  - It serves only GET and HEAD, and forwards headers from an allowlist (no cookies,
+    `Authorization`, `X-MS-*` or any other `X-*`). It never forwards `/_bw/*`.
+  - `www.` redirects to the apex. `/studio` redirects to Blog Writer's own origin.
+  - The portfolio listens on 127.0.0.1 only, so nothing else in the environment reaches it.
+- **Publishing** (`BW_PUBLISH_SITE_UPSTREAM`): the publish job upserts `published-blogs`, then
+  calls `POST 127.0.0.1:3000/_bw/revalidate` and reads `/blog/<slug>` back until the
+  `bw-updated-at` marker shows the new version. There is no GitHub build, dispatch or PAT;
+  `portfolio-dispatch-token` is no longer needed.
+- **Easy Auth runs `AllowAnonymous`** because the site hosts are public. The app is then the
+  only gate on Blog Writer's hosts. It always enforced owner-only access itself; Easy Auth was
+  the outer layer.
+  - The app sends unauthenticated browser navigations to `/.auth/login/aad`. Every other
+    unauthenticated request gets 401.
+  - The sidecar still strips client-sent `X-MS-CLIENT-PRINCIPAL*` headers and still refuses
+    signed-in non-owners.
+  - `checks.tf` asserts this mode only together with `BW_SITE_HOSTS`.
+- **Identity:** the portfolio container uses the `portfolio_build` identity, which only has
+  Cosmos Data Reader on `published-blogs` and Storage Blob Data Reader on `published`.
+- **Sizing:** app 1 vCPU / 2 GiB plus portfolio 0.25 vCPU / 0.5 GiB, for a replica total of
+  1.25 / 2.5 GiB.
+
+Turning it on: set `site_hosts = ["jatinmadan.com", "www.jatinmadan.com"]` and
+`portfolio_container_image = "<acr>/portfolio:<tag>"` (a first image pushed by the portfolio
+repository), then apply. Then bind the domains with `scripts/bind-site-domains.sh`, which also
+prints the DNS records:
+1. Add the two `asuid` TXT records (no traffic impact) and run the script. It adds the host names
+   without certificates, and you can test with `curl -k --resolve jatinmadan.com:443:<env IP>`.
+2. Point the apex A record at the environment IP and `www` at the app FQDN, then run the script
+   again to issue and bind the managed certificates.
+3. Retire GitHub Pages in the portfolio repository settings.
+
 ## Owner CLI access (live testing)
 
 With `easyauth_cli_access_enabled = true` (default) the app registration has the identifier URI
@@ -299,7 +369,7 @@ The environment logs to `law-blog-writer-dev` through the `log-analytics` destin
 
 ## CI notes (deploy.yml, infra.yml)
 
-- GitHub environments `deploy` and `infra` (required reviewers on `infra`); store
+- GitHub environments `deploy` and `infra`; store
   `AZURE_CLIENT_ID` (`identity_client_ids.ci_deploy` / `.ci_infra`), `AZURE_TENANT_ID` and
   `AZURE_SUBSCRIPTION_ID` as **environment secrets** so GitHub masks them. Subjects:
   `github_oidc_subjects` output.
@@ -315,10 +385,16 @@ The environment logs to `law-blog-writer-dev` through the `log-analytics` destin
   plus `backend.hcl` values). It cannot write role assignments or locks: apply those locally,
   or set `ci_infra_rbac_admin_enabled = true` (RBAC Administrator with an ABAC condition limited
   to this configuration's roles and its own identities plus the owner).
-- **Graph:** with `create_entra_app = true` the state holds Entra objects, and the CI identities
-  have no Microsoft Graph permissions, so infra.yml cannot plan this root. Keep applies local,
-  or grant ci_infra `Application.ReadWrite.OwnedBy` and make it an owner of the app registration
-  (not done here).
+- **Graph:** the Entra objects live in `infra/v2/entra` (own state key
+  `blog-writer-v2-entra.tfstate`), applied by the owner only. This root and the data root have
+  no azuread resources, so infra.yml plans and applies them with the ci_infra identity alone.
+- **Environments:** run `scripts/setup-github-environments.sh` (after `az login` and
+  `gh auth login`) whenever an identity, a tfvars file or the app name changes. It creates
+  `deploy` (main only) and `infra` and sets their variables and secrets from the Terraform
+  outputs and the local tfvars files (`TF_VARS_FILE`, `TF_VARS_FILE_PLATFORM`).
+- **Deploy order:** deploy.yml runs only after CI succeeded on `main` for that exact commit
+  (`workflow_run`), or by manual dispatch on `main` (rollbacks). It only changes the image;
+  every setting comes from Terraform, so a deploy can never undo a Terraform change.
 - Fail infra.yml when an **invariant** check fails; `health_probes_mode`,
   `scheduler_tick_alert` and `lab_expiry_tag` are reminders:
   ```bash
@@ -345,7 +421,6 @@ The environment logs to `law-blog-writer-dev` through the `log-analytics` destin
 
 | Variable | Default | Notes |
 |---|---|---|
-| `create_entra_app` | `true` | azuread; owner-local applies only (CI has no Graph rights). |
 | `easyauth_cli_access_enabled` | `true` | Owner bearer tokens from the Azure CLI. Off disables the scope and drops the pre-authorization. |
 | `easyauth_credential` | `federated` | Sentinel secret `override-use-mi-fic-assertion-client-id` (as in `Azure-Samples/containerapps-builtinauth-bicep`). Fallback: `client_secret`. |
 | `http_health_probes_enabled` | `true` | `false` only while the placeholder image runs (runbook). |

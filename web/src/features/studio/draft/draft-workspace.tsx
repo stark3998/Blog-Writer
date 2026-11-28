@@ -21,6 +21,7 @@ import { useMachineViews } from '@/lib/query/machines';
 import { useFormatPacks, usePillars } from '@/features/studio/piece';
 
 import { fetchMarkdownExport, saveTextFile } from './api/export';
+import { useIllustrationCommands, useIllustrationRun, type EditorHold, type RunEnded } from './api/illustrations';
 import { useBrief, useGatesView } from './api/queries';
 import { CitationPicker } from './editor/citation-picker';
 import type { BlockCommandContext } from './editor/commands';
@@ -33,8 +34,11 @@ import { SlashMenu } from './editor/slash-menu';
 import { EditorToolbar } from './editor/toolbar';
 import { useDraftEditor } from './editor/use-draft-editor';
 import { useDraftEnvironment } from './environment';
+import { ImagesPanel } from './images/images-panel';
+import { runEndSentence } from './images/run-progress';
 import { LiveDraft, useLiveText } from './live/live-draft';
 import { ManuscriptFacts, ManuscriptPillar, threadClass } from './manuscript';
+import { droppedSentence, heroOf, largeImagesInBody } from './model/illustrations';
 import { metaForSave, metaKey } from './model/meta';
 import { locateSpan } from './model/spans';
 import { articleActions, lastErrorMessage, readOnlyReason, writerOf } from './model/status';
@@ -78,6 +82,11 @@ const CAPTURE_NOTES = {
 
 type Dialog = 'approve' | 'revise' | 'pipeline' | 'versions' | 'citation';
 
+/** An image action rewriting the body: the editor waits for the request, then for the version it saved. */
+interface ImageHold {
+  readonly until: number | null;
+}
+
 export interface DraftWorkspaceProps {
   articleId: string;
   data: VersionedArticle;
@@ -108,14 +117,56 @@ export function DraftWorkspace({ articleId, data, refetch }: DraftWorkspaceProps
   const [selection, setSelection] = useState<CapturedSelection | null>(null);
   const [margin, setMargin] = useState('checks');
   const [writing, setWriting] = useState(false);
+  const [imageHold, setImageHold] = useState<ImageHold | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
+
+  const editorHold = useMemo<EditorHold>(
+    () => ({
+      begin: () => {
+        setImageHold({ until: null });
+      },
+      end: (version) => {
+        setImageHold(version === null ? null : { until: version });
+      },
+    }),
+    [],
+  );
+  const imageCommands = useIllustrationCommands(articleId, session.flush, editorHold);
+  const imageRun = useIllustrationRun(articleId, article.illustrationJobId, (ended: RunEnded) => {
+    if (ended.status === 'succeeded') {
+      const dropped = droppedSentence(ended.outcome);
+      toast.success('The illustrations are ready.', {
+        description: `${dropped ? `${dropped} ` : ''}Use one as the hero or place it in the text, under Images.`,
+        action:
+          margin === 'images'
+            ? undefined
+            : {
+                label: 'Show them',
+                onClick: () => {
+                  setMargin('images');
+                },
+              },
+      });
+      return;
+    }
+    // A failure's reason comes with the job's record, which may still be on its way: Images shows it.
+    toast.error('No new illustrations.', {
+      description: ended.error ? runEndSentence(ended.status, ended.error, ended.outcome) : 'Images shows what happened.',
+    });
+  });
+  // Held until the editor shows the version the image action saved (or can't show any).
+  const imageHeld =
+    imageHold !== null &&
+    (imageHold.until === null ||
+      (session.loadProblem === null && (session.loadedVersion === null || session.loadedVersion < imageHold.until)));
 
   const editable =
     writer === 'owner' &&
     session.loadedVersion !== null &&
     session.loadProblem === null &&
     !session.conflict.open &&
-    session.status.kind !== 'read-only';
+    session.status.kind !== 'read-only' &&
+    !imageHeld;
 
   useEffect(() => {
     setEditable(editable);
@@ -481,6 +532,7 @@ export function DraftWorkspace({ articleId, data, refetch }: DraftWorkspaceProps
               <TabsTrigger value="checks">Checks</TabsTrigger>
               <TabsTrigger value="outline">Outline</TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="images">Images</TabsTrigger>
             </TabsList>
             <TabsContent value="checks" className="grid gap-10">
               <GatesPanel
@@ -514,6 +566,16 @@ export function DraftWorkspace({ articleId, data, refetch }: DraftWorkspaceProps
                 onChange={session.setMeta}
                 readOnly={!editable}
                 publishedSlug={article.publish?.slug ?? null}
+              />
+            </TabsContent>
+            <TabsContent value="images">
+              <ImagesPanel
+                article={article}
+                writer={writer}
+                run={imageRun}
+                commands={imageCommands}
+                onReload={() => void refetch()}
+                onPreview={() => void openPreview()}
               />
             </TabsContent>
           </Tabs>
@@ -628,6 +690,8 @@ export function DraftWorkspace({ articleId, data, refetch }: DraftWorkspaceProps
           articleId={articleId}
           version={preview.version}
           title={article.meta?.title ?? 'this article'}
+          hero={heroOf(article).image}
+          largeImages={preview.version === undefined ? largeImagesInBody(article) : 0}
         />
       ) : null}
     </div>

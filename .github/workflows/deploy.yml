@@ -20,14 +20,12 @@ name: Deploy
 # 08:30-09:30, Tuesday-Thursday 09:30-12:30 America/New_York) the run fails unless force is set.
 
 on:
-  push:
+  # Deploy only commits whose CI passed: CI runs on pushes to main (server, web, contracts,
+  # Dockerfile), and this workflow follows a successful CI run on main.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - "server/**"
-      - "web/**"
-      - "contracts/**"
-      - "Dockerfile"
-      - ".dockerignore"
   workflow_dispatch:
     inputs:
       force:
@@ -50,8 +48,13 @@ concurrency:
 jobs:
   deploy:
     name: Build, deploy and smoke-test
-    # Only main is ever deployed (also enforce it with the environment's branch policy).
-    if: github.ref == 'refs/heads/main'
+    # Only main is ever deployed (also enforce it with the environment's branch policy), and an
+    # automatic deploy only after CI succeeded for that exact commit.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: deploy
@@ -63,13 +66,17 @@ jobs:
       ACR_RESOURCE_GROUP: ${{ vars.ACR_RESOURCE_GROUP || vars.RESOURCE_GROUP }}
       RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
       CONTAINER_APP: ${{ vars.CONTAINER_APP }}
-      CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+      # The app runs two containers (Blog Writer and, with site_hosts, the portfolio): this deploy
+      # only ever rolls the Blog Writer container.
+      CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'app' }}
       # The full commit SHA, or the rollback tag. The script validates it before any use.
-      IMAGE_TAG: ${{ inputs.rollback_to || github.sha }}
+      IMAGE_TAG: ${{ inputs.rollback_to || github.event.workflow_run.head_sha || github.sha }}
       DEPLOY_FORCE: ${{ inputs.force && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The commit CI tested (workflow_run), not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - name: Deploy-freeze check

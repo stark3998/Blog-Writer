@@ -1,9 +1,10 @@
 """blogwriter.ai: model providers, the router and its policy, limits, ledger and brake.
 
-Entry point: :class:`AIRouter` (``run(task, request, origin=...)`` / ``stream(...)``, and
-``embed(texts, origin=...)`` for ``Task.EMBED``), built with
-:meth:`AIRouter.from_settings` from :class:`AISettings` (``BW_AI_*``), the providers from
-:func:`create_providers` and a :class:`LedgerSink`. See ``docs/v2/phase1/ai-router.md``.
+Entry point: :class:`AIRouter` (``run(task, request, origin=...)`` / ``stream(...)``,
+``embed(texts, origin=...)`` for ``Task.EMBED`` and ``generate_image(request, origin=...)`` for
+``Task.IMAGE``), built with :meth:`AIRouter.from_settings` from :class:`AISettings`
+(``BW_AI_*``), the providers from :func:`create_providers` (and :func:`create_image_provider`
+for the separate image resource) and a :class:`LedgerSink`. See ``docs/v2/phase1/ai-router.md``.
 
 Modules: :mod:`.types` (requests, events, sensitivity classes), :mod:`.schema` (structured
 output), :mod:`.providers` (Azure OpenAI Responses, Claude on Foundry), :mod:`.config`
@@ -12,8 +13,10 @@ rate limits, retries), :mod:`.ledger` (prices, usage records, brake) and :mod:`.
 """
 
 from blogwriter.ai.config import (
+    DEFAULT_IMAGE_USD,
     DEFAULT_PRICES,
     DEFAULT_ROUTES,
+    IMAGE,
     AISettings,
     ModelSettings,
     NoRouteError,
@@ -43,18 +46,22 @@ from blogwriter.ai.router import (
     Fallback,
     FallbackReason,
     Finished,
+    ImageResult,
     Repair,
     Retry,
     RouterEvent,
     RouterResult,
     ServedBy,
+    create_image_provider,
     create_providers,
 )
 
 __all__ = [
+    "DEFAULT_IMAGE_USD",
     "DEFAULT_PRICES",
     "DEFAULT_ROUTES",
     "DISCARD_EVENTS",
+    "IMAGE",
     "REVIEW_ONLY_TASKS",
     "AIRouter",
     "AISettings",
@@ -66,6 +73,7 @@ __all__ = [
     "Fallback",
     "FallbackReason",
     "Finished",
+    "ImageResult",
     "LedgerSink",
     "MemoryLedger",
     "ModelLimiter",
@@ -90,5 +98,6 @@ __all__ = [
     "SystemClock",
     "TaskPolicy",
     "UsageRecord",
+    "create_image_provider",
     "create_providers",
 ]

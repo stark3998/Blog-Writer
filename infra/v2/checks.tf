@@ -22,29 +22,32 @@ check "easy_auth" {
     }
   }
 
-  # Planned configuration: auth required, exactly one excluded path, owner only.
+  # Planned configuration: auth required (or, with a public site, anonymous
+  # requests passed to the app, which enforces owner-only access on every host
+  # but the site hosts), exactly one excluded path, owner only.
   assert {
     condition = (
       azapi_resource.easy_auth.body.properties.platform.enabled == true &&
-      azapi_resource.easy_auth.body.properties.globalValidation.unauthenticatedClientAction == "RedirectToLoginPage" &&
+      azapi_resource.easy_auth.body.properties.globalValidation.unauthenticatedClientAction == local.easyauth_unauthenticated_action &&
+      (local.easyauth_unauthenticated_action == "RedirectToLoginPage" || contains(keys(local.app_env), "BW_SITE_HOSTS")) &&
       jsonencode(azapi_resource.easy_auth.body.properties.globalValidation.excludedPaths) == jsonencode(["/api/health"]) &&
       azapi_resource.easy_auth.body.properties.login.tokenStore.enabled == false &&
       jsonencode(azapi_resource.easy_auth.body.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy.allowedPrincipals.identities) == jsonencode([var.owner_object_id])
     )
-    error_message = "Easy Auth config must require authentication (RedirectToLoginPage), exclude exactly [\"/api/health\"], keep the token store off and allow only owner_object_id."
+    error_message = "Easy Auth config must require authentication (RedirectToLoginPage; AllowAnonymous only with site_hosts, where the app gates every other host), exclude exactly [\"/api/health\"], keep the token store off and allow only owner_object_id."
   }
 
   # Deployed state (missing fields count as a failure).
   assert {
     condition = try(
       data.azapi_resource.live_auth_config.output.platform_enabled == true &&
-      data.azapi_resource.live_auth_config.output.unauth_action == "RedirectToLoginPage" &&
+      data.azapi_resource.live_auth_config.output.unauth_action == local.easyauth_unauthenticated_action &&
       jsonencode(data.azapi_resource.live_auth_config.output.excluded_paths) == jsonencode(["/api/health"]) &&
       data.azapi_resource.live_auth_config.output.token_store_enabled != true &&
       jsonencode([for id in data.azapi_resource.live_auth_config.output.allowed_identities : lower(id)]) == jsonencode([lower(var.owner_object_id)]),
       false
     )
-    error_message = "Deployed Easy Auth drifted: it must be enabled, redirect unauthenticated requests, exclude exactly /api/health, keep the token store off and allow only owner_object_id."
+    error_message = "Deployed Easy Auth drifted: it must be enabled, handle unauthenticated requests as planned (RedirectToLoginPage, or AllowAnonymous with site_hosts), exclude exactly /api/health, keep the token store off and allow only owner_object_id."
   }
 }
 

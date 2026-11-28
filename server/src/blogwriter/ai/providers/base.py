@@ -22,6 +22,8 @@ from blogwriter.ai.types import (
     Completion,
     Done,
     Embeddings,
+    ImageGeneration,
+    ImageRequest,
     ModelSpec,
     ProviderName,
     Request,
@@ -33,6 +35,7 @@ __all__ = [
     "BackgroundPoll",
     "BackgroundStatus",
     "EmbeddingProvider",
+    "ImageProvider",
     "Provider",
     "ProviderAuthError",
     "ProviderError",
@@ -162,6 +165,27 @@ class EmbeddingProvider(Protocol):
         self, spec: ModelSpec, texts: Sequence[str], *, dimensions: int | None = None
     ) -> Embeddings:
         """One embeddings call: a vector per text, in input order."""
+        ...
+
+
+@runtime_checkable
+class ImageProvider(Protocol):
+    """A provider that generates images (Azure OpenAI ``POST /images/generations``).
+
+    ``generate`` returns an :class:`~blogwriter.ai.types.ImageGeneration`: the image, or a
+    refusal when a content filter declined (never raised). Other failures raise
+    :class:`ProviderError` like every call.
+    """
+
+    @property
+    def name(self) -> ProviderName: ...
+
+    async def generate(self, spec: ModelSpec, request: ImageRequest) -> ImageGeneration:
+        """One image generation (``n=1``)."""
+        ...
+
+    async def aclose(self) -> None:
+        """Close the underlying client."""
         ...
 
 

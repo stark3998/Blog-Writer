@@ -94,17 +94,39 @@ def test_a_request_carries_at_most_the_image_cap() -> None:
         screenshot_request(*([part] * (MAX_IMAGE_PARTS + 1)))
 
 
-def test_only_the_engagement_helpers_take_images() -> None:
-    assert frozenset({Task.ENGAGEMENT}) == IMAGE_TASKS
+def test_only_the_engagement_helpers_and_the_illustration_check_take_images() -> None:
+    """Screenshots (anonymized) go to the engagement helpers only; the illustrations' vision
+    check (fact_check) takes an image only with public data."""
+    assert dict(IMAGE_TASKS) == {
+        Task.ENGAGEMENT: Sensitivity.ANONYMIZED,
+        Task.FACT_CHECK: Sensitivity.PUBLIC,
+    }
     policy = SensitivityPolicy()
-    request = screenshot_request(ImagePart(image("PNG"), "image/png"))
+    part = ImagePart(image("PNG"), "image/png")
+    request = screenshot_request(part)
     policy.check(TASK_CEILINGS[Task.ENGAGEMENT], request, ())
     for task in Task:
-        if task in IMAGE_TASKS:
+        if task is Task.ENGAGEMENT:
             continue
         with pytest.raises(PolicyViolation) as caught:
             policy.check(TASK_CEILINGS[task], request, ())
         assert caught.value.rule in {"images_not_allowed", "above_task_max"}
+    with pytest.raises(PolicyViolation) as anonymized:
+        policy.check(TASK_CEILINGS[Task.FACT_CHECK], request, ())
+    assert anonymized.value.rule == "images_not_allowed"
+    public = Request(
+        system="Does the image show the concept?",
+        messages=(Message("user", (TextPart("A bridge between two islands."), part)),),
+        sensitivity=Sensitivity.PUBLIC,
+    )
+    policy.check(TASK_CEILINGS[Task.FACT_CHECK], public, ())
+    policy.check(TASK_CEILINGS[Task.ENGAGEMENT], public, ())
+    for task in Task:
+        if task in IMAGE_TASKS:
+            continue
+        with pytest.raises(PolicyViolation) as refused:
+            policy.check(TASK_CEILINGS[task], public, ())
+        assert refused.value.rule == "images_not_allowed"
     with pytest.raises(PolicyViolation) as caught:
         policy.check(TASK_CEILINGS[Task.DRAFT], request, ())
     assert caught.value.rule == "images_not_allowed"

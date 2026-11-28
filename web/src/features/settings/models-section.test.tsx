@@ -40,6 +40,37 @@ describe('Settings > Models', () => {
     expect(prices).toHaveAccessibleName(/Web search costs \$14\.00 per thousand searches/);
   });
 
+  it('lets illustrations be switched on where an image model is set up, and prices it per image', async () => {
+    const view = modelsView();
+    serveSettings(
+      http.get(apiUrl('/api/kb/models'), () =>
+        HttpResponse.json(
+          modelsView({
+            routes: [
+              ...view.routes,
+              {
+                task: 'image',
+                maxClass: 'public',
+                tools: false,
+                chain: [{ model: 'gpt-image-2', deployment: 'gpt-image-2', provider: 'openai', effort: null }],
+              },
+            ],
+            prices: [
+              ...view.prices,
+              { model: 'gpt-image-2', input: 0, output: 0, cachedInput: null, cacheWrite: null, imageUsd: { '1536x1024': 0.25, '1024x1024': 0.17 } },
+            ],
+          }),
+        ),
+      ),
+    );
+    await open();
+    const prices = await screen.findByRole('table', { name: /US dollars per million tokens/ });
+    expect(prices).toHaveAccessibleName(/gpt-image-2 is priced per image: \$0\.25 at 1536×1024, \$0\.17 at 1024×1024\./);
+    const toggle = screen.getByRole('switch', { name: 'Illustrations' });
+    expect(toggle).toBeEnabled();
+    expect(toggle).toHaveAccessibleDescription(/a hero image and up to two images for the text/);
+  });
+
   it('says so when the brake is on', async () => {
     serveSettings(
       http.get(apiUrl('/api/system/status'), () =>

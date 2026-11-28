@@ -10,13 +10,6 @@ terraform {
       source  = "Azure/azapi"
       version = "~> 2.14"
     }
-    # Entra app registration for Easy Auth (create_entra_app, default on).
-    # Configured in every run (Terraform configures every provider a module
-    # declares resources for).
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 3.10"
-    }
     time = {
       source  = "hashicorp/time"
       version = "~> 0.14"
@@ -69,4 +62,3 @@ provider "azapi" {
   skip_provider_registration = true
 }
 
-provider "azuread" {}

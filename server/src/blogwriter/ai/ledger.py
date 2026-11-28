@@ -11,6 +11,10 @@
         web searches    x web_search price / 1000
         images          x image price
 
+    Image models are priced per image (:meth:`PriceTable.image_cost`, by size, from
+    ``ModelPrice.image_sizes``): the router records an image call at that price only, never
+    its tokens, so nothing is counted twice.
+
 :class:`UsageRecord` and :class:`LedgerSink`
     The router writes one record per model call, discarded attempts included. A sink stores the
     records and sums spend over a time range. This package never persists anything itself:
@@ -31,6 +35,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import statistics
 import uuid
 from collections.abc import Callable, Mapping
@@ -38,9 +43,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from decimal import Decimal
 from types import MappingProxyType
-from typing import Final, Literal, Protocol
+from typing import Annotated, Final, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from blogwriter.ai.types import ProviderName, Task, Usage
 from blogwriter.core.logging import describe_exception, register_log_fields
@@ -68,6 +73,7 @@ type CallOutcome = Literal["completed", "refused", "failed"]
 type JsonScalar = str | int | float | bool | None
 
 _PER_MILLION: Final = Decimal(1_000_000)
+_IMAGE_SIZE: Final = re.compile(r"[1-9][0-9]{1,4}x[1-9][0-9]{1,4}")
 _PER_THOUSAND: Final = Decimal(1_000)
 _ZERO: Final = Decimal(0)
 
@@ -95,6 +101,8 @@ class ModelPrice(BaseModel):
 
     ``cached_input`` and ``cache_write`` default to the input price when unset (OpenAI writes
     its prompt cache at no extra charge; Anthropic 1 h cache writes cost more).
+    ``image_sizes`` prices one image by its size (``"1536x1024"``); a size without an entry
+    costs ``image``.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -104,6 +112,21 @@ class ModelPrice(BaseModel):
     cached_input: Decimal | None = Field(default=None, ge=0)
     cache_write: Decimal | None = Field(default=None, ge=0)
     image: Decimal = Field(default=_ZERO, ge=0)
+    image_sizes: dict[str, Annotated[Decimal, Field(ge=0)]] = Field(
+        default_factory=dict[str, Decimal]
+    )
+
+    @field_validator("image_sizes")
+    @classmethod
+    def _check_sizes(cls, value: dict[str, Decimal]) -> dict[str, Decimal]:
+        for size in value:
+            if not _IMAGE_SIZE.fullmatch(size):
+                raise ValueError(f"image sizes look like 1536x1024, not {size!r}")
+        return value
+
+    def image_price(self, size: str) -> Decimal:
+        """The price of one image of ``size``."""
+        return self.image_sizes.get(size, self.image)
 
 
 class UnknownPriceError(LookupError):
@@ -135,6 +158,12 @@ class PriceTable:
             return self._models[model]
         except KeyError:
             raise UnknownPriceError(f"no price configured for model {model!r}") from None
+
+    def image_cost(self, model: str, size: str, images: int) -> Decimal:
+        """The USD cost of ``images`` generated images of ``size`` (per-image pricing)."""
+        if images < 0:
+            raise ValueError("images must not be negative")
+        return self.price(model).image_price(size) * images
 
     def cost(self, model: str, usage: Usage) -> Decimal:
         """The USD cost of one call of ``model`` (exact; never rounded)."""

@@ -46,15 +46,15 @@ from collections.abc import AsyncGenerator, Callable, Collection, Generator, Map
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Final, Literal, Protocol, cast
+from typing import Final, Literal, Protocol, cast, runtime_checkable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import FastAPI
 from pydantic import JsonValue
 
 from blogwriter.ai.ledger import Origin
-from blogwriter.ai.router import RouterEvent, RouterResult
-from blogwriter.ai.types import Request, Task
+from blogwriter.ai.router import ImageResult, RouterEvent, RouterResult
+from blogwriter.ai.types import ImageRequest, Request, Task
 from blogwriter.core.crypto import TokenVault
 from blogwriter.core.egress import EgressResponse
 from blogwriter.db import Store
@@ -77,6 +77,7 @@ __all__ = [
     "FetchRefused",
     "FetchedPage",
     "HttpGetter",
+    "ImageGenerator",
     "JobQueue",
     "ModelRunner",
     "Notifier",
@@ -94,6 +95,7 @@ __all__ = [
     "StateServices",
     "Urgency",
     "current_services",
+    "image_generator",
     "install_services",
     "services_installed",
     "uninstall_services",
@@ -123,6 +125,32 @@ class ModelRunner(Protocol):
     def stream(
         self, task: Task, request: Request, *, origin: Origin, job_id: str | None = None
     ) -> AsyncGenerator[RouterEvent]: ...
+
+
+@runtime_checkable
+class ImageGenerator(Protocol):
+    """Image generation (``Task.IMAGE``: ``gpt-image-2`` on its own Foundry resource).
+
+    ``blogwriter.ai.AIRouter`` satisfies it, so packages reach it through ``services.ai``
+    (:func:`image_generator`). ``serves_images`` is false when no image route or resource is
+    configured (``BW_AI_IMAGE_BASE_URL`` unset): routes answer 503 ``images_unavailable``.
+    Prompts are ``public`` data only (the policy refuses anything else before a call); a
+    content filter refusal is a refused :class:`~blogwriter.ai.ImageResult`, never raised.
+    """
+
+    @property
+    def serves_images(self) -> bool: ...
+
+    async def generate_image(
+        self, request: ImageRequest, *, origin: Origin, job_id: str | None = None
+    ) -> ImageResult: ...
+
+
+def image_generator(runner: ModelRunner | None) -> ImageGenerator | None:
+    """``services.ai`` as an :class:`ImageGenerator` when it serves images, else ``None``."""
+    if isinstance(runner, ImageGenerator) and runner.serves_images:
+        return runner
+    return None
 
 
 class Embedder(Protocol):

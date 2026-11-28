@@ -9,6 +9,19 @@ Environment (every value is optional; defaults are safe for tests and connect no
     Foundry resource name serving Claude (infra/v2's ``ANTHROPIC_FOUNDRY_RESOURCE``).
 ``BW_AI_DEPLOYMENT_SOL`` / ``_ASTRA`` / ``_LUNA`` / ``_OPUS`` / ``_EMBEDDING``
     Deployment names (infra/v2's ``MODEL_DEPLOYMENT_*``); each defaults to its model name.
+``BW_AI_IMAGE_BASE_URL``
+    The Azure OpenAI v1 endpoint of the **separate** Foundry resource that serves
+    ``gpt-image-2`` (East US 2, where GPT-6.2 is not offered):
+    ``https://<resource>.openai.azure.com/openai/v1/``. Unset: images are off (no ``image``
+    route). It authenticates with the same Entra token provider as the Responses provider.
+``BW_AI_DEPLOYMENT_IMAGE``
+    The image deployment name (default ``gpt-image-2``).
+``BW_AI_IMAGE_USD_1536X1024``, ``BW_AI_IMAGE_USD_1024X1024``
+    The ledger's price of one ``high`` quality image of that size (defaults 0.25 and 0.17).
+    **Assumption**: these are the published GPT Image high-quality prices per image (output
+    image tokens at USD 40 per 1M: about 6,240 tokens for 1536x1024 and 4,160 for 1024x1024)
+    and Azure has not published ``gpt-image-2`` prices for this resource; the prompt's few
+    text tokens are not counted. Set the real prices here once the bill shows them.
 ``BW_AI_MODEL_OVERRIDES``, ``BW_AI_ROUTE_OVERRIDES``, ``BW_AI_PRICE_OVERRIDES``
     JSON objects merged over the defaults. Each entry replaces the whole default entry with the
     same key (a model name or a task), so an override can add a model (for example
@@ -40,10 +53,12 @@ quick_search                  gpt-6.2-sol low         gpt-6.2-astra low       pu
 triage                        gpt-6-luna              (none)                  public      no
 engagement                    gpt-6.2-sol low         (none)                  anonymized  no
 embed                         text-embedding-3-large  (none)                  anonymized  no
+image (with the image URL)    gpt-image-2             (none)                  public      no
 ============================  ======================  ======================  ==========  =====
 
 A fallback that serves ``draft``, ``revise`` or ``critique`` makes the output review-only.
-``image`` has no default route (opt-in), so it is refused until one is configured.
+``image`` is opt-in: it has a route only when ``BW_AI_IMAGE_BASE_URL`` is set (concurrency 1,
+priced per image), so it is refused until then.
 """
 
 from __future__ import annotations
@@ -68,10 +83,13 @@ from blogwriter.ai.types import Effort, ModelSpec, ProviderName, Sensitivity, Ta
 
 __all__ = [
     "ASTRA",
+    "DEFAULT_IMAGE_USD",
     "DEFAULT_PRICES",
     "DEFAULT_ROUTES",
     "DEFAULT_WEB_SEARCH_USD_PER_1K",
     "EMBEDDING",
+    "IMAGE",
+    "IMAGE_ROUTE",
     "LUNA",
     "OPUS",
     "SOL",
@@ -89,6 +107,7 @@ ASTRA: Final = "gpt-6.2-astra"
 LUNA: Final = "gpt-6-luna"
 OPUS: Final = "claude-opus-5-5"
 EMBEDDING: Final = "text-embedding-3-large"
+IMAGE: Final = "gpt-image-2"
 
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
@@ -169,9 +188,20 @@ DEFAULT_PRICES: Final[Mapping[str, ModelPrice]] = MappingProxyType(
             cache_write=Decimal("8"),
         ),
         EMBEDDING: ModelPrice(input=Decimal("0.13")),
+        IMAGE: ModelPrice(
+            input=Decimal(0),
+            image=Decimal("0.25"),
+            image_sizes={"1536x1024": Decimal("0.25"), "1024x1024": Decimal("0.17")},
+        ),
     }
 )
-"""USD per 1M tokens. Opus cache writes are the 1 hour TTL price."""
+"""USD per 1M tokens. Opus cache writes are the 1 hour TTL price. ``gpt-image-2`` is priced per
+image by size (see ``BW_AI_IMAGE_USD_*`` in the module docstring for the assumption)."""
+
+DEFAULT_IMAGE_USD: Final[Mapping[str, Decimal]] = MappingProxyType(
+    {"1536x1024": Decimal("0.25"), "1024x1024": Decimal("0.17")}
+)
+"""USD per ``high`` quality image by size (the ``BW_AI_IMAGE_USD_*`` defaults)."""
 
 DEFAULT_WEB_SEARCH_USD_PER_1K: Final = Decimal("14")
 
@@ -250,7 +280,15 @@ def _default_routes() -> dict[Task, RouteSettings]:
 
 
 DEFAULT_ROUTES: Final[Mapping[Task, RouteSettings]] = MappingProxyType(_default_routes())
-"""The default routing table (see the module docstring)."""
+"""The default routing table (see the module docstring). ``image`` is not in it: it is added
+when ``BW_AI_IMAGE_BASE_URL`` is set (:data:`IMAGE_ROUTE`)."""
+
+IMAGE_ROUTE: Final = RouteSettings(
+    primary=_target(IMAGE, None, 4_096, thinking_summary=False),
+    max_sensitivity=Sensitivity.PUBLIC,
+)
+"""The ``image`` route once the image resource is configured: ``gpt-image-2``, public data
+only, tool-free, no fallback."""
 
 
 # --------------------------------------------------------------------------------------------
@@ -362,6 +400,12 @@ class AISettings(BaseSettings):
     deployment_opus: str = OPUS
     deployment_embedding: str = EMBEDDING
 
+    image_base_url: str | None = None
+    """The separate Foundry resource serving ``gpt-image-2`` (unset: images are off)."""
+    deployment_image: str = IMAGE
+    image_usd_1536x1024: Decimal = Field(default=DEFAULT_IMAGE_USD["1536x1024"], ge=0)
+    image_usd_1024x1024: Decimal = Field(default=DEFAULT_IMAGE_USD["1024x1024"], ge=0)
+
     model_overrides: dict[str, ModelSettings] = Field(default_factory=dict[str, ModelSettings])
     route_overrides: dict[Task, RouteSettings] = Field(default_factory=dict[Task, RouteSettings])
     price_overrides: dict[str, ModelPrice] = Field(default_factory=dict[str, ModelPrice])
@@ -380,7 +424,7 @@ class AISettings(BaseSettings):
     brake_window_days: int = Field(default=7, ge=1, le=90)
     brake_timezone: str = "America/New_York"
 
-    @field_validator("openai_base_url")
+    @field_validator("openai_base_url", "image_base_url")
     @classmethod
     def _check_openai_base_url(cls, value: str | None) -> str | None:
         if value is None:
@@ -410,6 +454,7 @@ class AISettings(BaseSettings):
         "deployment_luna",
         "deployment_opus",
         "deployment_embedding",
+        "deployment_image",
     )
     @classmethod
     def _check_deployment(cls, value: str) -> str:
@@ -446,6 +491,11 @@ class AISettings(BaseSettings):
         """Whether both endpoints are set (otherwise no router can be built)."""
         return self.openai_base_url is not None and self.anthropic_resource is not None
 
+    @property
+    def images_configured(self) -> bool:
+        """Whether the image resource is set (``BW_AI_IMAGE_BASE_URL``): the ``image`` route."""
+        return self.image_base_url is not None
+
     def catalog(self) -> dict[str, ModelSettings]:
         """Every deployed model by name: the defaults with ``model_overrides`` applied."""
         defaults = {
@@ -465,12 +515,23 @@ class AISettings(BaseSettings):
             EMBEDDING: ModelSettings(
                 provider="openai", deployment=self.deployment_embedding, supports_tools=False
             ),
+            # gpt-image-2 on its own resource: one generation at a time.
+            IMAGE: ModelSettings(
+                provider="openai",
+                deployment=self.deployment_image,
+                supports_tools=False,
+                concurrency=1,
+            ),
         }
         return defaults | self.model_overrides
 
     def routes(self) -> dict[Task, RouteSettings]:
-        """Every route by task: the defaults with ``route_overrides`` applied."""
-        return dict(DEFAULT_ROUTES) | self.route_overrides
+        """Every route by task: the defaults (plus ``image`` when the image resource is set)
+        with ``route_overrides`` applied."""
+        routes = dict(DEFAULT_ROUTES)
+        if self.images_configured:
+            routes[Task.IMAGE] = IMAGE_ROUTE
+        return routes | self.route_overrides
 
     def routing(self) -> RoutingTable:
         """The validated routing table (raises ``ValueError`` on a bad table)."""
@@ -487,9 +548,18 @@ class AISettings(BaseSettings):
         return RoutingTable(routes, {family: catalog[family].limits() for family in families})
 
     def price_table(self) -> PriceTable:
-        """Prices: the defaults with ``price_overrides`` applied."""
+        """Prices: the defaults, the image prices of ``BW_AI_IMAGE_USD_*``, then
+        ``price_overrides``."""
+        image = ModelPrice(
+            input=Decimal(0),
+            image=self.image_usd_1536x1024,
+            image_sizes={
+                "1536x1024": self.image_usd_1536x1024,
+                "1024x1024": self.image_usd_1024x1024,
+            },
+        )
         return PriceTable(
-            dict(DEFAULT_PRICES) | self.price_overrides,
+            dict(DEFAULT_PRICES) | {IMAGE: image} | self.price_overrides,
             web_search_per_1k=self.web_search_usd_per_1k,
         )
 

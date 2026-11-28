@@ -40,6 +40,7 @@ __all__ = [
     "EVENT_TYPES",
     "GATES_RUN",
     "GATES_STANDARDS_REFRESH",
+    "ILLUSTRATIONS_GENERATE",
     "LINKEDIN_INTROSPECT",
     "PIPELINE_ARTICLE",
     "PIPELINE_INTERVIEW_EXPIRE",
@@ -74,6 +75,7 @@ __all__ = [
     "ChildResult",
     "EntityName",
     "GatesRunInput",
+    "IllustrationsInput",
     "InterviewInput",
     "JobInput",
     "JsonPayload",
@@ -92,6 +94,7 @@ __all__ = [
     "expire_job_id",
     "gates_job_id",
     "generates_content",
+    "illustrations_job_id",
     "interview_expire_job_id",
     "pipeline_job_id",
     "post_live_job_id",
@@ -139,6 +142,8 @@ PLANNER_SCORECARD: Final = "planner.scorecard"
 ENGAGEMENT_PURGE: Final = "engagement.purge"
 ANALYTICS_SUGGEST: Final = "analytics.suggest"
 ANALYTICS_EVAL: Final = "analytics.eval"
+# Opt-in AI illustrations (gpt-image-2)
+ILLUSTRATIONS_GENERATE: Final = "illustrations.generate"
 
 ALL_JOB_TYPES: Final = (
     RESEARCH_RUN,
@@ -174,6 +179,7 @@ ALL_JOB_TYPES: Final = (
     ENGAGEMENT_PURGE,
     ANALYTICS_SUGGEST,
     ANALYTICS_EVAL,
+    ILLUSTRATIONS_GENERATE,
 )
 
 SCHEDULED_JOB_TYPES: Final = frozenset(
@@ -194,8 +200,9 @@ SCHEDULED_JOB_TYPES: Final = frozenset(
 """The only job types a schedule item may start (contract section 8). None of them generates
 content (an integration test checks every package's ``schedule_entries``)."""
 
-CONTENT_JOB_PREFIXES: Final = ("pipeline.", "posts.", "publish.")
-"""Job types that write drafts, posts or published pages: started by an owner action only."""
+CONTENT_JOB_PREFIXES: Final = ("pipeline.", "posts.", "publish.", "illustrations.")
+"""Job types that write drafts, posts, published pages or illustrations: started by an owner
+action only."""
 
 
 def generates_content(job_type: str) -> bool:
@@ -315,6 +322,14 @@ def interview_expire_job_id(interview_id: str) -> str:
     return f"intvexpire-{interview_id}"
 
 
+def illustrations_job_id(article_id: str, token: str) -> str:
+    """``illustrations-<articleId>-<token>``: one owner request (``token`` is random hex). The
+    route writes the id on the article before it enqueues, so the job can tell it is current."""
+    if not token or not token.isalnum() or len(token) > 16:
+        raise ValueError("the token is 1-16 letters or digits")
+    return f"illustrations-{article_id}-{token}"
+
+
 # --------------------------------------------------------------------------------------------
 # Inputs
 # --------------------------------------------------------------------------------------------
@@ -393,6 +408,15 @@ class PublishInput(ArticleJobInput):
     holds when it starts later than :data:`PUBLISH_MAX_LATENESS` after this."""
     auto: bool = False
     """Auto-publish path: needs the veto notice's delivery receipt."""
+
+
+class IllustrationsInput(ArticleJobInput):
+    """``illustrations.generate``: one hero and up to ``count - 1`` inline illustrations."""
+
+    count: int = Field(default=1, ge=1, le=3)
+    direction: str | None = Field(default=None, max_length=300)
+    """The owner's short art direction (owner text, screened against the blocklist; public
+    data: it shapes an image prompt)."""
 
 
 class PostJobInput(JobInput):

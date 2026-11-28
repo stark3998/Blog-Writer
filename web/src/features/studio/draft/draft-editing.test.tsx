@@ -127,13 +127,25 @@ describe('DraftTab: autosave', () => {
   });
 
   it('keeps changes while offline and says so', async () => {
-    const { editor } = await openEditable();
-    server.use(http.put(apiUrl(`/api/articles/${ARTICLE_ID}`), () => HttpResponse.error()));
+    const { editor, unmount } = await openEditable();
+    let puts = 0;
+    server.use(
+      http.put(apiUrl(`/api/articles/${ARTICLE_ID}`), () => {
+        puts += 1;
+        return HttpResponse.error();
+      }),
+    );
     act(() => {
       editor.chain().focus('end').insertContent(' Written on a train.').run();
     });
     expect(await screen.findByText('Offline: saves when you’re back')).toBeInTheDocument();
     expect(screen.getByText(/Your changes are kept in this tab/)).toBeInTheDocument();
+    // Leaving sends the unsaved text once more: let it land here, not on the next test's server.
+    const before = puts;
+    unmount();
+    await waitFor(() => {
+      expect(puts).toBe(before + 1);
+    });
   });
 });
 

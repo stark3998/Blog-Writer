@@ -246,6 +246,7 @@ async def owner_save(
     meta: ArticleMeta,
     markdown: str,
     now: datetime,
+    update: Callable[[Article], Article] | None = None,
 ) -> SavedArticle:
     """The owner's autosave (``PUT /api/articles/{id}``).
 
@@ -255,6 +256,10 @@ async def owner_save(
     ``version`` raises :class:`StaleArticle`. Unchanged content writes nothing. A new
     ``autosave`` version is stored only when one is due (at most one per 10 minutes of typing),
     then old versions are pruned.
+
+    ``update`` applies other owner fields in the same write (the illustrations' alt text next to
+    the body that shows it); it must not change the meta or the body. With an ``update``, an
+    unchanged body still writes the update (without a new version).
     """
     check_markdown_size(markdown)
     current = await read_doc(store, Article, article_id)
@@ -268,27 +273,38 @@ async def owner_save(
             current = await read_doc(store, Article, article_id)
             _check_owner_save(current, if_match=if_match, base_version=base_version)
         doc = current.doc
-        if doc.compute_sha256() == target_sha:
+        unchanged = doc.compute_sha256() == target_sha
+        if unchanged and update is None:
             return SavedArticle(current, findings)
-        required = await clearance_required(store, meta, doc.owner_signals)
-        changed = doc.model_copy(
-            deep=True,
-            update={
-                "meta": meta.model_copy(deep=True),
-                "markdown": prepared.text,
-                "version": doc.version + 1,
-                "content_sha256": target_sha,
-                "word_count": prepared.word_count,
-                "reading_time_minutes": prepared.reading_time_minutes,
-                "clearance": doc.clearance.model_copy(update={"required": required}),
-                "updated_at": stamp,
-                "updated_by": "owner",
-            },
-        )
+        if unchanged:
+            changed = doc.model_copy(deep=True, update={"updated_at": stamp, "updated_by": "owner"})
+        else:
+            required = await clearance_required(store, meta, doc.owner_signals)
+            changed = doc.model_copy(
+                deep=True,
+                update={
+                    "meta": meta.model_copy(deep=True),
+                    "markdown": prepared.text,
+                    "version": doc.version + 1,
+                    "content_sha256": target_sha,
+                    "word_count": prepared.word_count,
+                    "reading_time_minutes": prepared.reading_time_minutes,
+                    "clearance": doc.clearance.model_copy(update={"required": required}),
+                    "updated_at": stamp,
+                    "updated_by": "owner",
+                },
+            )
+        if update is not None:
+            before = changed.compute_sha256()
+            changed = update(changed)
+            if changed.compute_sha256() != before:
+                raise ValueError("an owner save's update must not change the meta or the body")
         try:
             stored = await replace_doc(store, changed, if_match=current.etag)
         except PreconditionFailed:
             continue
+        if unchanged:
+            return SavedArticle(stored, findings)
         _logger.debug(
             "article_saved",
             extra={

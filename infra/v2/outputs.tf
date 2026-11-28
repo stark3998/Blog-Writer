@@ -58,13 +58,8 @@ output "easyauth_token_resource" {
   value       = var.easyauth_cli_access_enabled ? local.easyauth_identifier_uri : null
 }
 
-output "easyauth_redirect_uris" {
-  description = "Web redirect URIs of the Entra app registration."
-  value       = local.easyauth_redirect_uris
-}
-
 output "easyauth_federated_credential" {
-  description = "Federated credential on the Entra app registration (created by Terraform when create_entra_app = true; otherwise an owner step)."
+  description = "Federated credential the Entra app registration must carry (managed by the owner in infra/v2/entra)."
   value = {
     issuer    = local.entra_v2_issuer
     subject   = azurerm_user_assigned_identity.this["easyauth"].principal_id
@@ -222,4 +217,14 @@ output "log_analytics_workspace_name" {
 output "alert_rules" {
   description = "Log alert rule name => enabled."
   value       = { for key, rule in azurerm_monitor_scheduled_query_rules_alert_v2.app : rule.name => rule.enabled }
+}
+
+output "site_hosts" {
+  description = "Public host names of the portfolio site this app serves (canonical first); scripts/bind-site-domains.sh binds them."
+  value       = var.site_hosts
+}
+
+output "site_origin" {
+  description = "Public origin of the portfolio site (BW_PUBLISH_SITE_ORIGIN)."
+  value       = local.site_origin
 }

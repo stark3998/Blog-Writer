@@ -13,11 +13,13 @@ were accepted, the domain changes made at integration, and the known gaps. The c
 (`api.system`: jobs, schedules, push, status, safe mode, test alert, meta machines), the SSE
 stream (`jobs.get_router()`, `/api/events`), then storage, kb, stories, voice, research,
 signals, articles, gates, linkedin transport, backups, pipeline, publish
-(`publish.routes.get_router()`), linkedin posts, planner, engagement and analytics. The
-OpenAPI document has 174 paths and 216 operations; core's duplicate-route check passes.
+(`publish.routes.get_router()`), linkedin posts, planner, engagement, analytics and
+illustrations. The OpenAPI document had 174 paths and 216 operations at wave B; the
+illustrations add 6 paths (6 operations). Core's duplicate-route check passes.
 
-**Jobs** (`build_registry()`): one `JobRegistry`, every package's `register_jobs`. All 33 types
-of `domain.jobtypes.ALL_JOB_TYPES` are registered (a test keeps them equal).
+**Jobs** (`build_registry()`): one `JobRegistry`, every package's `register_jobs`. All 34 types
+of `domain.jobtypes.ALL_JOB_TYPES` are registered (a test keeps them equal), the opt-in
+`illustrations.generate` included.
 
 **Schedules** (`SCHEDULE_PROVIDERS`): signals, planner, voice, analytics, linkedin transport,
 gates, backups and engagement provide the 11 items of contract section 8; research, stories,
@@ -29,7 +31,7 @@ types are exactly `SCHEDULED_JOB_TYPES` and none generates content.
 | # | Lifecycle | Sets on `app.state` |
 |---|---|---|
 | 1 | `db` | `store` (Cosmos; an injected store is kept) |
-| 2 | `main.AILifecycle` | `ai` (`AIRouter`, or `None` without `BW_AI_*`) |
+| 2 | `main.AILifecycle` | `ai` (`AIRouter`, or `None` without `BW_AI_*`; with `BW_AI_IMAGE_BASE_URL` it also generates images from that resource, same Entra token provider) |
 | 3 | `services.CoreServicesLifecycle` | `clock`, `egress`, `vault`, `notifier`, `push`, `embedder` |
 | 4 | `storage.StorageLifecycle` | `blobs` |
 | 4 | `render.RenderLifecycle` | `render` (the `Renderer`) |
@@ -74,7 +76,7 @@ Secrets come from Key Vault references and are never logged.
 |---|---|
 | core | `BW_ENV`, `BW_OWNER_OID`, `BW_COOKIE_KEY` (also derives the LinkedIn confirm-token key), `BW_PUBLIC_ORIGIN`, `BW_BUILD_SHA`, `BW_SPA_DIR`, `BW_COOKIE_TTL_HOURS` (12), `BW_WATCHDOG_THRESHOLD_MS` (500) |
 | db | `BW_COSMOS_ENDPOINT`, `BW_COSMOS_DATABASE` (`blog-writer`) |
-| ai | `BW_AI_OPENAI_BASE_URL`, `BW_AI_ANTHROPIC_RESOURCE`, `BW_AI_DEPLOYMENT_*`, `BW_AI_BRAKE_*`, overrides (see `docs/v2/phase1/ai-router.md`) |
+| ai | `BW_AI_OPENAI_BASE_URL`, `BW_AI_ANTHROPIC_RESOURCE`, `BW_AI_DEPLOYMENT_*`, `BW_AI_BRAKE_*`, overrides (see `docs/v2/phase1/ai-router.md`); images (opt-in): `BW_AI_IMAGE_BASE_URL` (unset: off; the v1 endpoint of the separate East US 2 resource, `https://<resource>.openai.azure.com/openai/v1/`), `BW_AI_DEPLOYMENT_IMAGE` (`gpt-image-2`), `BW_AI_IMAGE_USD_1536X1024` (0.25) and `BW_AI_IMAGE_USD_1024X1024` (0.17): assumed per-image prices (GPT Image high quality, output tokens at USD 40 per 1M) until the bill shows the real ones |
 | jobs | `BW_JOBS_*` (see `docs/v2/phase1/jobs.md`) |
 | vault | `BW_VAULT_KEYS`, `BW_VAULT_PRIMARY` (needed to connect LinkedIn) |
 | notify | `BW_NOTIFY_VAPID_PRIVATE_KEY`, `BW_NOTIFY_VAPID_SUBJECT`, `BW_NOTIFY_PUSH_TTL_SECONDS` (43200), `BW_NOTIFY_PUSH_TIMEOUT_SECONDS` (10) |
@@ -90,10 +92,13 @@ Secrets come from Key Vault references and are never logged.
 | pipeline | `BW_PIPELINE_MAX_REVISE_LOOPS` (2, range 0-2) |
 | publish | `BW_PUBLISH_PORTFOLIO_REPOSITORY`, `_REF` (`main`), `_WORKFLOW`, `_TOKEN` (Key Vault), `BW_PUBLISH_SITE_ORIGIN`, `BW_PUBLISH_PREVIEW_WORKFLOW`, `_BUILD_TIMEOUT_SECONDS` (1800), `_VERIFY_TIMEOUT_SECONDS` (900), `_POLL_SECONDS` (20), `BW_PUBLISH_CONTRACTS_DIR` |
 | analytics | `BW_ANALYTICS_IMPORT_MAX_BYTES` (5242880), `BW_ANALYTICS_IMPORT_BETA` (false: the LinkedIn export import answers 503 until a real export confirms the format) |
-| kb, voice, planner, engagement | none (owner values live in settings documents) |
+| kb, voice, planner, engagement, illustrations | none (owner values live in settings documents: `ModelPreferences.imagesEnabled` and `BrandKit.artBriefs` for the illustrations) |
 
-Infrastructure follow-ups (outside the server): set `BW_RESEARCH_WEBIQ_SCOPE` next to the Web IQ
-endpoint, `BW_GATES_SITE_ORIGIN` next to `BW_PUBLISH_SITE_ORIGIN`, Key Vault references for
+Infrastructure follow-ups (outside the server): for illustrations, the `gpt-image-2`
+deployment on its East US 2 Foundry resource, `BW_AI_IMAGE_BASE_URL` (and
+`BW_AI_DEPLOYMENT_IMAGE` if the deployment is not named `gpt-image-2`) and the app identity's
+Cognitive Services OpenAI User role on that resource; set `BW_RESEARCH_WEBIQ_SCOPE` next to the
+Web IQ endpoint, `BW_GATES_SITE_ORIGIN` next to `BW_PUBLISH_SITE_ORIGIN`, Key Vault references for
 `BW_PUBLISH_PORTFOLIO_TOKEN` and `BW_LINKEDIN_CLIENT_SECRET`, TTL on the `engagement` container
 (`defaultTtl = -1`, per-item TTL), and `scheduler_tick_alert_enabled = true`.
 
@@ -131,6 +136,12 @@ Each package's report lists its own; the ones that change what other code or the
 - **`slot_conflict`** keeps one shape per route (posts approve: `conflicts` as UTC times;
   re-slot: holder post ids; plan approval: `findings[]`; plan edit: post ids): the web reads each
   already, and changing them while it is built in parallel would break it.
+- **Images**: `ai.policy.IMAGE_TASKS` is a map from task to the highest data class an image
+  request may carry: `engagement` (anonymized screenshots) and `fact_check` (public only: the
+  illustrations' "media matches text" check). Illustration routes add `images_disabled` (409),
+  `images_unavailable` (503), `images_in_progress` (409, `jobId`), `draft_missing`,
+  `illustration_in_use`, `illustration_inserted`, `too_many_media` (409) and
+  `heading_not_found`, `invalid_alt_text` (422).
 - **Kit**: approving a post whose go-live mode is `kit` moves it straight to the kit
   (`prepared`, `domain.posts.into_kit`); switching a kit post back to one-click enqueues its
   staging and slot check again; an away week moves its approved one-click posts to the kit.
@@ -176,6 +187,12 @@ Not applied (kept as stored extra fields or package workarounds, all compatible)
   machine change needs a product decision.
 
 ## 5. Known gaps
+
+- **Illustrations** (opt-in, `blogwriter.illustrations`): not run against the live
+  `gpt-image-2` deployment (wire tests replay the v1 images API); the per-image prices are an
+  assumption; images are converted to sRGB, stripped of metadata and stored as WebP (quality
+  90, a few hundred KB); discarded candidates and images from failed runs keep their blob
+  (media garbage collection is deferred). The Draft tab's Images panel drives it.
 
 - **Live checks not run**: Web IQ with the managed identity, the research search-line format,
   every prompt against live models (`BW_LIVE_AI=1` tests in services, signals, posts and

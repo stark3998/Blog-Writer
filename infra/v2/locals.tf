@@ -47,8 +47,11 @@ locals {
     app             = "id-${var.name_prefix}-app"
     easyauth        = "id-${var.name_prefix}-easyauth"
     portfolio_build = "id-${var.name_prefix}-portfolio-build"
-    ci_deploy       = "id-${var.name_prefix}-ci-deploy"
-    ci_infra        = "id-${var.name_prefix}-ci-infra"
+    # The portfolio repository's deploy workflow (site_hosts): builds its image and
+    # updates the portfolio container of the shared app.
+    portfolio_deploy = "id-${var.name_prefix}-portfolio-deploy"
+    ci_deploy        = "id-${var.name_prefix}-ci-deploy"
+    ci_infra         = "id-${var.name_prefix}-ci-infra"
   }
 
   # ---------------------------------------------------------------------------
@@ -180,24 +183,32 @@ locals {
   app_default_fqdn = "${var.container_app_name}.${data.azurerm_container_app_environment.this.default_domain}"
   public_origin    = coalesce(var.public_origin, "https://${local.app_default_fqdn}")
 
-  entra_v2_issuer          = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
-  easyauth_client_id       = var.create_entra_app ? one(azuread_application.easyauth[*].client_id) : var.easyauth_client_id
-  easyauth_excluded_paths  = ["/api/health"]
-  easyauth_fic_secret_name = "override-use-mi-fic-assertion-client-id" # sentinel the auth sidecar recognises (lowercase for ACA secrets)
-  easyauth_secret_setting  = var.easyauth_credential == "federated" ? local.easyauth_fic_secret_name : "easyauth-client-secret"
+  entra_v2_issuer         = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
+  easyauth_client_id      = var.easyauth_client_id
+  easyauth_excluded_paths = ["/api/health"]
+  # AllowAnonymous only with a public site; see easyauth.tf.
+  easyauth_unauthenticated_action = length(var.site_hosts) > 0 ? "AllowAnonymous" : "RedirectToLoginPage"
+  easyauth_fic_secret_name        = "override-use-mi-fic-assertion-client-id" # sentinel the auth sidecar recognises (lowercase for ACA secrets)
+  easyauth_secret_setting         = var.easyauth_credential == "federated" ? local.easyauth_fic_secret_name : "easyauth-client-secret"
 
   # Programmatic owner access (easyauth_cli_access_enabled): the Azure CLI gets
   # a v2 access token for api://<client id> (aud = client ID); Easy Auth accepts
   # both forms. Assignment required + allowedPrincipals still admit only the owner.
   easyauth_identifier_uri    = local.easyauth_client_id == null ? null : "api://${local.easyauth_client_id}"
   easyauth_allowed_audiences = compact(var.easyauth_cli_access_enabled ? [local.easyauth_identifier_uri, local.easyauth_client_id] : [local.easyauth_client_id])
-  easyauth_create_cli_access = var.create_entra_app && var.easyauth_cli_access_enabled
   # Deterministic scope ID: stable across plans, nothing tenant-specific committed.
-  easyauth_scope_id   = uuidv5("url", "urn:blog-writer:v2:easyauth:user_impersonation")
-  azure_cli_client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" # Microsoft's public Azure CLI client
 
-  app_hostnames          = compact([local.app_default_fqdn, var.custom_domain_hostname])
-  easyauth_redirect_uris = [for host in local.app_hostnames : "https://${host}/.auth/login/aad/callback"]
+  app_hostnames = compact([local.app_default_fqdn, var.custom_domain_hostname])
+
+  # ---------------------------------------------------------------------------
+  # Portfolio site (site_hosts): a second container in the same replica, bound
+  # to 127.0.0.1 so only the app's gateway (and nothing else in the
+  # environment) reaches it. The app proxies the site hosts to it and calls it
+  # directly to revalidate pages after a publish.
+  # ---------------------------------------------------------------------------
+  site_enabled  = length(var.site_hosts) > 0
+  site_upstream = "http://127.0.0.1:${var.portfolio_port}"
+  site_origin   = local.site_enabled ? "https://${var.site_hosts[0]}" : var.publish_site_origin
 
   # ---------------------------------------------------------------------------
   # Storage
@@ -215,7 +226,10 @@ locals {
   # aliases), dots escaped, so it can only ever match the v2 repository of the
   # shared registry.
   # ---------------------------------------------------------------------------
-  acr_purge_filter = "\\A${replace(var.container_image_repository, ".", "\\.")}\\z:.*"
+  acr_purge_filters = [
+    for repository in compact([var.container_image_repository, local.site_enabled ? var.portfolio_image_repository : null]) :
+    "\\A${replace(repository, ".", "\\.")}\\z:.*"
+  ]
 
   # ---------------------------------------------------------------------------
   # Misc

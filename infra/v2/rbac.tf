@@ -69,6 +69,15 @@ resource "azurerm_cosmosdb_sql_role_assignment" "portfolio_reader" {
   scope               = local.cosmos_portfolio_scope
 }
 
+# The portfolio's preview workflow (artifact-only builds) reads the staging container.
+resource "azurerm_cosmosdb_sql_role_assignment" "portfolio_staging_reader" {
+  resource_group_name = data.azurerm_resource_group.this.name
+  account_name        = var.cosmos_account_name
+  role_definition_id  = "${local.cosmos_account_id}/sqlRoleDefinitions/${local.cosmos_data_reader_role}"
+  principal_id        = azurerm_user_assigned_identity.this["portfolio_build"].principal_id
+  scope               = "${local.cosmos_database_scope}/colls/published-blogs-staging"
+}
+
 resource "azurerm_role_assignment" "portfolio_published_reader" {
   scope              = "${azurerm_storage_account.this.id}/blobServices/default/containers/${azurerm_storage_container.this["published"].name}"
   role_definition_id = local.role_definition_ids.storage_blob_data_reader
@@ -102,6 +111,32 @@ resource "azurerm_role_assignment" "ci_deploy_container_app" {
   scope              = azurerm_container_app.app.id
   role_definition_id = local.role_definition_ids.container_apps_contributor
   principal_id       = azurerm_user_assigned_identity.this["ci_deploy"].principal_id
+  principal_type     = "ServicePrincipal"
+}
+
+# The portfolio repository's deploy (site_hosts): the same rights as Blog
+# Writer's deploy. AcrPush/ACR Tasks to build its image in the shared registry,
+# Container Apps Contributor on this app to roll the portfolio container. That
+# role covers the whole app, so the portfolio repository's deploy environment
+# must stay restricted to its default branch (as Blog Writer's is).
+resource "azurerm_role_assignment" "portfolio_deploy_acr_push" {
+  scope              = local.registry_id
+  role_definition_id = local.role_definition_ids.acr_push
+  principal_id       = azurerm_user_assigned_identity.this["portfolio_deploy"].principal_id
+  principal_type     = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "portfolio_deploy_acr_tasks" {
+  scope              = local.registry_id
+  role_definition_id = local.role_definition_ids.acr_tasks_contributor
+  principal_id       = azurerm_user_assigned_identity.this["portfolio_deploy"].principal_id
+  principal_type     = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "portfolio_deploy_container_app" {
+  scope              = azurerm_container_app.app.id
+  role_definition_id = local.role_definition_ids.container_apps_contributor
+  principal_id       = azurerm_user_assigned_identity.this["portfolio_deploy"].principal_id
   principal_type     = "ServicePrincipal"
 }
 

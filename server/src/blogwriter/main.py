@@ -9,7 +9,9 @@ so the job runner stops (and releases its running jobs) before any service it us
 
 1. ``db``: opens the Cosmos store (``BW_COSMOS_*``) and verifies every container exists.
 2. :class:`AILifecycle`: the router, built only when ``BW_AI_*`` endpoints are configured. Its
-   ledger writes to the ``usage`` container so the spend brake survives restarts.
+   ledger writes to the ``usage`` container so the spend brake survives restarts. With
+   ``BW_AI_IMAGE_BASE_URL`` it also serves ``gpt-image-2`` from that separate resource (same
+   Entra token provider).
 3. ``CoreServicesLifecycle``: ``clock``, ``egress``, ``vault``, ``notifier`` (+ ``push``) and the
    ``embedder`` (served when the AI router has a ``Task.EMBED`` route).
 4. Package runtime services: storage (``blobs``), render (the renderer, then the
@@ -47,6 +49,7 @@ from blogwriter import (
     db,
     engagement,
     gates,
+    illustrations,
     jobs,
     kb,
     pipeline,
@@ -57,7 +60,13 @@ from blogwriter import (
     stories,
     voice,
 )
-from blogwriter.ai import AIRouter, AISettings, UsageRecord, create_providers
+from blogwriter.ai import (
+    AIRouter,
+    AISettings,
+    UsageRecord,
+    create_image_provider,
+    create_providers,
+)
 from blogwriter.ai.providers.auth import entra_token_provider
 from blogwriter.api import render as render_api
 from blogwriter.api import system as system_api
@@ -125,6 +134,7 @@ SCHEDULE_PROVIDERS: Final[tuple[ScheduleProvider, ...]] = (
     pipeline.schedule_entries,
     publish_jobs.schedule_entries,
     linkedin_posts.schedule_entries,
+    illustrations.schedule_entries,
 )
 """Every package's ``schedule_entries(cadence)`` (contract section 8), seeded at startup and
 again when kb saves the cadence. Packages without schedule items return none."""
@@ -196,8 +206,12 @@ class AILifecycle:
 
         credential = DefaultAzureCredential()
         self._credential = credential
-        providers = create_providers(settings, entra_token_provider(credential))
-        app.state.ai = AIRouter.from_settings(settings, providers, ledger=CosmosLedgerSink(store))
+        token = entra_token_provider(credential)
+        providers = create_providers(settings, token)
+        images = create_image_provider(settings, token)
+        app.state.ai = AIRouter.from_settings(
+            settings, providers, ledger=CosmosLedgerSink(store), images=images
+        )
 
     async def shutdown(self, app: FastAPI) -> None:
         router: object = getattr(app.state, "ai", None)
@@ -264,6 +278,7 @@ def package_routers(
         planner.get_router(),
         engagement.get_router(),
         analytics.get_router(),
+        illustrations.get_router(),
     ]
 
 
@@ -287,6 +302,7 @@ def build_registry(*, publish_runtime: PublishRuntime | None = None) -> JobRegis
     planner.register_jobs(registry)
     engagement.register_jobs(registry)
     analytics.register_jobs(registry)
+    illustrations.register_jobs(registry)
     return registry
 
 

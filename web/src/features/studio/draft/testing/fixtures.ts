@@ -2,6 +2,7 @@ import type { components } from '@/lib/api/schema';
 import type { MachineViews } from '@/lib/query/machines';
 import { SERVER_MACHINES } from '@/test/machines';
 
+import type { Illustration, ModelsView } from '../model/illustrations';
 import type {
   Article,
   ArticleVersion,
@@ -9,6 +10,7 @@ import type {
   Finding,
   GateResult,
   GatesView,
+  MediaRef,
   VersionedArticle,
   VersionSummary,
 } from '../model/types';
@@ -199,5 +201,138 @@ export function articleVersion(version: number, markdown: string): ArticleVersio
     source: 'pipeline',
     author: 'pipeline',
     statusAtSave: 'in_review',
+  };
+}
+
+// ------------------------------------------------------------------------------------------------
+// AI illustrations
+// ------------------------------------------------------------------------------------------------
+
+export const ILLUSTRATION_JOB_ID = `illustrations-${ARTICLE_ID}-a1b2c3`;
+const T1 = '2026-11-26T16:00:00.000000Z';
+
+/** A 64-hex SHA-256 made of one repeated digit (`'1'` -> `111…1`). */
+function sha(digit: string): string {
+  return digit.repeat(64);
+}
+
+export function mediaFixture(overrides: Partial<MediaRef> = {}): MediaRef {
+  const hash = overrides.sha256 ?? sha('9');
+  return {
+    role: 'image',
+    container: 'media',
+    name: `articles/${ARTICLE_ID}/${hash}.png`,
+    sha256: hash,
+    contentType: 'image/png',
+    sizeBytes: 1_200_000,
+    width: 1536,
+    height: 1024,
+    altText: 'An image.',
+    uploadedAt: T1,
+    ...overrides,
+  };
+}
+
+const CANDIDATES = {
+  '1': {
+    role: 'hero',
+    altText: 'Two hands pass a glowing key across a desk to a small robot.',
+    promptSummary: 'A key handed from a person to an agent',
+    section: null,
+    costUsd: 0.27,
+    size: [1536, 1024],
+  },
+  '2': {
+    role: 'inline',
+    altText: 'A ring of tool icons, each behind its own small lock.',
+    promptSummary: 'Every tool behind its own lock',
+    section: 'Why agents need identity',
+    costUsd: 0.19,
+    size: [1024, 1024],
+  },
+  '3': {
+    role: 'inline',
+    altText: 'A checklist on a clipboard beside a row of sleeping robots.',
+    promptSummary: 'An inventory of the agents you run',
+    section: 'What to do first',
+    costUsd: 0.18,
+    size: [1024, 1024],
+  },
+} as const;
+
+/** Candidate `1` (the planned hero), `2` or `3` (planned for the text) of one run. */
+export function illustrationFixture(which: keyof typeof CANDIDATES, overrides: Partial<Illustration> = {}): Illustration {
+  const candidate = CANDIDATES[which];
+  const hash = sha(which);
+  return {
+    id: `ill-${hash.slice(0, 16)}`,
+    role: candidate.role,
+    media: mediaFixture({
+      sha256: hash,
+      width: candidate.size[0],
+      height: candidate.size[1],
+      sizeBytes: 1_800_000,
+      altText: candidate.altText,
+    }),
+    altText: candidate.altText,
+    promptSummary: candidate.promptSummary,
+    section: candidate.section,
+    servedBy: [],
+    costUsd: candidate.costUsd,
+    jobId: ILLUSTRATION_JOB_ID,
+    createdAt: T1,
+    ...overrides,
+  };
+}
+
+/** The title card the pipeline renders (`og_image`) and its copy as the default hero. */
+export function titleCardMedia(): MediaRef[] {
+  const card = mediaFixture({ role: 'og_image', sha256: sha('c'), width: 1200, height: 630, sizeBytes: 90_000, altText: 'Agent identity in practice' });
+  return [card, { ...card, role: 'hero_image' }];
+}
+
+/** `GET /api/kb/models` with illustrations switched on, an image route and its prices. */
+export function modelsViewFixture({
+  imagesEnabled = true,
+  imageRoute = true,
+}: { imagesEnabled?: boolean; imageRoute?: boolean } = {}): ModelsView {
+  return {
+    preferences: {
+      item: {
+        id: 'model-preferences',
+        schemaVersion: 1,
+        createdAt: T0,
+        updatedAt: T0,
+        imagesEnabled,
+        noveltyMaxSimilarity: 0.92,
+        nearDuplicateMaxSimilarity: 0.5,
+      },
+      etag: '"prefs-1"',
+    },
+    routes: [
+      {
+        task: 'draft',
+        maxClass: 'anonymized',
+        tools: false,
+        chain: [{ model: 'claude-opus-5-5', deployment: 'opus', provider: 'anthropic', effort: 'high' }],
+      },
+      ...(imageRoute
+        ? [
+            {
+              task: 'image',
+              maxClass: 'public',
+              tools: false,
+              chain: [{ model: 'gpt-image-2', deployment: 'gpt-image-2', provider: 'openai', effort: null }],
+            },
+          ]
+        : []),
+    ],
+    prices: [
+      { model: 'claude-opus-5-5', input: 15, output: 75, cachedInput: 1.5, cacheWrite: 18.75 },
+      ...(imageRoute
+        ? [{ model: 'gpt-image-2', input: 0, output: 0, cachedInput: null, cacheWrite: null, imageUsd: { '1536x1024': 0.25, '1024x1024': 0.17 } }]
+        : []),
+    ],
+    webSearchUsdPer1k: 14,
   };
 }

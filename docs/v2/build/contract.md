@@ -646,7 +646,7 @@ empty). `pillar_ids_in_use` queries with `find_docs(..., strict=True)` (fail clo
 | GET, PUT | `/api/kb/pillars` | `PillarsIn{pillars: Pillar[]}` | `PillarSettings`; 409 `pillar_in_use` (removing or renaming an id referenced by any idea, article, post, story, POV or source) |
 | GET, PUT | `/api/kb/formats` | `FormatPacksIn{packs}` | `FormatPacks` |
 | GET, PUT | `/api/kb/lanes` | `LanesIn` (all `LaneSettings` fields) | `LaneSettings` |
-| GET, PUT | `/api/kb/brand` | `BrandIn{authorName, authorHeadline, siteName, colors, font, headshot: MediaRef\|null, nameMark: MediaRef\|null, artBriefs}` | `BrandKit`; 422 `brand_contrast` (`findings[]` name the failing pairs) |
+| GET, PUT | `/api/kb/brand` | `BrandIn{authorName, authorHeadline, siteName, colors, font, headshot: MediaRef\|null, nameMark: MediaRef\|null, artBriefs}` | `BrandKit`; 422 `brand_contrast` (`findings[]` name the failing pairs). `artBriefs` (per pillar id, at most 500 characters) steer the illustrations; an empty one means `kb.default_art_brief` (shown while the kit was never saved) |
 | GET, PUT | `/api/kb/blocklist` | `BlocklistIn{terms: [{id?, term, category, match}]}` | `Blocklist` (server assigns `t-<n>` ids, sets `configured: true`, also for an empty list: until the first save every blocklist check fails closed) |
 | GET, PUT | `/api/kb/policy` | `PolicyIn{disclaimerShort, disclaimerLong, forbiddenTopics, noEmployerBranding, aiUseConfirmed, clearanceStatement}` | `EmployerPolicy` (`configured: true`; `aiUseConfirmedAt` set when it turns true) |
 | GET, PUT | `/api/kb/cadence` | `CadenceIn` (all `CadenceSettings` fields) | `CadenceSettings`; after saving calls `services.schedules.reseed()` (failure is logged, not fatal) |
@@ -1917,6 +1917,9 @@ All routes are owner-only; every non-GET passes CSRF. Details and codes are in t
 | GET | `/api/articles/{id}/versions`, `/api/articles/{id}/versions/{version}` | articles |
 | POST | `/api/articles/{id}/versions/{version}/restore` | articles |
 | GET | `/api/articles/{id}/preview`, `/api/articles/{id}/export.md` | articles |
+| POST | `/api/articles/{id}/images`, `/api/articles/{id}/images/{illustrationId}/hero`, `/api/articles/{id}/images/{illustrationId}/insert` | illustrations |
+| PUT | `/api/articles/{id}/images/{illustrationId}/alt` | illustrations |
+| DELETE | `/api/articles/{id}/images/{illustrationId}`, `/api/articles/{id}/hero` | illustrations |
 | POST | `/api/articles/{id}/gates/run`, `/api/articles/{id}/gates/{gate}/override` | gates |
 | GET | `/api/articles/{id}/gates` | gates |
 | POST | `/api/gates/lint`, `/api/gates/standards/refresh` | gates |
@@ -2014,6 +2017,7 @@ recorded before awaiting. Steps are listed in the work orders.
 | `engagement.purge` | engagement | `{}` | scheduler slot id | none | none | schedule |
 | `analytics.suggest` | analytics | `{}` | scheduler slot id | none | none | schedule, owner |
 | `analytics.eval` | analytics | `{}` | random; per-topic checkpoints and derived document ids | per topic: the research child, the pipeline child | none | owner |
+| `illustrations.generate` | illustrations | `IllustrationsInput` (`count` 1-3, `direction?`) | `illustrations_job_id(articleId, token)`, written on the article (`illustrationJobId`) before the enqueue | none | none (the image API has no id: each generation is checkpointed before it is awaited and the image stored as it arrives) | owner |
 
 The LinkedIn publisher is **not** a job and no job can reach it. Re-runs (`-r<n>`) come from
 `domain.jobflow.enqueue_once`; a delayed job checks its lateness first (section 1.7).
@@ -2131,7 +2135,7 @@ never need the term.
 ## 11. AI task matrix
 
 `Task` values are the existing enum (`blogwriter.ai.types.Task`). **No additions are
-required.** (Optional later: a separate `CLASSIFY` task for the confidentiality classifier,
+required** (`IMAGE` is served by `AIRouter.generate_image` once the image resource is set). (Optional later: a separate `CLASSIFY` task for the confidentiality classifier,
 today routed as `FACT_CHECK`; it would need an enum value, a ceiling and a route.)
 
 | Feature | Package | Task | Data class | Tools | Origin |
@@ -2159,7 +2163,9 @@ today routed as `FACT_CHECK`; it would need an enum value, a ceiling and a route
 | Weekly plan proposal | planner | PLAN | anonymized | none | background/owner |
 | Reply and comment angles | engagement | ENGAGEMENT | anonymized (pasted text is untrusted) | none | owner |
 | Insight suggestions | analytics | SYNTHESIS | public (aggregates) | none | background/owner |
-| Illustrations (opt-in) | (deferred) | IMAGE | public | none | |
+| Illustrations (opt-in): the plan of a hero and up to 2 inline images | illustrations | PLAN | public (title, excerpt, pillar, headings, art brief, palette, direction; never the body or owner material) | none | owner |
+| Illustrations: the images (`gpt-image-2` on its own East US 2 resource, `BW_AI_IMAGE_BASE_URL`) | illustrations | IMAGE | public | none | owner |
+| Illustrations: the "media matches text" check (the generated image as an `ImagePart`) | illustrations | FACT_CHECK | public (images allowed for this task only with public data: `ai.policy.IMAGE_TASKS`) | none | owner |
 
 Draft, revise and critique served by a fallback, or any refusal in the chain, make the output
 review-only: `domain.common.review_only_reasons(result)` (`served_by.fallback_reason` set, or
@@ -2196,7 +2202,6 @@ DRAFT/REVISE calls sequential inside a job. Background calls run inside `defer_o
 | Item | Why |
 |---|---|
 | Deep research mode (one background `xhigh` run) | The plan defers it until standard runs are measured; no background Responses are used today |
-| `gpt-image-2` illustrations and the "media matches text" check | `Task.IMAGE` has no route (needs an optional East US 2 resource); `imagesEnabled` stays off |
 | Prompt overrides and the prompt test harness UI | Prompts are versioned package files now; the override store and Monaco editor come after the pipeline is measured |
 | Prefilled LinkedIn composer link, export import format | Wait for the Phase 0 LinkedIn app checks; the kit links to the LinkedIn feed |
 | Optional Teams Workflows notifications, media garbage collection, a CI deploy-freeze endpoint | Not needed for Phases 2-7 |
@@ -2206,6 +2211,25 @@ DRAFT/REVISE calls sequential inside a job. Background calls run inside `defer_o
 ---
 
 ## 14. Revision log
+
+**2026-11-27, revision 5** (opt-in AI illustrations; details in `integration.md`).
+
+- AI: `Task.IMAGE` is served by `AIRouter.generate_image` (`gpt-image-2` through the v1 images
+  API on a separate Foundry resource, `BW_AI_IMAGE_BASE_URL`; public prompts only, concurrency
+  1, 429/5xx retries, a content filter refusal is a typed result) and priced per image by size
+  in the ledger (`BW_AI_IMAGE_USD_*`). `ai.policy.IMAGE_TASKS` maps each image task to the
+  highest data class an image request may carry: `engagement` (anonymized) and `fact_check`
+  (public only, the illustrations' vision check). `domain.ports.ImageGenerator` is the port.
+- Package `illustrations` (job `illustrations.generate`: plan, generate, check, store,
+  attach; routes under `/api/articles/{id}/images` and `/api/articles/{id}/hero`).
+  `Article.illustrations` (candidates: not content) and `Article.illustrationJobId`; the
+  owner makes one the hero (`hero_image` media, the publish job's `heroImage`) or inserts one
+  after a heading (a normal Markdown image: a new version, covered by the content hash).
+  `articles.owner_save(..., update=...)` writes owner fields next to a body change. The
+  pipeline's assets step keeps a hero picked from the illustrations.
+- kb: a pillar without an art brief uses `kb.default_art_brief` (editorial, abstract, the
+  brand's blue/teal palette, no text); the never-saved brand kit shows the defaults;
+  `GET /api/kb/models` lists image prices as `imageUsd`.
 
 **2026-11-27, revision 4** (review of the integrated server: security, reliability and
 product findings; details in `integration.md`).

@@ -1,7 +1,10 @@
 # The Blog Writer v2 container app: NEW and side by side with v1 in the
 # existing legacy Consumption-only environment. One revision, exactly one
-# replica, 1 vCPU / 2 GiB. deploy (az containerapp update --image) owns the
-# image; Terraform owns everything else, including every environment variable.
+# replica, 1 vCPU / 2 GiB for the app plus, with site_hosts, the portfolio
+# site as a second container (0.25 vCPU / 0.5 GiB by default) that the app
+# serves on the site hosts. The deploys (az containerapp update --image) own
+# the images; Terraform owns everything else, including every environment
+# variable.
 
 locals {
   # Non-secret configuration, using the names the app reads (BW_*; see the
@@ -37,14 +40,23 @@ locals {
       BW_STORAGE_CONTAINER_PUBLISHED = azurerm_storage_container.this["published"].name
       BW_STORAGE_CONTAINER_BACKUPS   = azurerm_storage_container.this["backups"].name
 
-      # Portfolio build dispatch target (the PAT is a Key Vault secret) and the
-      # public site the publish step verifies.
+      # The public site the publish step verifies (and the gates link to).
+      BW_PUBLISH_SITE_ORIGIN     = local.site_origin
+      BW_GATES_SITE_ORIGIN       = local.site_origin
+      BW_RENDER_CHROMIUM_SANDBOX = var.render_chromium_sandbox ? "1" : "0"
+      BW_AI_BRAKE_DAILY_CAP_USD  = tostring(var.ai_brake_daily_cap_usd)
+    },
+    # Portfolio in this replica (site_hosts): the gateway proxies the site hosts to
+    # the portfolio container, and a publish revalidates and verifies the page there
+    # (no GitHub build, dispatch or PAT). Without it: the GitHub Pages dispatch.
+    local.site_enabled ? {
+      BW_SITE_HOSTS            = join(",", var.site_hosts)
+      BW_SITE_UPSTREAM         = local.site_upstream
+      BW_PUBLISH_SITE_UPSTREAM = local.site_upstream
+      } : {
       BW_PUBLISH_PORTFOLIO_REPOSITORY = "${local.portfolio_owner}/${var.portfolio_repo}"
       BW_PUBLISH_PORTFOLIO_REF        = var.portfolio_branch
       BW_PUBLISH_PORTFOLIO_WORKFLOW   = var.portfolio_workflow
-      BW_PUBLISH_SITE_ORIGIN          = var.publish_site_origin
-      BW_GATES_SITE_ORIGIN            = var.publish_site_origin
-      BW_RENDER_CHROMIUM_SANDBOX      = var.render_chromium_sandbox ? "1" : "0"
     },
     # BW_AI_DEPLOYMENT_SOL / _ASTRA / _LUNA / _EMBEDDING.
     { for name, deployment in local.foundry_deployments : deployment.env => name if deployment.env != null },
@@ -54,7 +66,26 @@ locals {
     var.linkedin_client_id != null ? { BW_LINKEDIN_CLIENT_ID = var.linkedin_client_id } : {},
     var.vault_primary_kid != null ? { BW_VAULT_PRIMARY = var.vault_primary_kid } : {},
     local.webiq_endpoint != null ? { BW_RESEARCH_WEBIQ_ENDPOINT = local.webiq_endpoint, BW_RESEARCH_WEBIQ_SCOPE = var.webiq_scope } : {},
+    # AI illustrations (gpt-image-2 on the optional East US 2 account): Task.IMAGE route.
+    var.enable_image_generation ? {
+      BW_AI_IMAGE_BASE_URL   = local.image_openai_v1_base_url
+      BW_AI_DEPLOYMENT_IMAGE = one(azurerm_cognitive_deployment.image[*].name)
+    } : {},
   )
+
+  # The portfolio container: read-only data access with its own identity, no
+  # secrets. It binds 127.0.0.1 (PORTFOLIO_BIND), so only this replica reaches it.
+  portfolio_env = {
+    AZURE_CLIENT_ID      = azurerm_user_assigned_identity.this["portfolio_build"].client_id
+    COSMOS_ENDPOINT      = local.cosmos_endpoint
+    COSMOS_DATABASE      = var.cosmos_database_name
+    COSMOS_CONTAINER     = local.portfolio_cosmos_container
+    BLOB_ENDPOINT        = azurerm_storage_account.this.primary_blob_endpoint
+    BLOB_CONTAINER       = azurerm_storage_container.this["published"].name
+    NEXT_PUBLIC_SITE_URL = local.site_origin
+    PORTFOLIO_BIND       = "127.0.0.1"
+    PORT                 = tostring(var.portfolio_port)
+  }
 }
 
 resource "azurerm_container_app" "app" {
@@ -69,11 +100,15 @@ resource "azurerm_container_app" "app" {
 
   identity {
     type = "UserAssigned"
-    identity_ids = [
+    identity_ids = concat([
       azurerm_user_assigned_identity.this["app"].id,
       # Used only by the Easy Auth sidecar (federated credential assertion).
       azurerm_user_assigned_identity.this["easyauth"].id,
-    ]
+      ],
+      # The portfolio container's identity: read-only on published-blogs and the
+      # "published" blobs (rbac.tf), selected there with AZURE_CLIENT_ID.
+      local.site_enabled ? [azurerm_user_assigned_identity.this["portfolio_build"].id] : [],
+    )
   }
 
   # Image pulls from the shared registry use the app identity (AcrPull); no
@@ -92,6 +127,15 @@ resource "azurerm_container_app" "app" {
     traffic_weight {
       latest_revision = true
       percentage      = 100
+    }
+
+    # Only the app's own origins. Same-origin requests ignore CORS, but Easy Auth's CSRF
+    # mitigation rejects cookie-authenticated browser POSTs whose Origin is in neither this
+    # list nor login.allowedExternalRedirectUrls (403, sub-status 60). No other origin is added.
+    cors {
+      allowed_origins = [for host in local.app_hostnames : "https://${host}"]
+      # Azure's default; stated so plans stay clean. Only the app's own origins are allowed.
+      allowed_headers = ["*"]
     }
   }
 
@@ -180,12 +224,43 @@ resource "azurerm_container_app" "app" {
         failure_count_threshold = 30
       }
     }
+
+    # The portfolio site (Next.js standalone server, the portfolio repository).
+    # It listens on 127.0.0.1 only, so it has no probes (the kubelet probes the
+    # pod address): the app's probes gate the replica, and the portfolio is up
+    # long before the app finishes its own startup. The app's gateway answers
+    # 502 for the site hosts while it is not.
+    dynamic "container" {
+      for_each = local.site_enabled ? [var.portfolio_container_image] : []
+
+      content {
+        name   = "portfolio"
+        image  = container.value
+        cpu    = var.portfolio_cpu
+        memory = var.portfolio_memory
+
+        dynamic "env" {
+          for_each = local.portfolio_env
+
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+      }
+    }
   }
 
   lifecycle {
-    # deploy sets the image (SHA tag). Terraform keeps the live image on every
-    # later update instead of rolling back to var.container_image.
-    ignore_changes = [template[0].container[0].image]
+    # deploy sets the images (SHA tags): Blog Writer's deploy the app container,
+    # the portfolio repository's deploy the portfolio container. Terraform keeps
+    # the live images on every later update.
+    ignore_changes = [template[0].container[0].image, template[0].container[1].image]
+
+    precondition {
+      condition     = !local.site_enabled || var.portfolio_container_image != null
+      error_message = "site_hosts needs portfolio_container_image (the first portfolio image; the portfolio deploy owns it afterwards)."
+    }
   }
 
   # Registry pull and Key Vault references must be authorised before a revision

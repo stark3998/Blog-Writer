@@ -1,0 +1,22 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+{% if s.layout == "2x2" %}
+<div class="matrix">
+{% if s.y_axis %}<p class="matrix__y">{{ s.y_axis }} &#8594;</p>{% endif %}
+<div class="matrix__grid">
+{% for c in s.cells %}
+<div class="cell" data-fit="cell {{ loop.index }}"><p class="cell__label">{{ c.label }}</p><p class="cell__text">{{ c.text }}</p></div>
+{% endfor %}
+</div>
+{% if s.x_axis %}<p class="matrix__x">{{ s.x_axis }} &#8594;</p>{% endif %}
+</div>
+{% else %}
+<ol class="layers">
+{% for c in s.cells %}
+<li class="layer" style="margin-left:{{ loop.index0 * 40 }}px"><p class="layer__label">{{ c.label }}</p><p class="layer__text">{{ c.text }}</p></li>
+{% endfor %}
+</ol>
+{% endif %}
+{% endcall %}

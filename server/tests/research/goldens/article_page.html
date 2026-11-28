@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Agent identities in Microsoft Entra | Example Docs</title>
+  <meta property="og:title" content="Agent identities (og)">
+  <style>body { font-family: sans-serif; }</style>
+  <script>window.dataLayer = [{"page": "agent-identities"}];</script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <div id="cookie-banner" class="cookie consent">We use cookies to improve your experience. <button>Accept</button></div>
+  <header class="site-header"><a href="/">Example Docs</a><nav><a href="/a">Products</a> <a href="/b">Pricing</a></nav></header>
+  <aside class="sidebar"><h2>In this section</h2><ul><li><a href="/x">Overview</a></li><li><a href="/y">Quickstart</a></li></ul></aside>
+  <main id="main">
+    <article>
+      <h1>Agent identities</h1>
+      <p class="meta">Published <time datetime="2026-10-14">October 14, 2026</time></p>
+      <p>An <b>agent identity</b> is a directory object that represents one AI agent. Each agent
+         identity is created from an <a href="/blueprints">agent identity blueprint</a>, which
+         holds the credentials that the agents share.</p>
+      <h2>Limits</h2>
+      <ul>
+        <li>Up to 1,000 agent identities per blueprint during the preview.</li>
+        <li>Access tokens last 60 minutes.</li>
+      </ul>
+      <div class="share social"><a href="https://social.example/share">Share this page</a></div>
+      <p>Conditional Access policies apply to agent identities.<br>Sign-in logs record each
+         token request.</p>
+      <pre><code>az ad agent-identity list --blueprint contoso-agents</code></pre>
+      <div hidden>Hidden tracking text that must not appear.</div>
+      <div aria-hidden="true">Decorative text that must not appear.</div>
+      <noscript>Enable JavaScript to see comments.</noscript>
+      <section class="related"><h3>Related articles</h3><p>Workload identities overview</p></section>
+    </article>
+  </main>
+  <footer class="site-footer"><p>Privacy &amp; cookies</p><p>&copy; 2026 Example</p></footer>
+  <script src="/analytics.js"></script>
+</body>
+</html>

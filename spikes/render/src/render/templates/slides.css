@@ -1,0 +1,115 @@
+/* Carousel slides, 1080x1350 CSS px. Colours come only from brand tokens (--ink, --paper, ...).
+   Type floor is 28px everywhere. Every box that can overflow clips, and the renderer measures it. */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+/* 'calt' off: Inter's contextual alternates (and tnum/case/ss0x) reach the PDF as Private Use Area
+   code points, which corrupts the text layer the confidentiality gate scans. Never re-enable them. */
+body{font-family:'BW Text',sans-serif;font-weight:400;font-kerning:normal;font-feature-settings:"kern" 1,"liga" 1,"calt" 0;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h1,h2,p,ul,ol,li,figure,figcaption,blockquote{margin:0;padding:0}
+ul,ol{list-style:none}
+@page{margin:0}
+
+.slide{position:relative;width:1080px;height:1350px;overflow:hidden;break-after:page;break-inside:avoid}
+.slide:last-of-type{break-after:auto}
+.on-ink{background:var(--ink);color:var(--paper)}
+.on-paper{background:var(--paper);color:var(--ink)}
+
+/* Progress rail: the filled length is this slide's position in the deck (n / N). */
+.rail{position:absolute;left:0;top:0;bottom:0;width:20px;background:var(--rule)}
+.on-ink .rail{background:var(--rule-on-ink)}
+.rail__fill{width:100%;background:var(--signal-text)}
+.on-ink .rail__fill{background:var(--signal)}
+
+.body{position:absolute;top:120px;left:132px;right:100px;bottom:168px;display:flex;flex-direction:column;overflow:hidden;overflow-wrap:anywhere}
+
+/* At most two lines (2 x 35px), so it can never reach the body box; data-fit makes a longer or
+   unbreakable name/disclaimer fail closed instead of being clipped by the slide. */
+.foot{position:absolute;left:132px;right:100px;bottom:64px;display:flex;justify-content:space-between;align-items:baseline;gap:32px;font-size:28px;line-height:1.25;color:var(--muted);max-height:70px;overflow:hidden}
+.on-ink .foot{color:var(--muted-on-ink)}
+.foot__name{font-weight:600;color:var(--ink)}
+.on-ink .foot__name{color:var(--paper)}
+.foot__name + .foot__note{margin-left:28px}
+.foot__num{font-weight:600;white-space:nowrap}
+
+/* Type roles */
+.kicker{font-size:30px;font-weight:600;line-height:1.25;color:var(--signal-text)}
+.on-ink .kicker{color:var(--signal)}
+.hook,.title,.statement,.stat__value,.quote__text,.quote__mark,.steps__n{font-family:'BW Display','BW Text',sans-serif}
+.hook{font-weight:800;line-height:1.02;letter-spacing:-0.03em;text-wrap:balance}
+.title{font-weight:700;line-height:1.08;letter-spacing:-0.02em;text-wrap:balance;margin-bottom:60px}
+.lead{font-size:40px;line-height:1.3;text-wrap:pretty;color:var(--muted)}
+.on-ink .lead{color:var(--muted-on-ink)}
+
+/* Cover: series up top, the hook in the optical centre, the byline at the foot. */
+.cover__main{margin:auto 0}
+.cover__main .lead{margin-top:44px;max-width:800px}
+.byline__name{font-size:34px;font-weight:600;line-height:1.25}
+.byline__role{font-size:28px;line-height:1.3;margin-top:6px;color:var(--muted-on-ink)}
+
+/* Statement */
+.slide--statement .body{justify-content:center}
+.statement{font-weight:700;line-height:1.1;letter-spacing:-0.022em;text-wrap:balance}
+.statement__note{margin-top:56px;font-size:36px;line-height:1.36;color:var(--muted-on-ink);text-wrap:pretty;max-width:820px}
+
+/* List: unordered, so square markers rather than numbers. */
+.items{display:flex;flex-direction:column;gap:36px}
+.items__item{position:relative;padding-left:56px;font-size:36px;line-height:1.34;text-wrap:pretty}
+.items__item::before{content:"";position:absolute;left:0;top:calc(0.67em - 9px);width:18px;height:18px;background:var(--signal-text)}
+
+/* Steps: a true sequence, so numbered and joined. */
+.steps{display:flex;flex-direction:column;gap:40px}
+.steps__step{position:relative;display:grid;grid-template-columns:72px 1fr;column-gap:28px;align-items:start}
+.steps__step:not(:last-child)::after{content:"";position:absolute;left:20px;top:78px;bottom:-30px;width:4px;background:var(--rule)}
+.steps__n{font-weight:800;font-size:60px;line-height:1;color:var(--signal-text)}
+.steps__title{font-size:38px;font-weight:600;line-height:1.22;text-wrap:balance}
+.steps__detail{margin-top:8px;font-size:32px;line-height:1.36;color:var(--muted);text-wrap:pretty}
+
+/* Framework 2x2: axes are labelled lines of increase; cells clip so overflow is measurable. */
+.matrix{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;grid-template-rows:1fr auto;column-gap:18px;row-gap:14px}
+.matrix__y{grid-column:1;grid-row:1;writing-mode:vertical-rl;transform:rotate(180deg);font-size:28px;font-weight:600;line-height:1.2;color:var(--muted);white-space:nowrap}
+.matrix__grid{grid-column:2;grid-row:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:16px}
+.matrix__x{grid-column:2;grid-row:2;font-size:28px;font-weight:600;line-height:1.2;color:var(--muted)}
+.cell{min-height:0;overflow:hidden;border:3px solid var(--rule);padding:30px 30px 26px;display:flex;flex-direction:column;gap:14px}
+.cell__label{font-size:34px;font-weight:600;line-height:1.18}
+.cell__text{font-size:30px;line-height:1.36;color:var(--muted);text-wrap:pretty}
+
+/* Framework layered: outermost first, each inner layer indented. */
+.layers{display:flex;flex-direction:column;gap:18px}
+.layer{border-left:12px solid var(--signal-text);padding:18px 0 18px 30px}
+.layer__label{font-size:34px;font-weight:600;line-height:1.2}
+.layer__text{margin-top:6px;font-size:30px;line-height:1.36;color:var(--muted);text-wrap:pretty}
+
+/* Diagram */
+.figure{flex:1;min-height:0;display:flex;flex-direction:column;gap:28px}
+.figure__frame{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.figure__img{display:block;width:100%;height:100%;object-fit:contain}
+.figure__cap{font-size:28px;line-height:1.36;color:var(--muted);text-wrap:pretty}
+
+/* Stat */
+.stat{margin:auto 0}
+.stat__value{font-weight:800;line-height:0.96;letter-spacing:-0.04em;color:var(--signal);white-space:nowrap}
+.stat__label{margin-top:40px;font-size:44px;font-weight:600;line-height:1.22;text-wrap:balance}
+.stat__context{margin-top:26px;font-size:34px;line-height:1.38;color:var(--muted-on-ink);text-wrap:pretty}
+.source{font-size:28px;line-height:1.36;color:var(--muted-on-ink)}
+
+/* Quote */
+.quote{margin:auto 0}
+.quote__mark{font-weight:800;font-size:220px;line-height:1;height:120px;overflow:hidden;color:var(--signal-text)}
+.quote__text{font-weight:700;line-height:1.14;letter-spacing:-0.018em;text-wrap:pretty}
+.quote__by{margin-top:52px;display:flex;flex-direction:column;gap:6px}
+.quote__name{font-size:34px;font-weight:600;line-height:1.25}
+.quote__role{font-size:28px;line-height:1.3;color:var(--muted)}
+
+/* Recap: actions to take, so empty checkboxes. */
+.checks{display:flex;flex-direction:column;gap:38px}
+.checks__item{display:grid;grid-template-columns:44px 1fr;column-gap:30px;align-items:start}
+.checks__box{width:44px;height:44px;border:4px solid var(--ink);margin-top:2px}
+.checks__text{font-size:36px;line-height:1.34;text-wrap:pretty}
+
+/* Sources: citation numbers, publisher first, never a URL. */
+.refs{display:flex;flex-direction:column;gap:26px}
+.refs__item{display:grid;grid-template-columns:44px 1fr;column-gap:20px;font-size:30px;line-height:1.36}
+.refs__n{font-weight:600;color:var(--signal-text)}
+.refs__pub{font-weight:600}
+.refs__title{color:var(--ink)}
+.refs__date{color:var(--muted)}

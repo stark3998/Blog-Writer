@@ -1,0 +1,5 @@
+What if your identity platform could heal itself? It can, if you stop treating provisioning as a one-time project.
+---8<---
+Why do agent tokens leak so often in CI pipelines?
+
+Because teams scope them per agent instead of per tool call.

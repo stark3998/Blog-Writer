@@ -1,0 +1,27 @@
+{
+  "frontmatter": null,
+  "toc": [],
+  "citations": [
+    {
+      "number": 1,
+      "id": "b",
+      "text": "Source B, defined in the middle, continued on a lazy line.",
+      "url": null
+    },
+    {
+      "number": 2,
+      "id": "a",
+      "text": "Source A, defined first but cited second.",
+      "url": null
+    },
+    {
+      "number": 3,
+      "id": "c",
+      "text": "Source C.",
+      "url": null
+    }
+  ],
+  "diagrams": [],
+  "wordCount": 20,
+  "readingTimeMinutes": 1
+}

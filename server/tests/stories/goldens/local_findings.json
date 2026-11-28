@@ -1,0 +1,350 @@
+[
+  {
+    "name": "blocklist word",
+    "text": "We moved Contoso off the old IdP.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "blocklisted-term",
+        "severity": "block",
+        "span": "Contoso",
+        "ref": "t-1"
+      }
+    ]
+  },
+  {
+    "name": "blocklist word is case-insensitive",
+    "text": "the contoso tenant and CONTOSO's apps",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "blocklisted-term",
+        "severity": "block",
+        "span": "contoso",
+        "ref": "t-1"
+      },
+      {
+        "code": "blocklisted-term",
+        "severity": "block",
+        "span": "CONTOSO",
+        "ref": "t-1"
+      }
+    ]
+  },
+  {
+    "name": "blocklist word needs whole words",
+    "text": "Contosoville is a different place.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "blocklist substring",
+    "text": "The NorthwindTraders tenant had 40 domains.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "blocklisted-term",
+        "severity": "block",
+        "span": "Northwind",
+        "ref": "t-3"
+      }
+    ]
+  },
+  {
+    "name": "blocklist project",
+    "text": "Project Falcon shipped late.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "blocklisted-term",
+        "severity": "block",
+        "span": "Falcon",
+        "ref": "t-2"
+      }
+    ]
+  },
+  {
+    "name": "email",
+    "text": "Write to avery.t@fabrikam-bank.com for access.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "email-address",
+        "severity": "block",
+        "span": "avery.t@fabrikam-bank.com",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "reserved email domains",
+    "text": "Use user@example.com or ops@build.test in examples.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "phone numbers",
+    "text": "Call +1 (425) 555-0142, 425-555-0199 or 020 7946 0958.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "phone-number",
+        "severity": "block",
+        "span": "+1 (425) 555-0142",
+        "ref": null
+      },
+      {
+        "code": "phone-number",
+        "severity": "block",
+        "span": "425-555-0199",
+        "ref": null
+      },
+      {
+        "code": "phone-number",
+        "severity": "block",
+        "span": "020 7946 0958",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "link",
+    "text": "The runbook is at https://wiki.fabrikam.local/idp/cutover-plan.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "url",
+        "severity": "block",
+        "span": "https://wiki.fabrikam.local/idp/cutover-plan",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "www link",
+    "text": "See www.fabrikam.com/careers for the team.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "url",
+        "severity": "block",
+        "span": "www.fabrikam.com/careers",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "ip addresses",
+    "text": "The proxy at 10.20.30.40 and fe80::1ff:fe23:4567:890a failed.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "ip-address",
+        "severity": "block",
+        "span": "10.20.30.40",
+        "ref": null
+      },
+      {
+        "code": "ip-address",
+        "severity": "block",
+        "span": "fe80::1ff:fe23:4567:890a",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "documentation ip ranges",
+    "text": "Use 192.0.2.10, 198.51.100.7, 203.0.113.5, 127.0.0.1 and 2001:db8::1.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "version numbers are not addresses",
+    "text": "TLS 1.2 and 1.3; build 10.0.19045.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "handles",
+    "text": "Ping @avery_t or @fabrikam-secops on the thread.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "handle",
+        "severity": "block",
+        "span": "@avery_t",
+        "ref": null
+      },
+      {
+        "code": "handle",
+        "severity": "block",
+        "span": "@fabrikam-secops",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "emails are not handles",
+    "text": "Mail avery@fabrikam.com today.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "email-address",
+        "severity": "block",
+        "span": "avery@fabrikam.com",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "bare domain",
+    "text": "Their tenant was fabrikam-bank.com until the merger.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "domain-name",
+        "severity": "warn",
+        "span": "fabrikam-bank.com",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "file names are not domains",
+    "text": "Edit README.md and config.yaml first.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "money",
+    "text": "The budget was $4.3M and 250,000 EUR for licences.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "money",
+        "severity": "warn",
+        "span": "$4.3M",
+        "ref": null
+      },
+      {
+        "code": "money",
+        "severity": "warn",
+        "span": "250,000 EUR",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "exact figures",
+    "text": "We migrated 2,137 apps and cut tickets by 43.7%.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "exact-figure",
+        "severity": "warn",
+        "span": "2,137",
+        "ref": null
+      },
+      {
+        "code": "exact-figure",
+        "severity": "warn",
+        "span": "43.7",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "rounded figures",
+    "text": "We migrated 2,000+ apps and cut tickets by about 40% in 2023.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "standard ids",
+    "text": "Follow NIST SP 800-63-4, ISO/IEC 42001 and OWASP LLM01.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "technical units",
+    "text": "Use 256-bit keys and keep p99 under 120 ms.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "possible names",
+    "text": "Avery Testperson from Fabrikam Bank Group signed off.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "possible-name",
+        "severity": "warn",
+        "span": "Avery Testperson",
+        "ref": null
+      },
+      {
+        "code": "possible-name",
+        "severity": "warn",
+        "span": "Fabrikam Bank Group",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "sentence starters",
+    "text": "The Team met. Last Tuesday we shipped.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "public vocabulary",
+    "text": "We moved from Okta to Microsoft Entra ID with Conditional Access.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "clean text",
+    "text": "I led the migration and wrote the runbook.",
+    "markdown": false,
+    "findings": []
+  },
+  {
+    "name": "markdown code hides handles",
+    "text": "Decorate it:\n\n```python\n@dataclass\nclass Grant: ...\n```\n\nAsk @avery_t.",
+    "markdown": true,
+    "findings": [
+      {
+        "code": "handle",
+        "severity": "block",
+        "span": "@avery_t",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "markdown inline code",
+    "text": "Use `@pytest.fixture` here, not @fixture_owner.",
+    "markdown": true,
+    "findings": [
+      {
+        "code": "handle",
+        "severity": "block",
+        "span": "@fixture_owner",
+        "ref": null
+      }
+    ]
+  },
+  {
+    "name": "plain text keeps decorators as handles",
+    "text": "Use @dataclass here.",
+    "markdown": false,
+    "findings": [
+      {
+        "code": "handle",
+        "severity": "block",
+        "span": "@dataclass",
+        "ref": null
+      }
+    ]
+  }
+]

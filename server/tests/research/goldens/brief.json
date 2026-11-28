@@ -1,0 +1,117 @@
+{
+  "id": "brief-run-970b12004caef5cb8e06b6c10bf7",
+  "kind": "brief",
+  "schemaVersion": 1,
+  "createdAt": "2026-11-26T12:00:00.000000Z",
+  "updatedAt": "2026-11-26T12:00:00.000000Z",
+  "runId": "run-970b12004caef5cb8e06b6c10bf7",
+  "articleId": null,
+  "topic": "Agent identities in Microsoft Entra",
+  "pillar": "agents",
+  "audience": "identity engineers",
+  "executiveSummary": "Agent identities are now a separate directory object with their own sign-in logs. Conditional Access applies to them, and the preview caps each blueprint at 1,000 identities.",
+  "findings": [
+    {
+      "id": "f-1",
+      "text": "Entra keeps agent identities apart from app registrations.",
+      "citationIds": [
+        "src-learn-microsoft-com-4bbd2b"
+      ]
+    },
+    {
+      "id": "f-2",
+      "text": "Most teams still share one service principal across agents.",
+      "citationIds": [
+        "src-www-example-org-161070"
+      ]
+    }
+  ],
+  "stats": [],
+  "counterpoints": [
+    "The limits come from a preview and may change before general release."
+  ],
+  "openQuestions": [
+    "How long did your first agent rollout take to reach production?"
+  ],
+  "angles": [
+    "Agent identities make per-agent Conditional Access possible for the first time."
+  ],
+  "hookSeeds": [
+    "1,000 agent identities per blueprint is the preview limit."
+  ],
+  "claims": [
+    {
+      "id": "cl-1",
+      "text": "Each agent identity is created from a blueprint that holds shared credentials.",
+      "citationId": "src-learn-microsoft-com-4bbd2b",
+      "quoteIds": [],
+      "status": "verified",
+      "conflictNote": null
+    },
+    {
+      "id": "cl-2",
+      "text": "Most surveyed teams run their agents under one shared service principal.",
+      "citationId": "src-www-example-org-161070",
+      "quoteIds": [],
+      "status": "verified",
+      "conflictNote": null
+    }
+  ],
+  "quotes": [],
+  "citations": [
+    {
+      "id": "src-learn-microsoft-com-4bbd2b",
+      "url": "https://learn.microsoft.com/en-us/entra/workload-id/agent-identities",
+      "title": "A page",
+      "publisher": "Microsoft",
+      "date": "2026-10-14",
+      "domain": "learn.microsoft.com",
+      "allowlisted": true,
+      "accessedAt": "2026-11-26T12:00:00.000000Z"
+    },
+    {
+      "id": "src-www-example-org-161070",
+      "url": "https://www.example.org/research/agent-identity-survey-2026",
+      "title": "A page",
+      "publisher": "Example",
+      "date": "2026-10-14",
+      "domain": "www.example.org",
+      "allowlisted": false,
+      "accessedAt": "2026-11-26T12:00:00.000000Z"
+    }
+  ],
+  "webiqFallback": false,
+  "servedBy": [
+    {
+      "step": "verify",
+      "at": "2026-11-26T12:00:00.000000Z",
+      "task": "synthesis",
+      "model": "fake-model",
+      "deployment": "fake-deployment",
+      "provider": "openai",
+      "effort": null,
+      "fallbackReason": null,
+      "reviewOnly": false,
+      "repaired": false,
+      "refused": false,
+      "promptVersion": "verify.v1",
+      "costUsd": 0.01
+    },
+    {
+      "step": "brief",
+      "at": "2026-11-26T12:00:00.000000Z",
+      "task": "synthesis",
+      "model": "fake-model",
+      "deployment": "fake-deployment",
+      "provider": "openai",
+      "effort": null,
+      "fallbackReason": null,
+      "reviewOnly": false,
+      "repaired": false,
+      "refused": false,
+      "promptVersion": "brief.v1",
+      "costUsd": 0.01
+    }
+  ],
+  "editedByOwner": false
+}

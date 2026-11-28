@@ -1,0 +1,21 @@
+{
+  "frontmatter": null,
+  "toc": [
+    {
+      "level": 2,
+      "id": "setext-heading-level-2",
+      "text": "Setext Heading Level 2"
+    },
+    {
+      "level": 3,
+      "id": "closed-atx-heading",
+      "text": "Closed ATX heading"
+    }
+  ],
+  "citations": [],
+  "diagrams": [
+    "dd294adbd647b1bb22d2256797c022a8dd87287e45761079a0de7daa6cb22cce"
+  ],
+  "wordCount": 122,
+  "readingTimeMinutes": 1
+}

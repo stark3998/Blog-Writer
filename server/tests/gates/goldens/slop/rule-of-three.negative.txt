@@ -1,0 +1,5 @@
+We compared Okta, Entra, and Ping Identity on SCIM support, and only Entra handled our 37 custom attributes.
+---8<---
+The script found 412 mismatches. Most were stale department codes, a few were typos, and three were duplicate accounts that HR had merged in 2019 without telling anyone in IT.
+---8<---
+We kept the rollout boring on purpose. Each wave had a named owner and a rollback plan, and the help desk got a one-page brief, a test account, and a phone number. Nothing else in the plan was a list of three, and the plan held for 14 months across 2,000 apps without a single unplanned outage that reached users.

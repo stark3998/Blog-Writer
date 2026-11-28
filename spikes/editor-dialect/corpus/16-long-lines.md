@@ -1,0 +1,13 @@
+This paragraph is deliberately long to prove that the dialect never wraps prose and that the serializer neither splits nor joins lines. It keeps going with ordinary sentences about agent identity, token lifetimes, conditional access, workload identity federation, and the operational detail that makes the difference between a policy on paper and a control that actually holds under load. Every clause adds length without adding Markdown syntax, except for a little *emphasis*, a **strong** phrase, an `inline code` span, and a [link to the docs](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation) in the middle. Readers on narrow screens get soft wrapping from the renderer; reviewers in a diff tool get one line per paragraph, which keeps blame and suggestions precise. The line continues past a thousand characters to exercise any buffer or regular expression that might assume short lines, such as the table tokenizer that slices on blank lines or the callout scanner that walks line by line. Nothing here should change on a round trip: not the spacing, not the punctuation, not the order of marks, and certainly not the text itself, which is the whole point of a byte-stable canonical form. One more sentence for good measure, and then another, because long paragraphs are exactly where off-by-one bugs in escaping, whitespace trimming and mark boundary handling like to hide. Finally, a closing sentence that ends with a period.
+
+A long link destination: [conditional access policies](https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-policies?tabs=conditions&view=graph-rest-1.0&pivots=workload-identities-and-service-principals-in-multi-tenant-applications).
+
+A long inline code span: `az ad sp create-for-rbac --name agent-gateway-prod-westus3 --role Contributor --scopes /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-agents-prod/providers/Microsoft.App/containerApps/ca-agent-gateway --years 1`.
+
+| Setting | Value |
+| --- | --- |
+| A very long cell value that keeps going well past any reasonable column width so that padding-based table formatters would rewrite every row of the table on each edit | short |
+
+```text
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```

@@ -1,0 +1,77 @@
+{
+  "id": "scope-every-tool-call",
+  "slug": "scope-every-tool-call",
+  "schemaVersion": 2,
+  "status": "published",
+  "title": "Scope every tool call, not every agent",
+  "excerpt": "Per-call scopes keep a confused agent from spending a whole token.",
+  "htmlContent": "<p>Agents act with borrowed authority, and a broad token turns one bad call into many.</p>\n<h2 id=\"why-scope-per-call\">Why scope per call</h2>\n<p>A per-call scope limits the blast radius of a confused agent.<sup class=\"footnote-ref\"><a href=\"#fn1\" id=\"fnref1\" rel=\"noopener noreferrer\">[1]</a></sup></p>\n<figure class=\"mermaid\" data-diagram=\"4a7fa6b993de9d8a322a01aafbea34794268968c853944dc584aacd341d60459\"><img src=\"/blog-media/scope-every-tool-call/diagram-1f5c4dae22b0316b.svg\" alt=\"Diagram\" width=\"10\" height=\"10\"></figure>\n<h3 id=\"the-gateway-pattern\">The gateway pattern</h3>\n<p><img src=\"/blog-media/scope-every-tool-call/img-8a20d40ca6641976.png\" alt=\"Gateway issuing a scoped token per call\" width=\"64\" height=\"32\"></p>\n<aside class=\"callout callout-note\">\n<p>Rotate the gateway's signing key on every deploy.</p>\n</aside>\n<h2 id=\"what-to-do-next\">What to do next</h2>\n<p>Start with the tool that can delete data.</p>\n<hr class=\"footnotes-sep\">\n<section class=\"footnotes\">\n<ol class=\"footnotes-list\">\n<li id=\"fn1\" class=\"footnote-item\"><p>OWASP. <em>LLM Top 10</em>. <a href=\"https://genai.owasp.org/llm-top-10/\" rel=\"noopener noreferrer\">genai.owasp.org</a> <a href=\"#fnref1\" class=\"footnote-backref\" rel=\"noopener noreferrer\">↩︎</a></p>\n</li>\n</ol>\n</section>\n",
+  "mdxContent": "---\ntitle: \"Scope every tool call, not every agent\"\nslug: scope-every-tool-call\nexcerpt: \"Per-call scopes keep a confused agent from spending a whole token.\"\npillar: agents\nformat: deep-explainer\ntags: [mcp, identity]\n---\n\nAgents act with borrowed authority, and a broad token turns one bad call into many.\n\n## Why scope per call\n\nA per-call scope limits the blast radius of a confused agent.[^src-owasp]\n\n```mermaid\nflowchart LR\n  A[Agent] --> B[Gateway]\n  B --> C[Tool]\n```\n\n### The gateway pattern\n\n![Gateway issuing a scoped token per call](/api/media/uploads/2026-11/8a20d40ca664197613a433722a05122c1b2c1a4cc5548f909db6744db9a0f165.png)\n\n:::note\nRotate the gateway's signing key on every deploy.\n:::\n\n## What to do next\n\nStart with the tool that can delete data.\n\n[^src-owasp]: OWASP. *LLM Top 10*. [genai.owasp.org](https://genai.owasp.org/llm-top-10/)\n",
+  "publishedAt": "2026-11-26T12:00:00Z",
+  "updatedAt": "2026-11-26T12:00:00Z",
+  "date": "2026-11-26",
+  "tags": [
+    "mcp",
+    "identity"
+  ],
+  "pillar": "agents",
+  "format": "deep-explainer",
+  "heroImage": {
+    "url": "/blog-media/scope-every-tool-call/og-fd2e13dc25db2e50.png",
+    "alt": "Scope every tool call, not every agent",
+    "width": 1200,
+    "height": 630
+  },
+  "ogImage": {
+    "url": "/blog-media/scope-every-tool-call/og-fd2e13dc25db2e50.png",
+    "width": 1200,
+    "height": 630
+  },
+  "assets": [
+    {
+      "path": "/blog-media/scope-every-tool-call/diagram-1f5c4dae22b0316b.svg",
+      "blob": "scope-every-tool-call/diagram-1f5c4dae22b0316b.svg",
+      "sha256": "1f5c4dae22b0316bc107d417e182a2b520174473315401887a2004f1ff05a90f"
+    },
+    {
+      "path": "/blog-media/scope-every-tool-call/og-fd2e13dc25db2e50.png",
+      "blob": "scope-every-tool-call/og-fd2e13dc25db2e50.png",
+      "sha256": "fd2e13dc25db2e50f1475576e7edfb9bb2d5de68d056b1559cea4ae34395daee"
+    },
+    {
+      "path": "/blog-media/scope-every-tool-call/img-8a20d40ca6641976.png",
+      "blob": "scope-every-tool-call/img-8a20d40ca6641976.png",
+      "sha256": "8a20d40ca664197613a433722a05122c1b2c1a4cc5548f909db6744db9a0f165"
+    }
+  ],
+  "readingTimeMinutes": 1,
+  "wordCount": 60,
+  "toc": [
+    {
+      "id": "why-scope-per-call",
+      "text": "Why scope per call",
+      "level": 2
+    },
+    {
+      "id": "the-gateway-pattern",
+      "text": "The gateway pattern",
+      "level": 3
+    },
+    {
+      "id": "what-to-do-next",
+      "text": "What to do next",
+      "level": 2
+    }
+  ],
+  "citations": [
+    {
+      "id": "src-owasp",
+      "title": "OWASP Top 10 for LLM Applications",
+      "url": "https://genai.owasp.org/llm-top-10/",
+      "publisher": "OWASP",
+      "date": "2025"
+    }
+  ],
+  "corrections": [],
+  "canonicalUrl": "https://site.test/blog/scope-every-tool-call"
+}

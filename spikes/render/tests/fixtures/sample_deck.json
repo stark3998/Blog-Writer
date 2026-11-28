@@ -1,0 +1,152 @@
+{
+  "title": "Give every AI agent its own identity",
+  "lang": "en",
+  "slides": [
+    {
+      "type": "cover",
+      "kicker": "Agent security field notes",
+      "hook": "Your MCP server trusts every agent the same",
+      "subtitle": "Four controls that turn anonymous tool calls into accountable actions"
+    },
+    {
+      "type": "statement",
+      "statement": "An agent holding a shared API key is an anonymous insider with standing access to every tool it can reach.",
+      "note": "The fix is an identity per agent, scoped per tool and checked on every call."
+    },
+    {
+      "type": "list",
+      "title": "Signs your agents share one identity",
+      "items": [
+        "Audit logs name the integration, never the agent",
+        "Revoking one agent rotates everyone's key",
+        "Tool scopes were granted once and never reviewed",
+        "Nobody knows which human approved a call"
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Give every agent its own identity",
+      "steps": [
+        {
+          "title": "Register a workload identity",
+          "detail": "One per agent, owned by a team"
+        },
+        {
+          "title": "Exchange tokens per tool",
+          "detail": "Short-lived and audience-bound"
+        },
+        {
+          "title": "Log agent, human and tool",
+          "detail": "Together, on every call"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "title": "Where to start: autonomy against access",
+      "layout": "2x2",
+      "y_axis": "More access",
+      "x_axis": "More autonomy",
+      "cells": [
+        {
+          "label": "Privileged helpers",
+          "text": "Human approves each call"
+        },
+        {
+          "label": "Start here",
+          "text": "Scope tokens per tool"
+        },
+        {
+          "label": "Low risk",
+          "text": "Log and move on"
+        },
+        {
+          "label": "Watch list",
+          "text": "Rate-limit, review monthly"
+        }
+      ]
+    },
+    {
+      "type": "diagram",
+      "title": "One call, three checks",
+      "mermaid": "flowchart TD\n  A[Agent] -->|token exchange| G[Gateway]\n  G -->|actor and scope| P{Policy decision}\n  P -->|allow| T[MCP tool]\n  P -->|deny| L[Audit log]\n  T --> L",
+      "alt": "Flow chart: the agent exchanges its token at the gateway, a policy decision allows or denies the call, allowed calls reach the MCP tool, and both outcomes are written to the audit log.",
+      "caption": "Identity at the gateway, authorization at the policy point, evidence in the log."
+    },
+    {
+      "type": "stat",
+      "value": "3",
+      "label": "places to check an agent's identity on every call",
+      "context": "The gateway that issues the token, the policy point that scopes it, and the tool that acts on it.",
+      "source": "Model Context Protocol, Authorization specification"
+    },
+    {
+      "type": "framework",
+      "title": "Defense in depth for tool calls",
+      "layout": "layered",
+      "cells": [
+        {
+          "label": "Identity",
+          "text": "A distinct, revocable principal per agent"
+        },
+        {
+          "label": "Authorization",
+          "text": "Scopes decided per call"
+        },
+        {
+          "label": "Input checks",
+          "text": "Tool arguments are untrusted"
+        },
+        {
+          "label": "Evidence",
+          "text": "Agent, human, tool, decision"
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "quote": "Treat every tool call as a privileged access request, because that is exactly what it is.",
+      "attribution": "Avery Quinn",
+      "role": "Field notes on agent identity"
+    },
+    {
+      "type": "statement",
+      "statement": "Least privilege still works for agents. It just has to be decided per call instead of per project.",
+      "note": "Standing access is the risk; short-lived, scoped tokens are the control."
+    },
+    {
+      "type": "recap",
+      "title": "Do this Monday",
+      "items": [
+        "List every agent and the key it uses",
+        "Give each agent its own workload identity",
+        "Log the requesting user on every call",
+        "Scope one high-access agent per tool"
+      ]
+    },
+    {
+      "type": "sources",
+      "sources": [
+        {
+          "publisher": "Model Context Protocol",
+          "title": "Authorization specification",
+          "date": "2025"
+        },
+        {
+          "publisher": "OWASP",
+          "title": "Top 10 for Large Language Model Applications",
+          "date": "2025"
+        },
+        {
+          "publisher": "NIST",
+          "title": "AI Risk Management Framework (AI RMF 1.0)",
+          "date": "2023"
+        },
+        {
+          "publisher": "Microsoft Learn",
+          "title": "Workload identities overview"
+        }
+      ]
+    }
+  ]
+}

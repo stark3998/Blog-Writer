@@ -1,0 +1,18 @@
+{
+  "title": "Agent Security Notes",
+  "format": "atom10",
+  "items": [
+    {
+      "url": "https://blog.example.net/agents/tool-descriptions",
+      "title": "Prompt injection in tool descriptions",
+      "published_at": "2026-11-25T18:45:30.000000Z",
+      "publisher": "Guest column: Red Team Digest"
+    },
+    {
+      "url": "https://blog.example.net/agents/mcp-scoped-tokens",
+      "title": "MCP servers & scoped tokens",
+      "published_at": "2026-11-24T09:00:00.000000Z",
+      "publisher": "Agent Security Notes"
+    }
+  ]
+}

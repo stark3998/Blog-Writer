@@ -1,0 +1,3 @@
+We used the platform to rotate keys every 90 days.
+---8<---
+This is a critical vulnerability with a CVSS score of 9.8.

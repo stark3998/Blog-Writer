@@ -1,0 +1,242 @@
+{
+  "$comment": "Golden corpus for the article dialect. 'canonical' files must be fixed points of the TipTap normalizer. Non-canonical files list the syntax-only normalization categories (see docs/v2/article-dialect.md, 'Normalization') that the first normalization is expected to apply, as detected by comparing markdown-it token streams. normalized/<file> holds the reviewed TipTap output for every file.",
+  "allowedNormalizations": [
+    "autolink",
+    "bullet-marker",
+    "callout-marker",
+    "code-fence-style",
+    "code-span-delimiter",
+    "emphasis-delimiter",
+    "escape-or-entity",
+    "frontmatter-style",
+    "heading-style",
+    "image-alt-markup",
+    "list-looseness",
+    "mermaid-info",
+    "ordered-delimiter",
+    "ordered-numbering",
+    "soft-break",
+    "thematic-break"
+  ],
+  "files": {
+    "01-frontmatter-and-paragraphs.md": {
+      "canonical": true,
+      "covers": [
+        "frontmatter",
+        "paragraphs",
+        "plain punctuation"
+      ]
+    },
+    "02-headings.md": {
+      "canonical": true,
+      "covers": [
+        "headings h2-h4",
+        "trailing punctuation",
+        "trailing # escapes",
+        "inline marks in headings",
+        "unicode headings",
+        "duplicate headings"
+      ]
+    },
+    "03-inline-escapes.md": {
+      "canonical": true,
+      "covers": [
+        "escaping rules",
+        "line-start escapes",
+        "entity-like text",
+        "angle brackets"
+      ]
+    },
+    "04-emphasis.md": {
+      "canonical": true,
+      "covers": [
+        "emphasis",
+        "strong",
+        "nesting",
+        "intraword",
+        "punctuation flanking",
+        "code/links in emphasis"
+      ]
+    },
+    "05-links-and-images.md": {
+      "canonical": true,
+      "covers": [
+        "inline links",
+        "titles",
+        "parentheses in URLs",
+        "pointy-bracket destinations",
+        "fragment and site-relative links",
+        "mailto",
+        "images"
+      ]
+    },
+    "06-lists.md": {
+      "canonical": true,
+      "covers": [
+        "bullets",
+        "ordered",
+        "nesting",
+        "start numbers",
+        "blocks inside items",
+        "10+ items"
+      ]
+    },
+    "07-task-lists.md": {
+      "canonical": true,
+      "covers": [
+        "task lists",
+        "nested tasks",
+        "blocks inside task items"
+      ]
+    },
+    "08-code-blocks.md": {
+      "canonical": true,
+      "covers": [
+        "fences",
+        "longer fences",
+        "dialect syntax inside code",
+        "tabs and trailing spaces in code",
+        "empty code block",
+        "inline code edge cases"
+      ]
+    },
+    "09-mermaid.md": {
+      "canonical": true,
+      "covers": [
+        "mermaid fences",
+        "::: inside mermaid"
+      ]
+    },
+    "10-tables.md": {
+      "canonical": true,
+      "covers": [
+        "tables",
+        "alignment",
+        "escaped pipes in text and code",
+        "empty cells",
+        "unicode cells"
+      ]
+    },
+    "11-callouts.md": {
+      "canonical": true,
+      "covers": [
+        "note/tip/warning",
+        "lists in callouts",
+        "task lists in callouts",
+        "::: inside fences in callouts",
+        "quotes/tables/code/images in callouts",
+        "consecutive callouts"
+      ]
+    },
+    "12-citations.md": {
+      "canonical": true,
+      "covers": [
+        "citations",
+        "repeated citations",
+        "citations in lists/tables/callouts",
+        "footnote definitions",
+        "link wins over citation"
+      ]
+    },
+    "13-blockquotes-and-rules.md": {
+      "canonical": true,
+      "covers": [
+        "blockquotes",
+        "nested quotes",
+        "lists and code in quotes",
+        "thematic breaks"
+      ]
+    },
+    "14-hard-breaks.md": {
+      "canonical": true,
+      "covers": [
+        "hard breaks in paragraphs, lists, tasks, quotes, callouts",
+        "syntax-looking text after a break"
+      ]
+    },
+    "15-unicode.md": {
+      "canonical": true,
+      "covers": [
+        "accents",
+        "CJK",
+        "RTL",
+        "emoji ZWJ",
+        "combining marks",
+        "NBSP",
+        "typography"
+      ]
+    },
+    "16-long-lines.md": {
+      "canonical": true,
+      "covers": [
+        "1,400+ character paragraph",
+        "long URL",
+        "long inline code",
+        "long table cell",
+        "long code line"
+      ]
+    },
+    "17-full-article.md": {
+      "canonical": true,
+      "covers": [
+        "1,500-word article",
+        "frontmatter with series",
+        "every construct together"
+      ]
+    },
+    "18-normalize-syntax.md": {
+      "canonical": false,
+      "normalizations": [
+        "autolink",
+        "bullet-marker",
+        "code-fence-style",
+        "emphasis-delimiter",
+        "escape-or-entity",
+        "heading-style",
+        "mermaid-info",
+        "ordered-numbering",
+        "soft-break",
+        "thematic-break"
+      ],
+      "lintErrors": [
+        "heading-level"
+      ]
+    },
+    "19-normalize-citations.md": {
+      "canonical": false,
+      "normalizations": [
+        "escape-or-entity",
+        "soft-break"
+      ],
+      "lintErrors": [
+        "citation-undefined"
+      ]
+    },
+    "20-normalize-frontmatter.md": {
+      "canonical": false,
+      "normalizations": [
+        "frontmatter-style"
+      ]
+    },
+    "21-normalize-lists.md": {
+      "canonical": false,
+      "normalizations": [
+        "bullet-marker",
+        "list-looseness",
+        "ordered-delimiter",
+        "soft-break"
+      ]
+    },
+    "22-tolerated-but-linted.md": {
+      "canonical": false,
+      "normalizations": [
+        "escape-or-entity"
+      ],
+      "lintErrors": [
+        "heading-level",
+        "inline-image",
+        "raw-html"
+      ]
+    }
+  }
+}

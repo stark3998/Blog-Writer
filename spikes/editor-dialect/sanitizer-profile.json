@@ -1,0 +1,162 @@
+{
+  "tags": [
+    "a",
+    "aside",
+    "blockquote",
+    "br",
+    "code",
+    "em",
+    "figure",
+    "h2",
+    "h3",
+    "h4",
+    "hr",
+    "img",
+    "input",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "span",
+    "strong",
+    "sup",
+    "table",
+    "tbody",
+    "td",
+    "th",
+    "thead",
+    "tr",
+    "ul"
+  ],
+  "attributes": {
+    "a": [
+      "class",
+      "href",
+      "id",
+      "title"
+    ],
+    "aside": [
+      "class"
+    ],
+    "code": [
+      "class"
+    ],
+    "figure": [
+      "class",
+      "data-diagram"
+    ],
+    "h2": [
+      "id"
+    ],
+    "h3": [
+      "id"
+    ],
+    "hr": [
+      "class"
+    ],
+    "img": [
+      "alt",
+      "height",
+      "src",
+      "title",
+      "width"
+    ],
+    "input": [
+      "checked",
+      "class",
+      "disabled",
+      "type"
+    ],
+    "li": [
+      "class",
+      "id"
+    ],
+    "ol": [
+      "class",
+      "start"
+    ],
+    "pre": [
+      "class"
+    ],
+    "section": [
+      "class"
+    ],
+    "span": [
+      "class"
+    ],
+    "sup": [
+      "class"
+    ],
+    "td": [
+      "style"
+    ],
+    "th": [
+      "style"
+    ],
+    "ul": [
+      "class"
+    ]
+  },
+  "classPatterns": {
+    "a": "^footnote-backref$",
+    "aside": "^callout(?:-(?:note|tip|warning))?$",
+    "code": "^language-[a-z0-9][a-z0-9+#._-]{0,31}$",
+    "figure": "^mermaid$",
+    "hr": "^footnotes-sep$",
+    "input": "^task-list-item-checkbox$",
+    "li": "^(?:task-list-item|footnote-item)$",
+    "ol": "^footnotes-list$",
+    "pre": "^(?:highlight|mermaid-source)$",
+    "section": "^footnotes$",
+    "span": "^[a-z]{1,3}[0-9]?$",
+    "sup": "^footnote-ref$",
+    "ul": "^contains-task-list$"
+  },
+  "idPatterns": {
+    "a": "^fnref[0-9]+(?::[0-9]+)?$",
+    "h2": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "h3": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "li": "^fn[0-9]+$"
+  },
+  "urlPatterns": {
+    "href": [
+      "^https://[^\\s\\\\]+$",
+      "^mailto:[^\\s\\\\]+$",
+      "^#[A-Za-z0-9._:-]+$",
+      "^/(?![/\\\\])[^\\s\\\\]*$"
+    ],
+    "src": [
+      "^https://[^\\s\\\\]+$",
+      "^/(?![/\\\\])[^\\s\\\\]*$"
+    ]
+  },
+  "valuePatterns": {
+    "width": "^[1-9][0-9]{0,4}$",
+    "height": "^[1-9][0-9]{0,4}$",
+    "start": "^[0-9]{1,9}$",
+    "data-diagram": "^[0-9a-f]{64}$",
+    "type": "^checkbox$"
+  },
+  "styleValues": [
+    "text-align:center",
+    "text-align:left",
+    "text-align:right"
+  ],
+  "forcedAttributes": {
+    "input": {
+      "disabled": "disabled",
+      "type": "checkbox"
+    }
+  },
+  "linkRel": "noopener noreferrer",
+  "dropWithContent": [
+    "iframe",
+    "noscript",
+    "object",
+    "script",
+    "style",
+    "template"
+  ],
+  "clobberPrefix": ""
+}

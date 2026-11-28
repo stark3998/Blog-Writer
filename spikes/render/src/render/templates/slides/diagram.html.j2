@@ -1,0 +1,9 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+<figure class="figure">
+<div class="figure__frame"><img class="figure__img" src="{{ view.diagram_uri }}" alt="{{ s.alt }}"></div>
+{% if s.caption %}<figcaption class="figure__cap">{{ s.caption }}</figcaption>{% endif %}
+</figure>
+{% endcall %}

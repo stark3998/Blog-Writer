@@ -1,0 +1,116 @@
+{
+  "frontmatter": {
+    "title": "Least-privilege tool calls for AI agents: a field guide",
+    "slug": "least-privilege-tool-calls-for-ai-agents",
+    "excerpt": "How to give an agent exactly the access a single tool call needs, using workload identity, a policy gateway and short-lived tokens.",
+    "pillar": "agents",
+    "format": "deep-explainer",
+    "tags": [
+      "agents",
+      "identity",
+      "mcp",
+      "zero-trust"
+    ],
+    "series": {
+      "id": "agent-identity-in-practice",
+      "title": "Agent identity in practice",
+      "part": 2,
+      "total": 4
+    }
+  },
+  "toc": [
+    {
+      "level": 2,
+      "id": "the-problem-with-the-agent-s-credentials",
+      "text": "The problem with \"the agent's credentials\""
+    },
+    {
+      "level": 2,
+      "id": "the-pattern-in-one-diagram",
+      "text": "The pattern in one diagram"
+    },
+    {
+      "level": 3,
+      "id": "why-a-gateway-and-not-a-better-prompt",
+      "text": "Why a gateway and not a better prompt"
+    },
+    {
+      "level": 2,
+      "id": "threat-model",
+      "text": "Threat model"
+    },
+    {
+      "level": 2,
+      "id": "implementation-walkthrough",
+      "text": "Implementation walkthrough"
+    },
+    {
+      "level": 3,
+      "id": "token-lifetime",
+      "text": "Token lifetime"
+    },
+    {
+      "level": 3,
+      "id": "delegated-calls",
+      "text": "Delegated calls"
+    },
+    {
+      "level": 2,
+      "id": "pitfalls-i-keep-seeing",
+      "text": "Pitfalls I keep seeing"
+    },
+    {
+      "level": 2,
+      "id": "a-checklist-for-your-next-design-review",
+      "text": "A checklist for your next design review"
+    },
+    {
+      "level": 2,
+      "id": "what-i-would-change-next-time",
+      "text": "What I would change next time"
+    }
+  ],
+  "citations": [
+    {
+      "number": 1,
+      "id": "owasp-llm-top-10",
+      "text": "OWASP. Top 10 for LLM Applications 2025. genai.owasp.org",
+      "url": "https://genai.owasp.org/llm-top-10/"
+    },
+    {
+      "number": 2,
+      "id": "nist-ai-rmf",
+      "text": "NIST. Artificial Intelligence Risk Management Framework (AI RMF 1.0), January 2023. nist.gov",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework"
+    },
+    {
+      "number": 3,
+      "id": "mitre-atlas",
+      "text": "MITRE. ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems. atlas.mitre.org",
+      "url": "https://atlas.mitre.org/"
+    },
+    {
+      "number": 4,
+      "id": "entra-workload-id",
+      "text": "Microsoft. Workload identity federation. learn.microsoft.com",
+      "url": "https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation"
+    },
+    {
+      "number": 5,
+      "id": "cisa-secure-ai",
+      "text": "CISA and NCSC. Guidelines for secure AI system development. cisa.gov",
+      "url": "https://www.cisa.gov/resources-tools/resources/guidelines-secure-ai-system-development"
+    },
+    {
+      "number": 6,
+      "id": "mcp-spec",
+      "text": "Model Context Protocol. Specification. modelcontextprotocol.io",
+      "url": "https://modelcontextprotocol.io/specification"
+    }
+  ],
+  "diagrams": [
+    "d89582c5f6a372074092544cdb278f3388bd94e8cc574d9d2cc2a78fb7b77e61"
+  ],
+  "wordCount": 1318,
+  "readingTimeMinutes": 6
+}

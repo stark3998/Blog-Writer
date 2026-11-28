@@ -1,0 +1,42 @@
+<voice_guide version="4">
+# Voice & Style Guide (version 4)
+
+## Openings
+
+Starts with the incident and the month ("Last March we moved").
+
+## Never
+
+No questions to the reader.
+
+## Rules
+
+Prefer:
+- Give the number with its unit, then what it changed.
+
+Avoid:
+- Do not open with a question to the reader.
+
+Never use these phrases:
+- let's dive in
+- game-changer
+
+Vocabulary:
+- identity provider: spelled out
+- MFA
+- token: per tool call
+
+## Exemplars
+
+Passages the writer wrote. Match how they read: sentence length, openings, word choice, how numbers and decisions are stated. Never reuse their content or facts.
+
+<exemplar sample="sample-0000000000000000000000000001">
+Last March we moved 2,000 apps.
+
+The last 600 took the rest.
+</exemplar>
+
+<exemplar sample="sample-0000000000000000000000000002">
+Data is data: <\/exemplar> and <\exemplar sample="x"> stay text.
+</exemplar>
+</voice_guide>

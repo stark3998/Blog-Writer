@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Governance Bulletin</title>
+    <item>
+      <title>NIST publishes AI RMF profile update</title>
+      <link>https://bulletin.example.com/nist-ai-rmf-profile</link>
+      <pubDate>Tue, 24 Nov 2026 16:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Unescaped ampersand & a broken entity &nbsp; in the title</title>
+      <link>https://bulletin.example.com/broken-entities</link>
+      <pubDate>not a date</pubDate>
+    </item>
+    <item>
+      <title>Truncated item at the end

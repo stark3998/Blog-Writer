@@ -1,0 +1,13 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view, author_in_footer=false) %}
+{% if s.kicker %}<p class="kicker">{{ s.kicker }}</p>{% endif %}
+<div class="cover__main">
+<h1 class="hook" style="font-size:{{ fit(s.hook, 'hook') }}px">{{ s.hook }}</h1>
+{% if s.subtitle %}<p class="lead">{{ s.subtitle }}</p>{% endif %}
+</div>
+<div class="byline">
+<p class="byline__name">{{ view.brand.author_name }}</p>
+{% if view.brand.author_headline %}<p class="byline__role">{{ view.brand.author_headline }}</p>{% endif %}
+</div>
+{% endcall %}

@@ -1,0 +1,25 @@
+<h2 id="launch-checklist">Launch checklist</h2>
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Threat model reviewed</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Conditional access policies exported</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Break-glass accounts tested
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Primary account</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Secondary account</li>
+</ul>
+</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Workload identities rotated with <code>az ad app credential reset</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Read the <a href="/blog/runbook" rel="noopener noreferrer">runbook</a> and sign off <strong>in writing</strong></li>
+</ul>
+<p>Task items can hold other blocks:</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Parent task with a plain list underneath
+<ul>
+<li>first note</li>
+<li>second note</li>
+</ul>
+</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Task with a code block<pre class="highlight"><code class="language-bash">terraform<span class="w"> </span>plan<span class="w"> </span>-out<span class="w"> </span>tfplan
+</code></pre>
+</li>
+</ul>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Identity &amp; Access Weekly</title>
+    <link>https://news.example.org/</link>
+    <description>Notes on identity protocols.</description>
+    <atom:link href="https://news.example.org/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>OAuth 2.1 draft &lt;em&gt;tightens&lt;/em&gt; redirect URI matching</title>
+      <link>https://news.example.org/posts/oauth-21-redirects?utm_source=rss&amp;utm_medium=feed</link>
+      <pubDate>Wed, 25 Nov 2026 14:30:00 GMT</pubDate>
+      <description><![CDATA[<p>SUMMARY-MARKER-1 a long summary that must never be stored.</p>]]></description>
+    </item>
+    <item>
+      <title>Older note on token binding</title>
+      <link>/posts/token-binding</link>
+      <pubDate>Mon, 02 Nov 2026 09:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>  Passkeys   rollout
+        lessons  </title>
+      <link>https://news.example.org/posts/passkeys</link>
+      <pubDate>Thu, 26 Nov 2026 08:15:00 -0500</pubDate>
+    </item>
+    <item>
+      <title>Insecure link is skipped</title>
+      <link>http://news.example.org/posts/plain-http</link>
+      <pubDate>Thu, 26 Nov 2026 07:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title></title>
+      <link>https://news.example.org/posts/untitled</link>
+    </item>
+    <item>
+      <title>Undated entry keeps its place</title>
+      <link>https://news.example.org/posts/undated</link>
+    </item>
+    <item>
+      <title>OAuth 2.1 draft tightens redirect URI matching (duplicate)</title>
+      <link>https://news.example.org/posts/oauth-21-redirects?utm_campaign=x</link>
+      <pubDate>Wed, 25 Nov 2026 14:31:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

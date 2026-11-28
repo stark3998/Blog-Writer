@@ -1,0 +1,74 @@
+{
+  "frontmatter": null,
+  "toc": [
+    {
+      "level": 2,
+      "id": "overview",
+      "text": "Overview"
+    },
+    {
+      "level": 3,
+      "id": "what-changed-in-2025",
+      "text": "What changed in 2025?"
+    },
+    {
+      "level": 3,
+      "id": "why-it-matters",
+      "text": "Why it matters!"
+    },
+    {
+      "level": 2,
+      "id": "c-and-f-tooling",
+      "text": "C# and F# tooling"
+    },
+    {
+      "level": 2,
+      "id": "item",
+      "text": "Item #"
+    },
+    {
+      "level": 2,
+      "id": "ends-with-a-hash-run",
+      "text": "Ends with a hash run ##"
+    },
+    {
+      "level": 2,
+      "id": "emphasis-and-code-in-a-heading",
+      "text": "Emphasis and code in a heading"
+    },
+    {
+      "level": 2,
+      "id": "unicode-headings-resume",
+      "text": "Ünïcödé — headings: résumé ☕"
+    },
+    {
+      "level": 2,
+      "id": "overview-1",
+      "text": "Overview"
+    },
+    {
+      "level": 2,
+      "id": "1-numbered-heading-text",
+      "text": "1. Numbered heading text"
+    },
+    {
+      "level": 2,
+      "id": "heading-with-trailing-colon",
+      "text": "Heading with trailing colon:"
+    },
+    {
+      "level": 2,
+      "id": "heading-with-a-link-inside",
+      "text": "Heading with a link inside"
+    },
+    {
+      "level": 3,
+      "id": "heading-that-ends-in-a-closing-parenthesis-see-below",
+      "text": "Heading that ends in a closing parenthesis (see below)"
+    }
+  ],
+  "citations": [],
+  "diagrams": [],
+  "wordCount": 93,
+  "readingTimeMinutes": 1
+}

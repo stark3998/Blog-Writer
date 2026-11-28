@@ -1,0 +1,159 @@
+<p>Most agent incidents I have reviewed this year started the same way: a capable model, a helpful tool, and a credential that could do far more than the task in front of it. The model did not need to be malicious. It only needed to be wrong once, or to read one poisoned document, while holding a token that opened every door in the subscription.</p>
+<p>This post is the practical half of the series. The first part argued that an agent is a workload and should be treated like one. Here I walk through the pattern I now use by default: a policy gateway between the agent and its tools, workload identity instead of stored secrets, and tokens that live for minutes and carry one narrow scope.</p>
+<h2 id="the-problem-with-the-agent-s-credentials">The problem with "the agent's credentials"</h2>
+<p>When a team says an agent "has access" to something, they usually mean one of three things. The agent runs with a developer's delegated token, it reads a long-lived client secret from configuration, or it borrows the managed identity of the host it runs on. All three share a flaw: the credential is sized for the <em>agent</em>, not for the <em>call</em>.</p>
+<p>That mismatch matters because the model decides which tool to call and with which arguments. Prompt injection is still the top risk on the OWASP list for LLM applications,<sup class="footnote-ref"><a href="#fn1" id="fnref1" rel="noopener noreferrer">[1]</a></sup> and the reason is structural. Any text the model reads can steer its next action, so every tool the agent can reach is reachable by whoever controls that text.</p>
+<blockquote>
+<p>If the blast radius of a single wrong tool call is your whole tenant, the model's accuracy is now a security control. It was never designed to be one.</p>
+</blockquote>
+<p>The NIST AI Risk Management Framework describes this as a governance problem as much as a technical one: you need to know which actions a system can take and who is accountable for each.<sup class="footnote-ref"><a href="#fn2" id="fnref2" rel="noopener noreferrer">[2]</a></sup> The technical answer is old and boring, which is good news. Apply least privilege at the level of the individual call.</p>
+<h2 id="the-pattern-in-one-diagram">The pattern in one diagram</h2>
+<figure class="mermaid" data-diagram="d89582c5f6a372074092544cdb278f3388bd94e8cc574d9d2cc2a78fb7b77e61"><pre class="mermaid-source"><code>flowchart LR
+  U[User request] --&gt; A[Agent runtime]
+  A --&gt;|tool call + intent| G{Policy gateway}
+  G --&gt;|token exchange| I[Workload identity]
+  I --&gt;|scoped, 5-minute token| G
+  G --&gt;|allowed| T[Tool API]
+  G --&gt;|denied| L[(Audit log)]
+  T --&gt; G --&gt; A
+</code></pre></figure>
+<p>The agent never holds a credential for the tool. It sends the gateway a tool call plus a short statement of intent. The gateway evaluates policy, exchanges its own workload identity for a token scoped to that one operation, makes the call, and returns the result. Every decision lands in the audit log, including denials.</p>
+<h3 id="why-a-gateway-and-not-a-better-prompt">Why a gateway and not a better prompt</h3>
+<p>You can ask the model to be careful, and you should. But instructions are inputs, and inputs can be overridden. A gateway is code that runs outside the model's context, so injected text cannot argue with it. MITRE ATLAS catalogues enough real attack techniques against ML systems to make this distinction concrete.<sup class="footnote-ref"><a href="#fn3" id="fnref3" rel="noopener noreferrer">[3]</a></sup></p>
+<aside class="callout callout-note">
+<p>The gateway does not need to be a separate product. In my last two deployments it was a few hundred lines of code in the same container as the agent runtime, running under a different identity and listening only on a local socket.</p>
+</aside>
+<h2 id="threat-model">Threat model</h2>
+<p>I start every design review with a small table. It keeps the conversation on actions and consequences rather than on model behaviour, which nobody in the room can fully predict.</p>
+<table>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Example</th>
+<th>Control</th>
+<th>Residual risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prompt injection</td>
+<td>A retrieved web page tells the agent to export a mailbox</td>
+<td>Gateway policy denies <code>mail.export</code> for this agent</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Over-broad token</td>
+<td>Agent token can write to every storage account</td>
+<td>Per-call token scoped to one container</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Credential theft</td>
+<td>Client secret leaked from configuration</td>
+<td>Workload identity federation, no stored secret</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Confused deputy</td>
+<td>Tool acts with the agent's rights on a user's behalf</td>
+<td>Pass the user's identity; check both</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Silent failure</td>
+<td>Denials are not visible to operators</td>
+<td>Denials alerted and reviewed weekly</td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<p>The two "medium" rows are honest. Delegation is hard, and alert fatigue is real. A threat model that shows only green is usually one nobody has tested.</p>
+<h2 id="implementation-walkthrough">Implementation walkthrough</h2>
+<p>The steps below use Microsoft Entra workload identity federation because that is where most of my clients run, but the shape is the same on any platform with token exchange.<sup class="footnote-ref"><a href="#fn4" id="fnref4" rel="noopener noreferrer">[4]</a></sup></p>
+<ol>
+<li>Give the gateway its own identity. Never reuse the agent's.</li>
+<li>Federate that identity with the platform that runs the gateway, so no secret exists anywhere.</li>
+<li>Define one app role per tool operation, not per tool.</li>
+<li>Make the gateway request a token for exactly the role the call needs.</li>
+<li>Log the decision, the role, and a hash of the arguments before making the call.</li>
+</ol>
+<p>Here is the federation step with the Azure CLI. It trusts tokens issued to one workload, in one namespace, for one service account:</p>
+<pre class="highlight"><code class="language-bash">az<span class="w"> </span>identity<span class="w"> </span>federated-credential<span class="w"> </span>create<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>agent-gateway-prod<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--identity-name<span class="w"> </span>id-agent-gateway<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--resource-group<span class="w"> </span>rg-agents-prod<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--issuer<span class="w"> </span><span class="s2">"https://oidc.example-cluster.internal"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--subject<span class="w"> </span><span class="s2">"system:serviceaccount:agents:gateway"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--audiences<span class="w"> </span><span class="s2">"api://AzureADTokenExchange"</span>
+</code></pre>
+<p>The policy itself can start as data. I keep it in the repository, reviewed like code:</p>
+<pre class="highlight"><code class="language-yaml"><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l">research-assistant</span>
+<span class="nt">allow</span><span class="p">:</span>
+<span class="w">  </span><span class="p">-</span><span class="w"> </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l">search.query</span>
+<span class="w">    </span><span class="nt">max_calls_per_minute</span><span class="p">:</span><span class="w"> </span><span class="l">30</span>
+<span class="w">  </span><span class="p">-</span><span class="w"> </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l">storage.read</span>
+<span class="w">    </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l">container:briefs</span>
+<span class="nt">deny</span><span class="p">:</span>
+<span class="w">  </span><span class="p">-</span><span class="w"> </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l">mail.*</span>
+<span class="w">  </span><span class="p">-</span><span class="w"> </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l">storage.write</span>
+<span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l">deny</span>
+</code></pre>
+<p>And the gateway's decision record is small enough to keep forever:</p>
+<pre class="highlight"><code class="language-json"><span class="p">{</span>
+<span class="w">  </span><span class="nt">"agent"</span><span class="p">:</span><span class="w"> </span><span class="s2">"research-assistant"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool"</span><span class="p">:</span><span class="w"> </span><span class="s2">"storage.read"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"allow"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"scope"</span><span class="p">:</span><span class="w"> </span><span class="s2">"container:briefs"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"args_sha256"</span><span class="p">:</span><span class="w"> </span><span class="s2">"9f2c4e0d1b7a"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"token_ttl_seconds"</span><span class="p">:</span><span class="w"> </span><span class="mi">300</span>
+<span class="p">}</span>
+</code></pre>
+<aside class="callout callout-tip">
+<p>Hash the arguments instead of logging them. You still get correlation across retries and replays, and you do not turn your audit log into a second copy of every document the agent touched.</p>
+</aside>
+<h3 id="token-lifetime">Token lifetime</h3>
+<p>Five minutes is my default, and I shorten it for write operations. The common objection is latency: a token exchange per call adds a round trip. In practice the gateway caches a token per role for most of its lifetime, and the cost is a few milliseconds per call against model latency measured in seconds.</p>
+<h3 id="delegated-calls">Delegated calls</h3>
+<p>Some tools must act as the user, not as the agent. Here the gateway needs both identities: the user's, to decide what the user may do, and its own, to prove the request came through policy. Check both. If you only check the user, any agent that can obtain a user token becomes a skeleton key.</p>
+<aside class="callout callout-warning">
+<p>Do not let the agent request user tokens directly. If the model can trigger an interactive consent prompt, an injected instruction can phish your own users through your own app.</p>
+</aside>
+<h2 id="pitfalls-i-keep-seeing">Pitfalls I keep seeing</h2>
+<ul>
+<li><strong>Scopes that mirror the API, not the task.</strong> <code>Files.ReadWrite.All</code> is convenient and always too much. Model the operation the agent performs.</li>
+<li><strong>Gateways that fail open.</strong> If policy cannot be evaluated, the answer is deny. Make that a test, not a comment.</li>
+<li><strong>One identity for many agents.</strong> You lose the ability to revoke one agent without breaking the others, and your audit log stops answering "which agent did this?"</li>
+<li><strong>Denials nobody reads.</strong> A denied call is the most useful signal you have that an injection attempt happened. Alert on spikes.</li>
+<li><strong>Policies written once.</strong> Tools change. Review the allow list whenever a tool's API changes, the same way you would review a firewall rule.</li>
+</ul>
+<p>The CISA guidance on secure AI system development makes the same point in more formal language: secure design, secure deployment, and secure operation are separate phases with separate owners.<sup class="footnote-ref"><a href="#fn5" id="fnref5" rel="noopener noreferrer">[5]</a></sup> The gateway is where those phases meet.</p>
+<h2 id="a-checklist-for-your-next-design-review">A checklist for your next design review</h2>
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> The agent has no stored credentials for any tool</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Every tool call passes through a gateway that runs outside the model's context</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Each tool operation maps to one narrowly scoped role</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Tokens live for five minutes or less, shorter for writes</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Denials are logged, alerted and reviewed</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Delegated calls check both the user and the gateway identity</li>
+</ul>
+<h2 id="what-i-would-change-next-time">What I would change next time</h2>
+<p>I would introduce the gateway earlier. On both projects it arrived after a prototype had already shipped with a broad token, and unwinding that took longer than building the gateway did. Starting with deny-by-default felt slower for about a week and then stopped feeling like anything at all.</p>
+<p>I would also make the decision log visible to the product team, not just to security. When people can see which calls the agent attempts and which ones policy blocks, conversations about new tools become concrete very quickly.</p>
+<p>The Model Context Protocol makes tools easier to plug in, which is exactly why this matters now.<sup class="footnote-ref"><a href="#fn6" id="fnref6" rel="noopener noreferrer">[6]</a></sup> Easier integration means more tools per agent. Least privilege per call is how you keep that from meaning more risk per agent.</p>
+<hr class="footnotes-sep">
+<section class="footnotes">
+<ol class="footnotes-list">
+<li id="fn1" class="footnote-item"><p>OWASP. <em>Top 10 for LLM Applications 2025</em>. <a href="https://genai.owasp.org/llm-top-10/" rel="noopener noreferrer">genai.owasp.org</a> <a href="#fnref1" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+<li id="fn2" class="footnote-item"><p>NIST. <em>Artificial Intelligence Risk Management Framework (AI RMF 1.0)</em>, January 2023. <a href="https://www.nist.gov/itl/ai-risk-management-framework" rel="noopener noreferrer">nist.gov</a> <a href="#fnref2" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+<li id="fn3" class="footnote-item"><p>MITRE. <em>ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems</em>. <a href="https://atlas.mitre.org/" rel="noopener noreferrer">atlas.mitre.org</a> <a href="#fnref3" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+<li id="fn4" class="footnote-item"><p>Microsoft. <em>Workload identity federation</em>. <a href="https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation" rel="noopener noreferrer">learn.microsoft.com</a> <a href="#fnref4" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+<li id="fn5" class="footnote-item"><p>CISA and NCSC. <em>Guidelines for secure AI system development</em>. <a href="https://www.cisa.gov/resources-tools/resources/guidelines-secure-ai-system-development" rel="noopener noreferrer">cisa.gov</a> <a href="#fnref5" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+<li id="fn6" class="footnote-item"><p>Model Context Protocol. <em>Specification</em>. <a href="https://modelcontextprotocol.io/specification" rel="noopener noreferrer">modelcontextprotocol.io</a> <a href="#fnref6" class="footnote-backref" rel="noopener noreferrer">↩︎</a></p>
+</li>
+</ol>
+</section>

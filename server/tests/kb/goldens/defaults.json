@@ -1,0 +1,432 @@
+{
+  "pillars": {
+    "id": "pillars",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "pillars": [
+      {
+        "id": "agents",
+        "name": "AI agents & security",
+        "topics": "MCP, multi-agent SecOps, prompt injection, agent identity",
+        "description": "Running AI agents against real systems without opening a new way in for attackers. Covers Model Context Protocol (MCP) servers and the tool permissions they expose, prompt injection and tool poisoning, agent identity and least privilege, and multi-agent SecOps workflows a security team can audit.",
+        "audience": "Security architects, AppSec and SecOps leads, and platform engineers connecting agents and MCP servers to production data, identities and tools.",
+        "vocabulary": [
+          "Model Context Protocol (MCP)",
+          "MCP server",
+          "MCP client",
+          "prompt injection",
+          "indirect prompt injection",
+          "tool poisoning",
+          "agent identity",
+          "least privilege",
+          "human-in-the-loop approval",
+          "OWASP Top 10 for LLM Applications",
+          "MITRE ATLAS",
+          "Microsoft Sentinel"
+        ],
+        "renames": {
+          "Azure Sentinel": "Microsoft Sentinel",
+          "Microsoft 365 Defender": "Microsoft Defender XDR",
+          "Microsoft Copilot for Security": "Microsoft Security Copilot",
+          "Azure AI Studio": "Microsoft Foundry",
+          "Azure AI Foundry": "Microsoft Foundry"
+        },
+        "hashtags": [
+          "AISecurity",
+          "AIAgents",
+          "MCP"
+        ],
+        "researchDomains": [
+          "modelcontextprotocol.io",
+          "genai.owasp.org",
+          "atlas.mitre.org",
+          "learn.microsoft.com",
+          "arxiv.org",
+          "cisa.gov"
+        ],
+        "targetShare": 0.33
+      },
+      {
+        "id": "identity",
+        "name": "Identity modernization",
+        "topics": "Okta to Entra, a 2,000-app migration, CIAM",
+        "description": "Moving a large enterprise from Okta to Microsoft Entra ID without breaking sign-in for anyone. Covers app inventory and migration waves for a 2,000-app estate, SSO and SCIM provisioning cutovers, Conditional Access design, phishing-resistant MFA, and customer identity (CIAM) on Microsoft Entra External ID.",
+        "audience": "IAM architects, identity engineers and IT leaders planning or running a workforce identity migration, and teams building customer sign-in.",
+        "vocabulary": [
+          "Microsoft Entra ID",
+          "Microsoft Entra External ID",
+          "Conditional Access",
+          "single sign-on (SSO)",
+          "SCIM provisioning",
+          "OpenID Connect (OIDC)",
+          "SAML",
+          "phishing-resistant MFA",
+          "passkeys",
+          "customer identity and access management (CIAM)",
+          "workload identities",
+          "NIST SP 800-63-4"
+        ],
+        "renames": {
+          "Azure AD": "Microsoft Entra ID",
+          "Azure Active Directory": "Microsoft Entra ID",
+          "AAD": "Microsoft Entra ID",
+          "Azure AD Connect": "Microsoft Entra Connect",
+          "Azure AD Connect cloud sync": "Microsoft Entra Cloud Sync",
+          "Azure AD Conditional Access": "Microsoft Entra Conditional Access",
+          "Azure AD Identity Protection": "Microsoft Entra ID Protection",
+          "Azure AD Privileged Identity Management": "Microsoft Entra Privileged Identity Management",
+          "Azure AD Identity Governance": "Microsoft Entra ID Governance",
+          "Azure AD External Identities": "Microsoft Entra External ID",
+          "Azure AD Domain Services": "Microsoft Entra Domain Services",
+          "Azure AD Application Proxy": "Microsoft Entra application proxy",
+          "Azure AD Workload Identities": "Microsoft Entra Workload ID",
+          "Azure AD Verifiable Credentials": "Microsoft Entra Verified ID",
+          "Hybrid Azure AD joined": "Microsoft Entra hybrid joined",
+          "Azure AD joined": "Microsoft Entra joined"
+        },
+        "hashtags": [
+          "IAM",
+          "MicrosoftEntra",
+          "CIAM"
+        ],
+        "researchDomains": [
+          "learn.microsoft.com",
+          "techcommunity.microsoft.com",
+          "openid.net",
+          "pages.nist.gov",
+          "developer.okta.com",
+          "help.okta.com"
+        ],
+        "targetShare": 0.33
+      },
+      {
+        "id": "governance",
+        "name": "AI governance",
+        "topics": "Risk-tiered agent lifecycles, NIST AI RMF, OWASP, MITRE ATLAS",
+        "description": "Turning AI governance frameworks into controls a team can operate and test. Covers risk-tiered lifecycles for agents and models, the NIST AI RMF and its Generative AI Profile in practice, ISO/IEC 42001, the EU AI Act, and mapping OWASP and MITRE ATLAS threats to specific controls.",
+        "audience": "CISOs, risk and compliance leads, and AI platform owners who must show an inventory, a risk tier and working controls for every AI system in production.",
+        "vocabulary": [
+          "NIST AI RMF",
+          "NIST AI 600-1 (Generative AI Profile)",
+          "ISO/IEC 42001",
+          "EU AI Act",
+          "AI system inventory",
+          "risk tier",
+          "model card",
+          "AI red teaming",
+          "OWASP Top 10 for LLM Applications",
+          "MITRE ATLAS"
+        ],
+        "renames": {
+          "Azure Purview": "Microsoft Purview"
+        },
+        "hashtags": [
+          "AIGovernance",
+          "ResponsibleAI",
+          "AIRisk"
+        ],
+        "researchDomains": [
+          "nist.gov",
+          "owasp.org",
+          "iso.org",
+          "eur-lex.europa.eu",
+          "oecd.ai"
+        ],
+        "targetShare": 0.33
+      }
+    ]
+  },
+  "formats": {
+    "id": "format-packs",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "packs": [
+      {
+        "id": "case-study",
+        "name": "Case study / how I did it",
+        "minWords": 1500,
+        "maxWords": 2500,
+        "mustContain": [
+          "anonymized context",
+          "constraints",
+          "decisions and trade-offs",
+          "metrics",
+          "what I would change"
+        ],
+        "ownerInput": "full_interview",
+        "minQuestions": 5,
+        "maxQuestions": 8,
+        "banned": []
+      },
+      {
+        "id": "framework",
+        "name": "Framework / checklist",
+        "minWords": 1200,
+        "maxWords": 2000,
+        "mustContain": [
+          "an owner-originated named framework",
+          "a diagram",
+          "maturity levels",
+          "a checklist table"
+        ],
+        "ownerInput": "full_interview",
+        "minQuestions": 5,
+        "maxQuestions": 8,
+        "banned": [
+          "AI-invented frameworks"
+        ]
+      },
+      {
+        "id": "deep-explainer",
+        "name": "Deep explainer",
+        "minWords": 1800,
+        "maxWords": 3000,
+        "mustContain": [
+          "a Mermaid flow",
+          "a threat model",
+          "config or code",
+          "pitfalls"
+        ],
+        "ownerInput": "micro_interview",
+        "minQuestions": 2,
+        "maxQuestions": 2,
+        "banned": []
+      },
+      {
+        "id": "news-analysis",
+        "name": "News analysis",
+        "minWords": 900,
+        "maxWords": 1500,
+        "mustContain": [
+          "what changed (cited)",
+          "why it matters per role",
+          "what to do Monday"
+        ],
+        "ownerInput": "micro_interview",
+        "minQuestions": 2,
+        "maxQuestions": 2,
+        "banned": []
+      }
+    ]
+  },
+  "lanes": {
+    "id": "lanes",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "derivativesMaxPerWeek": 2,
+    "nativeMinPerWeek": 1,
+    "nativeOtherPillar": true,
+    "onPillarMinShare": 0.8,
+    "hookVariants": 3,
+    "quickTake": {
+      "minChars": 1200,
+      "maxChars": 1500,
+      "maxAgeHours": 72,
+      "ownerTakeRequired": true
+    },
+    "formats": {
+      "carouselMinSlides": 8,
+      "carouselMaxSlides": 12,
+      "textMinChars": 1200,
+      "textMaxChars": 2000,
+      "imageCardEnabled": true,
+      "pollMaxPerMonth": 1
+    },
+    "repurpose": {
+      "minWeeks": 8,
+      "maxWeeks": 12,
+      "requiresNoveltyCheck": true
+    },
+    "series": []
+  },
+  "brand": {
+    "id": "brand-kit",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "authorName": null,
+    "authorHeadline": null,
+    "siteName": null,
+    "colors": {
+      "ink": "#0E2A24",
+      "paper": "#F3F5F2",
+      "muted": "#4A5D56",
+      "mutedOnInk": "#A8C1B8",
+      "signal": "#F2A93B",
+      "signalText": "#8A4F00",
+      "rule": "#C5D1CB",
+      "ruleOnInk": "#2E4A43"
+    },
+    "font": "inter",
+    "headshot": null,
+    "nameMark": null,
+    "artBriefs": {
+      "agents": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for AI agents & security. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people.",
+      "identity": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for Identity modernization. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people.",
+      "governance": "Editorial illustration, abstract and conceptual: clean geometric forms, layered planes, paths and nodes as a visual metaphor for AI governance. Calm, precise and modern, with generous negative space and soft light. Colours from the brand palette only: mostly its deep, slate and soft tones on its light ground, with at most one small touch of its accent. No text, letters, numbers, logos, brand marks or recognisable people."
+    }
+  },
+  "blocklist": {
+    "id": "blocklist",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "terms": [],
+    "configured": false
+  },
+  "policy": {
+    "id": "employer-policy",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "disclaimerShort": null,
+    "disclaimerLong": null,
+    "forbiddenTopics": [],
+    "noEmployerBranding": true,
+    "aiUseConfirmed": false,
+    "aiUseConfirmedAt": null,
+    "clearanceStatement": "I confirm this piece is anonymized and cleared for publication.",
+    "configured": false
+  },
+  "cadence": {
+    "id": "cadence",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "timezone": "America/New_York",
+    "planWeek": {
+      "day": "sun",
+      "time": "18:00"
+    },
+    "planLeadMinutes": 60,
+    "researchStart": {
+      "day": "mon",
+      "time": "08:00"
+    },
+    "interviewDue": {
+      "day": "wed",
+      "time": "18:00"
+    },
+    "draftDay": {
+      "day": "thu",
+      "time": "09:00"
+    },
+    "vetoNotice": {
+      "day": "fri",
+      "time": "12:00"
+    },
+    "articlePublish": {
+      "day": "mon",
+      "time": "09:00"
+    },
+    "minVetoLeadHours": 48,
+    "businessHoursStart": "09:00",
+    "businessHoursEnd": "17:00",
+    "postSlots": [
+      {
+        "day": "tue",
+        "time": "10:00",
+        "kind": "primary",
+        "windowMinutes": 120
+      },
+      {
+        "day": "wed",
+        "time": "10:00",
+        "kind": "primary",
+        "windowMinutes": 120
+      },
+      {
+        "day": "thu",
+        "time": "10:00",
+        "kind": "primary",
+        "windowMinutes": 120
+      },
+      {
+        "day": "mon",
+        "time": "12:00",
+        "kind": "optional",
+        "windowMinutes": 120
+      },
+      {
+        "day": "fri",
+        "time": "15:00",
+        "kind": "optional",
+        "windowMinutes": 120
+      }
+    ],
+    "postsPerWeek": {
+      "normal": 3,
+      "light": 2,
+      "away": 0,
+      "max": 5
+    },
+    "sameDayBlock": true,
+    "minGapHoursWarn": 24,
+    "missedSlotGraceMinutes": 120,
+    "stageLeadMinutes": 60,
+    "reminders": {
+      "replyMinutes": [
+        15,
+        60,
+        180
+      ],
+      "snapshotHours": [
+        48,
+        168
+      ]
+    },
+    "crawlIntervalHours": 6,
+    "scout": {
+      "day": "sun",
+      "time": "15:00"
+    },
+    "digest": {
+      "day": "mon",
+      "time": "08:00"
+    },
+    "backupTime": "03:30",
+    "defaultMode": "normal"
+  },
+  "models": {
+    "id": "model-preferences",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "imagesEnabled": false,
+    "noveltyMaxSimilarity": 0.92,
+    "nearDuplicateMaxSimilarity": 0.5
+  },
+  "autonomy": {
+    "id": "autonomy",
+    "schemaVersion": 1,
+    "createdAt": "2026-11-26T12:00:00.000000Z",
+    "updatedAt": "2026-11-26T12:00:00.000000Z",
+    "autoPublishEnabled": false,
+    "paused": false,
+    "pausedAt": null,
+    "calibration": {
+      "cleanStreak": 0,
+      "required": 6,
+      "events": []
+    },
+    "judge": {
+      "asIsRate": null,
+      "sampleSize": 0,
+      "checkedAt": null,
+      "threshold": 0.9,
+      "maxAgeDays": 31
+    },
+    "lastCorrectionAt": null
+  },
+  "autonomyDecision": {
+    "allowed": false,
+    "reasons": [
+      "not_enabled",
+      "calibrating",
+      "judge_uncalibrated"
+    ]
+  }
+}

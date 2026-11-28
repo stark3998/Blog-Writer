@@ -1,0 +1,9 @@
+We migrated 2,000 apps in 14 months. The result: a 40% drop in help-desk tickets.
+---8<---
+Here's the thing: nobody reads the policy until the audit.
+---8<---
+We cut the attribute mapping to 12 fields. The catch? Every app owner had to re-test.
+---8<---
+Here's what happened: the SCIM job silently dropped 37 users.
+---8<---
+Plot twist: the outage was a certificate that expired on a Sunday.

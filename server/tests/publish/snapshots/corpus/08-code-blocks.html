@@ -1,0 +1,40 @@
+<p>A TypeScript block:</p>
+<pre class="highlight"><code class="language-ts"><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">add</span><span class="p">(</span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">b</span>
+<span class="p">}</span>
+</code></pre>
+<p>No language:</p>
+<pre class="highlight"><code>plain text block
+  with indentation preserved
+</code></pre>
+<p>A fence inside the code needs a longer fence:</p>
+<pre class="highlight"><code class="language-md"><span class="sb">```bash</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"nested fence"</span>
+<span class="sb">```</span>
+</code></pre>
+<p>Code that looks like dialect syntax stays verbatim:</p>
+<pre class="highlight"><code class="language-text">:::note
+This is not a callout.
+:::
+
+A citation-looking string [^not-a-citation] and a footnote line:
+[^x]: not a definition
+&lt;script&gt;alert("not html either")&lt;/script&gt;
+</code></pre>
+<p>Blank lines, tabs and trailing spaces inside code are preserved:</p>
+<pre class="highlight"><code class="language-python"><span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+	<span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="mi">200</span><span class="p">}</span>   
+
+    <span class="c1"># indented comment after a blank line</span>
+</code></pre>
+<p>Tilde fences inside code:</p>
+<pre class="highlight"><code class="language-text">~~~
+still code
+~~~
+</code></pre>
+<p>An empty code block:</p>
+<pre class="highlight"><code class="language-json"></code></pre>
+<p>A language with symbols in its name:</p>
+<pre class="highlight"><code class="language-c++"><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre>
+<p>Inline code: <code>const x = 1</code>, <code>`backticks`</code> and <code>a ` b</code>, <code> padded </code>, <code>&lt;b&gt;not html&lt;/b&gt;</code>, and <code>&amp;amp; stays literal</code>.</p>

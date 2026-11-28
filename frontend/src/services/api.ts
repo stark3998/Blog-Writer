@@ -43,6 +43,26 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { "Content-Type": "application/json", ...auth, ...init?.headers },
   });
+
+  // On 401, force a fresh token and retry once
+  if (res.status === 401 && _getAccessToken) {
+    const freshToken = await _getAccessToken();
+    if (freshToken) {
+      const retry = await fetch(`${API_BASE}${url}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${freshToken}`,
+          ...init?.headers,
+        },
+      });
+      if (retry.ok) return retry.json();
+    }
+    // Fresh token didn't help — redirect to login
+    window.location.href = window.location.origin;
+    throw new Error("Session expired — redirecting to login");
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail ?? `HTTP ${res.status}`);

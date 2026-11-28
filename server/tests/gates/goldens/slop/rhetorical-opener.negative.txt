@@ -1,0 +1,7 @@
+We rotated the keys on Tuesday. Did it help? Not much: the leak was in the CI logs.
+---8<---
+"Can we ship this by Friday?" the CISO asked. We could not.
+---8<---
+We moved 2,000 apps in 14 months.
+
+What would you change first?

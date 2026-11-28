@@ -1,0 +1,8 @@
+# Copy to backend.hcl (gitignored) and run: terraform init -backend-config=backend.hcl
+# Reuses the existing state account (the same one infra/v2/data uses); this
+# root gets its own state key.
+resource_group_name  = "rg-blog-writer-dev"
+storage_account_name = "blogwritertfstate"
+container_name       = "tfstate"
+key                  = "blog-writer-v2-platform.tfstate"
+# use_azuread_auth = true  # needs Storage Blob Data Contributor on the state account; v1 uses the account key

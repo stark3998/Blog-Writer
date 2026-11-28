@@ -1,0 +1,33 @@
+{
+  "frontmatter": null,
+  "toc": [],
+  "citations": [
+    {
+      "number": 1,
+      "id": "owasp-llm-top-10",
+      "text": "OWASP. Top 10 for LLM Applications 2025. genai.owasp.org",
+      "url": "https://genai.owasp.org/llm-top-10/"
+    },
+    {
+      "number": 2,
+      "id": "nist-ai-rmf",
+      "text": "NIST. AI Risk Management Framework (AI RMF 1.0), January 2023. nist.gov",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework"
+    },
+    {
+      "number": 3,
+      "id": "mitre-atlas",
+      "text": "MITRE. ATLAS: Adversarial Threat Landscape for AI Systems. atlas.mitre.org",
+      "url": "https://atlas.mitre.org/"
+    },
+    {
+      "number": 4,
+      "id": "cisa-secure-ai",
+      "text": "CISA and NCSC. Guidelines for secure AI system development, with code in a definition. cisa.gov",
+      "url": "https://www.cisa.gov/resources-tools/resources/guidelines-secure-ai-system-development"
+    }
+  ],
+  "diagrams": [],
+  "wordCount": 59,
+  "readingTimeMinutes": 1
+}

@@ -1,0 +1,13 @@
+/* Open Graph card, 1200x630 CSS px. Same tokens and type floor as the slides. */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'BW Text',sans-serif;font-kerning:normal;font-feature-settings:"kern" 1,"liga" 1,"calt" 0;font-synthesis:none;text-rendering:optimizeLegibility}
+h1,p{margin:0}
+.og{position:relative;width:1200px;height:630px;overflow:hidden;background:var(--ink);color:var(--paper)}
+.og__rail{position:absolute;left:0;top:0;bottom:0;width:20px;background:var(--signal)}
+.og__body{position:absolute;top:72px;left:92px;right:88px;bottom:64px;display:flex;flex-direction:column;overflow:hidden;overflow-wrap:anywhere}
+.og__kicker{font-size:30px;font-weight:600;line-height:1.25;color:var(--signal)}
+.og__title{margin:auto 0;font-family:'BW Display','BW Text',sans-serif;font-weight:800;line-height:1.04;letter-spacing:-0.028em;text-wrap:balance}
+.og__by{display:flex;align-items:baseline;gap:28px;font-size:30px;line-height:1.25}
+.og__name{font-weight:600}
+.og__site{color:var(--muted-on-ink)}

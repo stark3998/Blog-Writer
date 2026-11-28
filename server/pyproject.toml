@@ -1,0 +1,89 @@
+[project]
+name = "blogwriter"
+version = "0.1.0"
+description = "Blog Writer v2 server."
+readme = "README.md"
+requires-python = ">=3.12"
+# Exact pins; upgrades are deliberate (the lockfile pins the rest).
+dependencies = [
+    "aiohttp==3.14.5",
+    "anthropic==2.14.0",
+    "azure-core==1.41.0",
+    "azure-cosmos==4.17.1",
+    "azure-identity==1.27.0",
+    "azure-storage-blob==12.31.1",
+    "beautifulsoup4==4.15.0",
+    "cryptography==50.0.2",
+    "fastapi==0.165.0",
+    "feedparser==6.0.14",
+    "httpx==0.28.1",
+    "httpx2==2.16.2",
+    "jinja2==3.1.6",
+    "jsonschema==4.26.0",
+    "lxml==6.1.3",
+    "markdown-it-py==4.3.0",
+    "markupsafe==3.0.4",
+    "mdit-py-plugins==0.7.0",
+    "nh3==0.3.8",
+    "openai==3.60.0",
+    "openpyxl==3.1.5",
+    "pillow==13.0.0",
+    "playwright==1.65.2",
+    "psutil==7.2.2",
+    "pydantic==2.14.4",
+    "pydantic-settings==2.16.3",
+    "pygments==2.21.0",
+    "pypdf==7.1.1",
+    "pywebpush==2.5.0",
+    "pyyaml==6.0.4",
+    "regex==2026.11.25", # Unicode properties and grapheme clusters (\p{..}, \X)
+    "sse-starlette==3.7.1",
+    "tzdata==2026.6",
+    "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright==1.1.414",
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "ruff==0.17.6",
+    "types-jsonschema==4.26.0.20261006",
+    "types-openpyxl==3.1.5.20261122",
+    "types-pyyaml==6.0.12.20261122",
+]
+live = [
+    "httpx==0.28.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+xfail_strict = true
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "PTH", "PT", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101", # assert is how pytest checks
+    "S311", # seeded random drives deterministic fuzzing, not security
+]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"

@@ -1,0 +1,24 @@
+{
+  "title": "Cloud Identity Log",
+  "format": "jsonfeed",
+  "items": [
+    {
+      "url": "https://log.example.dev/relative/workload-identities",
+      "title": "Workload identity federation limits",
+      "published_at": "2026-11-25T15:30:00.000000Z",
+      "publisher": "Cloud Identity Log"
+    },
+    {
+      "url": "https://log.example.dev/entra-conditional-access",
+      "title": "Conditional Access policy templates changed",
+      "published_at": "2026-11-23T11:00:00.000000Z",
+      "publisher": "Cloud Identity Log"
+    },
+    {
+      "url": "https://elsewhere.example.org/okta-migration",
+      "title": "Migration checklist from a reader",
+      "published_at": null,
+      "publisher": "Cloud Identity Log"
+    }
+  ]
+}

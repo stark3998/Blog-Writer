@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars (gitignored). Export ARM_SUBSCRIPTION_ID instead of
+# setting subscription_id, so no real IDs end up in the public repo.
+owner_object_id = "00000000-0000-0000-0000-000000000000" # rejected: replace with your Entra object ID
+# resource_group_name = "rg-blog-writer-dev"
+# enable_lock         = true

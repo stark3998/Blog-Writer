@@ -1,0 +1,37 @@
+{
+  "family": "Inter",
+  "license": "SIL Open Font License 1.1",
+  "license_file": "OFL-Inter-LICENSE.txt",
+  "source": {
+    "url": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
+    "version": "4.1",
+    "sha256": "9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e",
+    "retrieved": "2026-11-25"
+  },
+  "faces": [
+    {
+      "file": "Inter-Regular.woff2",
+      "css_family": "BW Text",
+      "weight": 400,
+      "sha256": "e06f6b1bc553aaea4e4668023ed0ab0a147129c3107f511bc7d03d361b0ae085"
+    },
+    {
+      "file": "Inter-SemiBold.woff2",
+      "css_family": "BW Text",
+      "weight": 600,
+      "sha256": "5cb7103e4e605989afebc03d989c79201e54b21b5183db33981f70db9178a301"
+    },
+    {
+      "file": "InterDisplay-Bold.woff2",
+      "css_family": "BW Display",
+      "weight": 700,
+      "sha256": "23bc37619593377e128f24660fedb2869d18277b4026cb46e5637be7643faf91"
+    },
+    {
+      "file": "InterDisplay-ExtraBold.woff2",
+      "css_family": "BW Display",
+      "weight": 800,
+      "sha256": "97eeee5a6f4f22fef1f607cf8836104d65968f03e59bc068a7586bf18364a8a7"
+    }
+  ]
+}

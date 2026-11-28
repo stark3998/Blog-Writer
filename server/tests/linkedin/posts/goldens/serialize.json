@@ -1,0 +1,52 @@
+[
+  {
+    "input": "We moved 2,000 apps in 14 months.\n\nThe last 600 set the date.",
+    "display": "We moved 2,000 apps in 14 months.\n\nThe last 600 set the date.",
+    "payload": "We moved 2,000 apps in 14 months.\n\nThe last 600 set the date."
+  },
+  {
+    "input": "Scopes: read_write vs read-only (and why *both* matter) <here>",
+    "display": "Scopes: read_write vs read-only (and why *both* matter) <here>",
+    "payload": "Scopes: read\\_write vs read-only \\(and why \\*both\\* matter\\) \\<here\\>"
+  },
+  {
+    "input": "Tags at the end.\n\n#AISecurity #AgentIdentity",
+    "display": "Tags at the end.\n\n#AISecurity #AgentIdentity",
+    "payload": "Tags at the end.\n\n#AISecurity #AgentIdentity"
+  },
+  {
+    "input": "#aisecurity in lower case takes the approved spelling",
+    "display": "#AISecurity in lower case takes the approved spelling",
+    "payload": "#AISecurity in lower case takes the approved spelling"
+  },
+  {
+    "input": "C# and F# are languages, foo#bar is not a tag, #NotApproved stays text",
+    "display": "C# and F# are languages, foo#bar is not a tag, #NotApproved stays text",
+    "payload": "C\\# and F\\# are languages, foo\\#bar is not a tag, \\#NotApproved stays text"
+  },
+  {
+    "input": "Back\\slash, pipe | braces {} brackets [] tilde ~ at @ underscore _",
+    "display": "Back\\slash, pipe | braces {} brackets [] tilde ~ at @ underscore _",
+    "payload": "Back\\\\slash, pipe \\| braces \\{\\} brackets \\[\\] tilde \\~ at \\@ underscore \\_"
+  },
+  {
+    "input": "Line one\r\nLine two\rLine three",
+    "display": "Line one\nLine two\nLine three",
+    "payload": "Line one\nLine two\nLine three"
+  },
+  {
+    "input": "Emoji and accents: café, naïve, 🔐 once",
+    "display": "Emoji and accents: café, naïve, 🔐 once",
+    "payload": "Emoji and accents: café, naïve, 🔐 once"
+  },
+  {
+    "input": "A mention-looking @[Name](urn:li:person:abc) stays text",
+    "display": "A mention-looking @[Name](urn:li:person:abc) stays text",
+    "payload": "A mention-looking \\@\\[Name\\]\\(urn:li:person:abc\\) stays text"
+  },
+  {
+    "input": "Closing punctuation after a tag works: #AISecurity.",
+    "display": "Closing punctuation after a tag works: #AISecurity.",
+    "payload": "Closing punctuation after a tag works: #AISecurity."
+  }
+]

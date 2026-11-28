@@ -1,0 +1,10 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+<ul class="checks">
+{% for item in s.items %}
+<li class="checks__item"><span class="checks__box" aria-hidden="true"></span><span class="checks__text">{{ item }}</span></li>
+{% endfor %}
+</ul>
+{% endcall %}

@@ -1,0 +1,9 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<figure class="quote">
+<p class="quote__mark" aria-hidden="true">&#8220;</p>
+<blockquote class="quote__text" style="font-size:{{ fit(s.quote, 'quote') }}px">{{ s.quote }}</blockquote>
+<figcaption class="quote__by"><span class="quote__name">{{ s.attribution }}</span>{% if s.role %}<span class="quote__role">{{ s.role }}</span>{% endif %}</figcaption>
+</figure>
+{% endcall %}

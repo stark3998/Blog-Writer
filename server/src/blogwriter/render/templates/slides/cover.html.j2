@@ -1,0 +1,16 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view, name_in_footer=false) %}
+{% if s.kicker %}<p class="kicker">{{ s.kicker }}</p>{% endif %}
+<div class="cover__main">
+<h1 class="hook" style="font-size:{{ fit(s.hook, 'hook') }}px">{{ s.hook }}</h1>
+{% if s.subtitle %}<p class="lead">{{ s.subtitle }}</p>{% endif %}
+</div>
+<div class="byline">
+{% if view.headshot_uri %}<img class="byline__photo" src="{{ view.headshot_uri }}" alt="">{% endif %}
+<div class="byline__text">
+<p class="byline__name">{{ view.brand.name_mark }}</p>
+{% if view.brand.headline %}<p class="byline__role">{{ view.brand.headline }}</p>{% endif %}
+</div>
+</div>
+{% endcall %}

@@ -1,0 +1,10 @@
+{% from "_frame.html.j2" import frame %}
+{% set s = view.slide %}
+{% call frame(view) %}
+<h2 class="title" style="font-size:{{ fit(s.title, 'title') }}px">{{ s.title }}</h2>
+<ol class="steps">
+{% for step in s.steps %}
+<li class="steps__step"><span class="steps__n">{{ loop.index }}</span><div class="steps__copy"><p class="steps__title">{{ step.title }}</p>{% if step.detail %}<p class="steps__detail">{{ step.detail }}</p>{% endif %}</div></li>
+{% endfor %}
+</ol>
+{% endcall %}
